@@ -1,21 +1,67 @@
 {
-  "name": "arkivjs",
-  "module": "index.ts",
-  "type": "module",
-  "scripts": {
-    "build": "bun build --target=node ./index.ts --outfile=dist/index.js && bun run build:declaration",
-    "build:declaration": "tsc --emitDeclarationOnly --project tsconfig.types.json",
-    "postbuild": "rimraf tsconfig.types.tsbuildinfo"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.2.4",
-    "@types/bun": "latest",
-    "rimraf": "^6.0.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  },
-  "dependencies": {
-    "viem": "^2.37.8"
-  }
+	"name": "arkiv",
+	"version": "0.0.6",
+	"description": "TypeScript-only client library for GolemDB/Arkiv blockchain interactions",
+	"type": "module",
+	"main": "src/index.ts",
+	"module": "src/index.ts",
+	"types": "src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"import": "./src/index.ts",
+			"require": "./src/index.ts"
+		},
+		"./chains": {
+			"types": "./src/chains/index.ts",
+			"import": "./src/chains/index.ts",
+			"require": "./src/chains/index.ts"
+		}
+	},
+	"files": [
+		"src/**/*.ts",
+		"dist/**/*.d.ts"
+	],
+	"scripts": {
+		"build": "bun run build:declaration",
+		"build:declaration": "tsc --emitDeclarationOnly --project tsconfig.types.json",
+		"postbuild": "rimraf tsconfig.types.tsbuildinfo",
+		"type-check": "tsc --noEmit",
+		"lint": "biome check src/",
+		"lint:fix": "biome check --write src/",
+		"package": "rimraf arkiv-*.tgz && bun run build && bun pm pack --no-cache",
+		"package:test": "bun run package && mv arkiv-*.tgz arkiv-latest.tgz"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.2.4",
+		"@types/bun": "latest",
+		"rimraf": "^6.0.1"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"peerDependenciesMeta": {
+		"typescript": {
+			"optional": false
+		}
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"keywords": [
+		"typescript",
+		"blockchain",
+		"golem",
+		"arkiv",
+		"golemdb",
+		"ethereum",
+		"viem"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/golemnetwork/arkivjs.git"
+	},
+	"dependencies": {
+		"viem": "^2.37.8"
+	}
 }

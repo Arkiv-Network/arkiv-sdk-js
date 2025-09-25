@@ -1,0 +1,22 @@
+{
+  "name": "arkivjs-integration-test",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "test:golemdb": "bun test src/golemdb.test.ts",
+    "reinstall": "bun install --force",
+    "refresh": "cd .. && bun run package && cd test && bun install --force"
+  },
+  "dependencies": {
+    "arkiv": "file:../arkiv-latest.tgz"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "testcontainers": "^11.6.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

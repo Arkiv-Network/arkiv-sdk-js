@@ -1,0 +1,12 @@
+# Source files (only include dist)
+src/
+test/
+tsconfig.json
+tsconfig.types.json
+biome.json
+.vscode/
+.gitignore
+README.md
+
+# Keep dist directory
+!dist/

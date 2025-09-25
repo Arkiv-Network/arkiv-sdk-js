@@ -1,0 +1,11 @@
+[install]
+# Use the local package
+registry = "https://registry.npmjs.org/"
+
+[test]
+# Increase timeout for container tests
+timeout = 120000
+
+[run]
+# Enable hot reload for development
+watch = true
