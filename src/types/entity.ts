@@ -1,7 +1,38 @@
-import type { Annotation } from "./annotation";
+import { bytesToString } from "viem"
+import type { Annotation } from "./annotation"
 
-export type Entity = {
-	key: string;
-	payload: Uint8Array;
-	annotations: Annotation[];
-};
+export class Entity {
+	key: string
+	owner: string
+	expiresAtBlock: number
+	payload: Uint8Array
+	annotations: Annotation[]
+
+	constructor(
+		key: string,
+		owner: string,
+		expiresAtBlock: number,
+		payload: Uint8Array,
+		annotations: Annotation[],
+	) {
+		this.key = key
+		this.owner = owner
+		this.expiresAtBlock = expiresAtBlock
+		this.payload = payload
+		this.annotations = annotations
+	}
+
+	toText(): string {
+		return bytesToString(this.payload)
+	}
+
+	toJson(): string {
+		return JSON.stringify({
+			$key: this.key,
+			$annotations: this.annotations,
+			$owner: this.owner,
+			$expiresAtBlock: this.expiresAtBlock,
+			...JSON.parse(bytesToString(this.payload)),
+		})
+	}
+}

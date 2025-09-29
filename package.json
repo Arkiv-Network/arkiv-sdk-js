@@ -1,6 +1,6 @@
 {
 	"name": "arkiv",
-	"version": "0.0.6",
+	"version": "0.0.12",
 	"description": "TypeScript-only client library for GolemDB/Arkiv blockchain interactions",
 	"type": "module",
 	"main": "src/index.ts",
