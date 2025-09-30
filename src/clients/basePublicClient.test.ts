@@ -1,16 +1,22 @@
-import { describe, expect, it } from "bun:test";
-import { http } from "viem";
-import { sepolia } from "viem/chains";
-import { createPublicClient } from "./createPublicClient";
+import { expect, test, vi } from "bun:test"
+import { createTransport } from "viem"
+import { createPublicClient } from "./createPublicClient"
 
-describe("basePublicClient", () => {
-	it("should be defined", () => {
-		const client = createPublicClient({
-			chain: sepolia,
-			transport: http(),
-		});
+const mockTransport = () =>
+	createTransport({
+		key: "mock",
+		name: "Mock Transport",
+		request: vi.fn(() => null) as any,
+		type: "mock",
+	})
 
-		expect(client).toBeDefined();
-		expect(client.getEntityByKey).toBeDefined();
-	});
-});
+test("creates", () => {
+	const { uid, ...client } = createPublicClient({
+		transport: mockTransport,
+	})
+
+	expect(uid).toBeDefined()
+	expect(client.getEntityByKey).toBeDefined()
+	expect(typeof client.getEntityByKey).toBe("function")
+	expect(client.createEntity).not.toBeDefined()
+})
