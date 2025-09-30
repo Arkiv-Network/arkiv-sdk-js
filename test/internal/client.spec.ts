@@ -12,18 +12,18 @@ import xdg from "xdg-portable"
 import { Wallet, getBytes } from "ethers"
 import {
   internal,
-  type GolemBaseCreate,
+  type ArkivCreate,
   type Hex,
   Annotation,
   Tagged,
   type AccountData,
-  golemBaseABI,
+  arkivABI,
 } from "../../src/index.ts"
 import {
   generateRandomBytes,
   generateRandomString,
 } from "../utils.ts"
-import { GolemBaseClient } from '../../src/internal/client.ts'
+import { ArkivClient } from '../../src/internal/client.ts'
 import { decodeEventLog, toHex } from 'viem'
 
 const log = new Logger<ILogObj>({
@@ -32,25 +32,25 @@ const log = new Logger<ILogObj>({
   minLevel: 3,
 })
 
-async function getEntitiesOwned(client: internal.GolemBaseClient): Promise<Hex[]> {
+async function getEntitiesOwned(client: internal.ArkivClient): Promise<Hex[]> {
   return client.httpClient.getEntitiesOfOwner(await ownerAddress(client))
 }
 
-async function numOfEntitiesOwned(client: internal.GolemBaseClient): Promise<number> {
+async function numOfEntitiesOwned(client: internal.ArkivClient): Promise<number> {
   const entitiesOwned = await getEntitiesOwned(client)
   log.debug("Entities owned:", entitiesOwned)
   log.debug("Number of entities owned:", entitiesOwned.length)
   return entitiesOwned.length
 }
 
-async function deleteAllEntitiesWithIndex(client: internal.GolemBaseClient, index: number): Promise<internal.TransactionReceipt[]> {
+async function deleteAllEntitiesWithIndex(client: internal.ArkivClient, index: number): Promise<internal.TransactionReceipt[]> {
   log.debug("Deleting entities with index", index)
   const queryResult = await client.httpClient.queryEntities(`ix = ${index}`)
   log.debug("deleteEntitiesWithIndex, queryResult", queryResult)
   return Promise.all(
     queryResult.map(async (res: { key: Hex }) => {
       log.debug("Deleting entity with key", res.key)
-      return await client.walletClient.sendGolemBaseTransactionAndWaitForReceipt(
+      return await client.walletClient.sendArkivTransactionAndWaitForReceipt(
         [],
         [],
         [res.key]
@@ -59,7 +59,7 @@ async function deleteAllEntitiesWithIndex(client: internal.GolemBaseClient, inde
   )
 }
 
-async function ownerAddress(client: internal.GolemBaseClient): Promise<Hex> {
+async function ownerAddress(client: internal.ArkivClient): Promise<Hex> {
   return (await client.walletClient.getAddresses())[0]
 }
 
@@ -70,7 +70,7 @@ const walletTestPassword = "password";
 const keystore = readFileSync(walletPath);
 const wallet = Wallet.fromEncryptedJsonSync(keystore, walletTestPassword);
 
-let client: GolemBaseClient
+let client: ArkivClient
 
 const data = generateRandomBytes(32)
 const stringAnnotation = generateRandomString(32)
@@ -107,7 +107,7 @@ describe("the internal golem-base client", () => {
   })
 
   it("should delete all our entities", async () => {
-    await client.walletClient.sendGolemBaseTransactionAndWaitForReceipt(
+    await client.walletClient.sendArkivTransactionAndWaitForReceipt(
       [],
       [],
       await getEntitiesOwned(client)
@@ -123,7 +123,7 @@ describe("the internal golem-base client", () => {
   })
 
   it("should be able to create entities", async () => {
-    const hash = await client.walletClient.sendGolemBaseTransaction([{
+    const hash = await client.walletClient.sendArkivTransaction([{
       data: generateRandomBytes(32),
       btl: 25,
       stringAnnotations: [new Annotation("key", generateRandomString(32))],
@@ -157,12 +157,12 @@ describe("the internal golem-base client", () => {
         numericAnnotations: [new Annotation("ix", 3)]
       }
     ]
-    const receipt = await client.walletClient.sendGolemBaseTransactionAndWaitForReceipt(creates)
+    const receipt = await client.walletClient.sendArkivTransactionAndWaitForReceipt(creates)
     entitiesOwnedCount += creates.length;
 
     const txlog = receipt.logs[0]
     const parsed = decodeEventLog({
-      abi: golemBaseABI,
+      abi: arkivABI,
       data: txlog.data,
       topics: txlog.topics
     })
@@ -243,7 +243,7 @@ describe("the internal golem-base client", () => {
   it("should be able to update entities", async () => {
     const newData = generateRandomBytes(32)
     const newStringAnnotation = generateRandomString(32)
-    const result = await client.walletClient.sendGolemBaseTransactionAndWaitForReceipt([], [{
+    const result = await client.walletClient.sendArkivTransactionAndWaitForReceipt([], [{
       entityKey,
       btl: 10,
       data: newData,
@@ -257,7 +257,7 @@ describe("the internal golem-base client", () => {
 
   it("should be able to extend entities", async () => {
     const numberOfBlocks = 20
-    const result = await client.walletClient.sendGolemBaseTransactionAndWaitForReceipt([], [], [], [{
+    const result = await client.walletClient.sendArkivTransactionAndWaitForReceipt([], [], [], [{
       entityKey,
       numberOfBlocks,
     }])
