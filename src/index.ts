@@ -47,7 +47,7 @@ export const arkivABI = parseAbi([
  * @public
  */
 export const arkivStorageEntityCreatedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "ArkivStorageEntityCreated" }))
+  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityCreated" }))
 
 /**
  * Pre-computed event signature hash for ArkivStorageEntityUpdated events.
@@ -55,7 +55,7 @@ export const arkivStorageEntityCreatedSignature =
  * @public
  */
 export const arkivStorageEntityUpdatedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "ArkivStorageEntityUpdated" }))
+  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityUpdated" }))
 
 /**
  * Pre-computed event signature hash for ArkivStorageEntityDeleted events.
@@ -63,7 +63,7 @@ export const arkivStorageEntityUpdatedSignature =
  * @public
  */
 export const arkivStorageEntityDeletedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "ArkivStorageEntityDeleted" }))
+  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityDeleted" }))
 
 /**
  * Pre-computed event signature hash for ArkivStorageEntityBTLExtended events.
@@ -71,7 +71,7 @@ export const arkivStorageEntityDeletedSignature =
  * @public
  */
 export const arkivStorageEntityBTLExtendedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "ArkivStorageEntityBTLExtended" }))
+  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityBTLExtended" }))
 
 
 /**

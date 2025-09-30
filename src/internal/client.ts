@@ -53,58 +53,58 @@ export { checksumAddress, toHex, TransactionReceipt }
  */
 export const storageAddress = '0x0000000000000000000000000000000060138453'
 // TODO: Update these to arkiv_ after we've updated the RPC names in op-geth
-type ArkivGetStorageValueInputParams = Hex
-type ArkivGetStorageValueReturnType = string
-type ArkivGetStorageValueSchema = {
+type GolemGetStorageValueInputParams = Hex
+type GolemGetStorageValueReturnType = string
+type GolemGetStorageValueSchema = {
   Method: 'golembase_getStorageValue'
-  Parameters: [ArkivGetStorageValueInputParams]
-  ReturnType: ArkivGetStorageValueReturnType
+  Parameters: [GolemGetStorageValueInputParams]
+  ReturnType: GolemGetStorageValueReturnType
 }
 
-type ArkivGetEntityMetaDataInputParams = Hex
-type ArkivGetEntityMetaDataReturnType = EntityMetaData
-type ArkivGetEntityMetaDataSchema = {
+type GolemGetEntityMetaDataInputParams = Hex
+type GolemGetEntityMetaDataReturnType = EntityMetaData
+type GolemGetEntityMetaDataSchema = {
   Method: 'golembase_getEntityMetaData'
-  Parameters: [ArkivGetEntityMetaDataInputParams]
-  ReturnType: ArkivGetEntityMetaDataReturnType
+  Parameters: [GolemGetEntityMetaDataInputParams]
+  ReturnType: GolemGetEntityMetaDataReturnType
 }
 
-type ArkivGetEntitiesToExpireAtBlockInputParams = number
-type ArkivGetEntitiesToExpireAtBlockReturnType = Hex[]
-type ArkivGetEntitiesToExpireAtBlockSchema = {
+type GolemGetEntitiesToExpireAtBlockInputParams = number
+type GolemGetEntitiesToExpireAtBlockReturnType = Hex[]
+type GolemGetEntitiesToExpireAtBlockSchema = {
   Method: 'golembase_getEntitiesToExpireAtBlock'
-  Parameters: [ArkivGetEntitiesToExpireAtBlockInputParams]
-  ReturnType: ArkivGetEntitiesToExpireAtBlockReturnType
+  Parameters: [GolemGetEntitiesToExpireAtBlockInputParams]
+  ReturnType: GolemGetEntitiesToExpireAtBlockReturnType
 }
 
-type ArkivGetEntityCountReturnType = number
-type ArkivGetEntityCountSchema = {
+type GolemGetEntityCountReturnType = number
+type GolemGetEntityCountSchema = {
   Method: 'golembase_getEntityCount'
   Parameters: []
-  ReturnType: ArkivGetEntityCountReturnType
+  ReturnType: GolemGetEntityCountReturnType
 }
 
-type ArkivGetAllEntityKeysReturnType = Hex[]
-type ArkivGetAllEntityKeysSchema = {
+type GolemGetAllEntityKeysReturnType = Hex[]
+type GolemGetAllEntityKeysSchema = {
   Method: 'golembase_getAllEntityKeys'
   Parameters: []
-  ReturnType: ArkivGetAllEntityKeysReturnType
+  ReturnType: GolemGetAllEntityKeysReturnType
 }
 
-type ArkivGetEntitiesOfOwnerInputParams = Hex
-type ArkivGetEntitiesOfOwnerReturnType = Hex[]
-type ArkivGetEntitiesOfOwnerSchema = {
+type GolemGetEntitiesOfOwnerInputParams = Hex
+type GolemGetEntitiesOfOwnerReturnType = Hex[]
+type GolemGetEntitiesOfOwnerSchema = {
   Method: 'golembase_getEntitiesOfOwner'
-  Parameters: [ArkivGetEntitiesOfOwnerInputParams]
-  ReturnType: ArkivGetEntitiesOfOwnerReturnType
+  Parameters: [GolemGetEntitiesOfOwnerInputParams]
+  ReturnType: GolemGetEntitiesOfOwnerReturnType
 }
 
-type ArkivQueryEntitiesInputParams = string
-type ArkivQueryEntitiesReturnType = { key: Hex, value: string }
-type ArkivQueryEntitiesSchema = {
+type GolemQueryEntitiesInputParams = string
+type GolemQueryEntitiesReturnType = { key: Hex, value: string }
+type GolemQueryEntitiesSchema = {
   Method: 'golembase_queryEntities'
-  Parameters: [ArkivQueryEntitiesInputParams]
-  ReturnType: [ArkivQueryEntitiesReturnType]
+  Parameters: [GolemQueryEntitiesInputParams]
+  ReturnType: [GolemQueryEntitiesReturnType]
 }
 
 /**
@@ -116,9 +116,9 @@ type ArkivQueryEntitiesSchema = {
  */
 export type ArkivActions = {
   /** Retrieve the raw storage value (data) for a specific entity */
-  getStorageValue(args: ArkivGetStorageValueInputParams): Promise<Uint8Array>
+  getStorageValue(args: GolemGetStorageValueInputParams): Promise<Uint8Array>
   /** Get complete metadata for an entity including annotations and expiration info */
-  getEntityMetaData(args: ArkivGetEntityMetaDataInputParams): Promise<EntityMetaData>
+  getEntityMetaData(args: GolemGetEntityMetaDataInputParams): Promise<EntityMetaData>
   /**
    * Get all entity keys for entities that will expire at the given block number.
    * Useful for monitoring entities approaching their TTL expiration.
@@ -129,9 +129,9 @@ export type ArkivActions = {
   /** Retrieve all entity keys currently stored in Arkiv */
   getAllEntityKeys(): Promise<Hex[]>
   /** Get all entity keys owned by a specific Ethereum address */
-  getEntitiesOfOwner(args: ArkivGetEntitiesOfOwnerInputParams): Promise<Hex[]>
+  getEntitiesOfOwner(args: GolemGetEntitiesOfOwnerInputParams): Promise<Hex[]>
   /** Query entities based on annotation criteria, returning matching keys and values */
-  queryEntities(args: ArkivQueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array, }[]>
+  queryEntities(args: GolemQueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array, }[]>
 }
 
 /**
@@ -263,8 +263,8 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
      * Get the storage value associated with the given entity key
      */
     // TODO: Update all of these to arkiv_ after we update the RPC in op-geth
-    async getStorageValue(args: ArkivGetStorageValueInputParams): Promise<Uint8Array> {
-      return Buffer.from(await client.request<ArkivGetStorageValueSchema>({
+    async getStorageValue(args: GolemGetStorageValueInputParams): Promise<Uint8Array> {
+      return Buffer.from(await client.request<GolemGetStorageValueSchema>({
         method: 'golembase_getStorageValue',
         params: [args]
       }), "base64")
@@ -272,8 +272,8 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
     /**
      * Get the full entity information
      */
-    async getEntityMetaData(args: ArkivGetEntityMetaDataInputParams): Promise<EntityMetaData> {
-      return client.request<ArkivGetEntityMetaDataSchema>({
+    async getEntityMetaData(args: GolemGetEntityMetaDataInputParams): Promise<EntityMetaData> {
+      return client.request<GolemGetEntityMetaDataSchema>({
         method: 'golembase_getEntityMetaData',
         params: [args]
       })
@@ -282,7 +282,7 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
      * Get all entity keys for entities that will expire at the given block number
      */
     async getEntitiesToExpireAtBlock(blockNumber: bigint): Promise<Hex[]> {
-      return client.request<ArkivGetEntitiesToExpireAtBlockSchema>({
+      return client.request<GolemGetEntitiesToExpireAtBlockSchema>({
         method: 'golembase_getEntitiesToExpireAtBlock',
         // TODO: bigint gets serialised in json as a string, which the api doesn't accept.
         // is there a better workaround?
@@ -290,25 +290,25 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
       })
     },
     async getEntityCount(): Promise<number> {
-      return client.request<ArkivGetEntityCountSchema>({
+      return client.request<GolemGetEntityCountSchema>({
         method: 'golembase_getEntityCount',
         params: []
       })
     },
     async getAllEntityKeys(): Promise<Hex[]> {
-      return await client.request<ArkivGetAllEntityKeysSchema>({
+      return await client.request<GolemGetAllEntityKeysSchema>({
         method: 'golembase_getAllEntityKeys',
         params: []
       })
     },
-    async getEntitiesOfOwner(args: ArkivGetEntitiesOfOwnerInputParams): Promise<Hex[]> {
-      return client.request<ArkivGetEntitiesOfOwnerSchema>({
+    async getEntitiesOfOwner(args: GolemGetEntitiesOfOwnerInputParams): Promise<Hex[]> {
+      return client.request<GolemGetEntitiesOfOwnerSchema>({
         method: 'golembase_getEntitiesOfOwner',
         params: [args]
       })
     },
-    async queryEntities(args: ArkivQueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array }[]> {
-      return (await client.request<ArkivQueryEntitiesSchema>({
+    async queryEntities(args: GolemQueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array }[]> {
+      return (await client.request<GolemQueryEntitiesSchema>({
         method: 'golembase_queryEntities',
         params: [args]
       })).map((res: { key: Hex, value: string }) => ({
