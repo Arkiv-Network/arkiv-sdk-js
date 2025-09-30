@@ -56,7 +56,7 @@ export const storageAddress = '0x0000000000000000000000000000000060138453'
 type ArkivGetStorageValueInputParams = Hex
 type ArkivGetStorageValueReturnType = string
 type ArkivGetStorageValueSchema = {
-  Method: 'golem_getStorageValue'
+  Method: 'golembase_getStorageValue'
   Parameters: [ArkivGetStorageValueInputParams]
   ReturnType: ArkivGetStorageValueReturnType
 }
@@ -64,7 +64,7 @@ type ArkivGetStorageValueSchema = {
 type ArkivGetEntityMetaDataInputParams = Hex
 type ArkivGetEntityMetaDataReturnType = EntityMetaData
 type ArkivGetEntityMetaDataSchema = {
-  Method: 'golem_getEntityMetaData'
+  Method: 'golembase_getEntityMetaData'
   Parameters: [ArkivGetEntityMetaDataInputParams]
   ReturnType: ArkivGetEntityMetaDataReturnType
 }
@@ -72,21 +72,21 @@ type ArkivGetEntityMetaDataSchema = {
 type ArkivGetEntitiesToExpireAtBlockInputParams = number
 type ArkivGetEntitiesToExpireAtBlockReturnType = Hex[]
 type ArkivGetEntitiesToExpireAtBlockSchema = {
-  Method: 'golem_getEntitiesToExpireAtBlock'
+  Method: 'golembase_getEntitiesToExpireAtBlock'
   Parameters: [ArkivGetEntitiesToExpireAtBlockInputParams]
   ReturnType: ArkivGetEntitiesToExpireAtBlockReturnType
 }
 
 type ArkivGetEntityCountReturnType = number
 type ArkivGetEntityCountSchema = {
-  Method: 'golem_getEntityCount'
+  Method: 'golembase_getEntityCount'
   Parameters: []
   ReturnType: ArkivGetEntityCountReturnType
 }
 
 type ArkivGetAllEntityKeysReturnType = Hex[]
 type ArkivGetAllEntityKeysSchema = {
-  Method: 'golem_getAllEntityKeys'
+  Method: 'golembase_getAllEntityKeys'
   Parameters: []
   ReturnType: ArkivGetAllEntityKeysReturnType
 }
@@ -94,7 +94,7 @@ type ArkivGetAllEntityKeysSchema = {
 type ArkivGetEntitiesOfOwnerInputParams = Hex
 type ArkivGetEntitiesOfOwnerReturnType = Hex[]
 type ArkivGetEntitiesOfOwnerSchema = {
-  Method: 'golem_getEntitiesOfOwner'
+  Method: 'golembase_getEntitiesOfOwner'
   Parameters: [ArkivGetEntitiesOfOwnerInputParams]
   ReturnType: ArkivGetEntitiesOfOwnerReturnType
 }
@@ -102,7 +102,7 @@ type ArkivGetEntitiesOfOwnerSchema = {
 type ArkivQueryEntitiesInputParams = string
 type ArkivQueryEntitiesReturnType = { key: Hex, value: string }
 type ArkivQueryEntitiesSchema = {
-  Method: 'golem_queryEntities'
+  Method: 'golembase_queryEntities'
   Parameters: [ArkivQueryEntitiesInputParams]
   ReturnType: [ArkivQueryEntitiesReturnType]
 }
@@ -265,7 +265,7 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
     // TODO: Update all of these to arkiv_ after we update the RPC in op-geth
     async getStorageValue(args: ArkivGetStorageValueInputParams): Promise<Uint8Array> {
       return Buffer.from(await client.request<ArkivGetStorageValueSchema>({
-        method: 'golem_getStorageValue',
+        method: 'golembase_getStorageValue',
         params: [args]
       }), "base64")
     },
@@ -274,7 +274,7 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
      */
     async getEntityMetaData(args: ArkivGetEntityMetaDataInputParams): Promise<EntityMetaData> {
       return client.request<ArkivGetEntityMetaDataSchema>({
-        method: 'golem_getEntityMetaData',
+        method: 'golembase_getEntityMetaData',
         params: [args]
       })
     },
@@ -283,7 +283,7 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
      */
     async getEntitiesToExpireAtBlock(blockNumber: bigint): Promise<Hex[]> {
       return client.request<ArkivGetEntitiesToExpireAtBlockSchema>({
-        method: 'golem_getEntitiesToExpireAtBlock',
+        method: 'golembase_getEntitiesToExpireAtBlock',
         // TODO: bigint gets serialised in json as a string, which the api doesn't accept.
         // is there a better workaround?
         params: [Number(blockNumber)]
@@ -291,25 +291,25 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
     },
     async getEntityCount(): Promise<number> {
       return client.request<ArkivGetEntityCountSchema>({
-        method: 'golem_getEntityCount',
+        method: 'golembase_getEntityCount',
         params: []
       })
     },
     async getAllEntityKeys(): Promise<Hex[]> {
       return await client.request<ArkivGetAllEntityKeysSchema>({
-        method: 'golem_getAllEntityKeys',
+        method: 'golembase_getAllEntityKeys',
         params: []
       })
     },
     async getEntitiesOfOwner(args: ArkivGetEntitiesOfOwnerInputParams): Promise<Hex[]> {
       return client.request<ArkivGetEntitiesOfOwnerSchema>({
-        method: 'golem_getEntitiesOfOwner',
+        method: 'golembase_getEntitiesOfOwner',
         params: [args]
       })
     },
     async queryEntities(args: ArkivQueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array }[]> {
       return (await client.request<ArkivQueryEntitiesSchema>({
-        method: 'golem_queryEntities',
+        method: 'golembase_queryEntities',
         params: [args]
       })).map((res: { key: Hex, value: string }) => ({
         key: res.key,

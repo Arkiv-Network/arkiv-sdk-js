@@ -34,11 +34,11 @@ export { formatEther } from "viem"
  * @public
  */
 export const arkivABI = parseAbi([
-  // TODO NOW: Do these need to be reverted back to Golem for now until we update op-geth?
-  "event ArkivStorageEntityCreated(uint256 indexed entityKey, uint256 expirationBlock)",
-  "event ArkivStorageEntityUpdated(uint256 indexed entityKey, uint256 expirationBlock)",
-  "event ArkivStorageEntityDeleted(uint256 indexed entityKey)",
-  "event ArkivStorageEntityBTLExtended(uint256 indexed entityKey, uint256 oldExpirationBlock, uint256 newExpirationBlock)",
+  // TODO: Update these when we update them in op-geth
+  "event GolemBaseStorageEntityCreated(uint256 indexed entityKey, uint256 expirationBlock)",
+  "event GolemBaseStorageEntityUpdated(uint256 indexed entityKey, uint256 expirationBlock)",
+  "event GolemBaseStorageEntityDeleted(uint256 indexed entityKey)",
+  "event GolemBaseStorageEntityBTLExtended(uint256 indexed entityKey, uint256 oldExpirationBlock, uint256 newExpirationBlock)",
 ])
 
 /**

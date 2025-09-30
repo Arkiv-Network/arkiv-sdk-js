@@ -482,9 +482,9 @@ function parseTransactionLogs(
       data: paddedData,
       topics: txlog.topics
     })
-    // TODO NOW: Do these need to be reverted back to Golem for now?
+    // TODO: Update these when we update them in op-geth
     switch (parsed.eventName) {
-      case "ArkivStorageEntityCreated": {
+      case "GolemBaseStorageEntityCreated": {
         log.debug(parsed.args)
         return {
           ...receipts,
@@ -494,7 +494,7 @@ function parseTransactionLogs(
           }]),
         }
       }
-      case "ArkivStorageEntityUpdated": {
+      case "GolemBaseStorageEntityUpdated": {
         return {
           ...receipts,
           updateEntitiesReceipts: receipts.updateEntitiesReceipts.concat([{
@@ -503,7 +503,7 @@ function parseTransactionLogs(
           }]),
         }
       }
-      case "ArkivStorageEntityBTLExtended": {
+      case "GolemBaseStorageEntityBTLExtended": {
         return {
           ...receipts,
           extendEntitiesReceipts: receipts.extendEntitiesReceipts.concat([{
@@ -513,7 +513,7 @@ function parseTransactionLogs(
           }]),
         }
       }
-      case "ArkivStorageEntityDeleted": {
+      case "GolemBaseStorageEntityDeleted": {
         return {
           ...receipts,
           deleteEntitiesReceipts: receipts.deleteEntitiesReceipts.concat([{
