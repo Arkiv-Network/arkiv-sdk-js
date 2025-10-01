@@ -1,18 +1,18 @@
-# 🚀 Golem Base
+# 🚀 Arkiv
 
-This is part of the [Golem Base](https://github.com/Golem-Base) project, which is which is designed as a Layer2 Network deployed on Ethereum, acting as a gateway to various Layer 3 Database Chains (DB-Chains).
+This is part of the [Arkiv](https://github.com/Arkiv-Network) project, which is which is designed as a Layer2 Network deployed on Ethereum, acting as a gateway to various Layer 3 Database Chains (DB-Chains).
 
 > **For an overview of Golem Base, check out our [Litepaper](https://golem-base.io/wp-content/uploads/2025/03/GolemBase-Litepaper.pdf).**
 
-# 🌌GolemBase SDK for TypeScript
+# 🌌Arkiv SDK for TypeScript
 
-This SDK allows you to use [GolemBase](https://github.com/Golem-Base) from TypeScript. It is available [on NPM](https://www.npmjs.com/package/golem-base-sdk).
+This SDK allows you to use [Arkiv](https://github.com/Arkiv-Network) from TypeScript. It is available [on NPM](https://www.npmjs.com/package/arkiv-sdk).
 
 **Find the [API documentation here](https://golem-base.github.io/documentation/typescript/api/api/).**
 
 **Need a quickstart guide? [We have one here](https://golem-base.github.io/documentation/overview/quickstart_ts/).**
 
-We also publish [generated documentation](https://golem-base.github.io/typescript-sdk/).
+We also publish [generated documentation](https://arkiv-network.github.io/arkiv-sdk-js/).
 
 The repo also contains an example application to showcase how you can use this SDK.
 
@@ -43,8 +43,8 @@ golembase-demo-cli account fund 10
 Here's how you can get going with the SDK. First, create a new folder to hold your project:
 
 ```bash
-mkdir golem-sdk-practice
-cd golem-sdk-practice
+mkdir arkiv-sdk-practice
+cd arkiv-sdk-practice
 ```
 
 Then create a new package.json file by typing:
@@ -59,10 +59,10 @@ Next, add TypeScript as a development dependency:
 npm install --save-dev typescript
 ```
 
-And now add the golem TypeScript SDK to your package by typing:
+And now add the Arkiv SDK to your package by typing:
 
 ```
-npm i golem-base-sdk
+npm i arkiv-sdk
 ```
 
 Now update your package.json file, changing the `type` member to `"type": "module",` and adding the two script lines for `build` and `start`. (Be sure to add a comma after the first script line called test. Also, you can leave the `name` member set to whatever it is. And the order of the members doesn't matter.)
@@ -86,7 +86,7 @@ Now update your package.json file, changing the `type` member to `"type": "modul
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "golem-base-sdk": "^0.1.8"
+    "arkiv-sdk": "^0.1.8"
   }
 }
 
@@ -112,22 +112,22 @@ And next, create a file called tsconfig.json, and add the following to it:
 Finally, create a folder called `src`, where you'll put the `index.ts` file as described next.
 
 ```
-golem-sdk-practice/
+arkiv-sdk-practice/
 ├──src
     ├── index.ts
 ```
 
 ## 🧱 Base Code
 
-You can find some [base starter code here](https://github.com/Golem-Base/typescript-sdk/tree/main/example); copy the `index.ts` into your own `src` folder.
+You can find some [base starter code here](https://github.com/Arkiv-Network/arkiv-sdk-js/tree/main/example); copy the `index.ts` into your own `src` folder.
 
 This is a basic TypeScript application that:
 
-1. Imports several items from the SDK (called "golem-base-sdk") including:
+1. Imports several items from the SDK (called "arkiv-sdk") including:
 
-    * `createClient`: A function that creates a client to interact with GolemBase
-    * `type GolemBaseClient`: A type that represents the base client for interacting with Golem
-    * `type GolemBaseCreate`: A type representing a create transaction in GolemBase
+    * `createClient`: A function that creates a client to interact with Arkiv
+    * `type ArkivClient`: A type that represents the base client for interacting with Arkiv
+    * `type ArkivCreate`: A type representing a create transaction in Arkiv
     * `Annotation`: A type representing an annotation with a key and a value, used for efficient lookups
 
 2. Reads the private key from a wallet, which it locates through the `xdg-portable` module.
@@ -148,9 +148,9 @@ The `main` function demonstrates how to create, modify, and delete entities:
     * One with data `"bar"` and a time to live of `2`, and a numeric annotation of `2`
     * One with data `"qux"` and a time to live of `50`, and a numeric annotation also of `2`
 
-    Notice that the type of each is GolemBaseCreate.
+    Notice that the type of each is ArkivCreate.
 
-4. It then calls client.createEntities to create the entities within Golem. Notice that this returns a promise of an array of items, each of which contain an `entityKey` and an `expirationBlock`.
+4. It then calls client.createEntities to create the entities within Arkiv. Notice that this returns a promise of an array of items, each of which contain an `entityKey` and an `expirationBlock`.
 
 5. Next, it prints out various information about the current state.
 

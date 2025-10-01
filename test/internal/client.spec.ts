@@ -68,7 +68,7 @@ const walletPath = join(xdg.config(), 'golembase', 'wallet.json');
 // The password that the test wallet was encrypted with
 const walletTestPassword = "password";
 const keystore = readFileSync(walletPath);
-const wallet = Wallet.fromEncryptedJsonSync(keystore, walletTestPassword);
+const wallet = Wallet.fromEncryptedJsonSync(keystore.toString(), walletTestPassword);
 
 let client: ArkivClient
 
@@ -137,7 +137,7 @@ describe("the internal golem-base client", () => {
   })
 
   it("should be able to create multiple entities", async () => {
-    const creates: GolemBaseCreate[] = [
+    const creates: ArkivCreate[] = [
       {
         data,
         btl: 25,

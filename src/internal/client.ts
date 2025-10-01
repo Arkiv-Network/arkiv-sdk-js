@@ -48,77 +48,77 @@ export { checksumAddress, toHex, TransactionReceipt }
  * The fixed Ethereum address of the Arkiv storage contract on the network.
  * All entity operations (create, update, delete, extend) are performed by sending
  * transactions to this address.
- * 
+ *
  * @public
  */
 export const storageAddress = '0x0000000000000000000000000000000060138453'
 // TODO: Update these to arkiv_ after we've updated the RPC names in op-geth
-type GolemGetStorageValueInputParams = Hex
-type GolemGetStorageValueReturnType = string
-type GolemGetStorageValueSchema = {
+type GetStorageValueInputParams = Hex
+type GetStorageValueReturnType = string
+type GetStorageValueSchema = {
   Method: 'golembase_getStorageValue'
-  Parameters: [GolemGetStorageValueInputParams]
-  ReturnType: GolemGetStorageValueReturnType
+  Parameters: [GetStorageValueInputParams]
+  ReturnType: GetStorageValueReturnType
 }
 
-type GolemGetEntityMetaDataInputParams = Hex
-type GolemGetEntityMetaDataReturnType = EntityMetaData
-type GolemGetEntityMetaDataSchema = {
+type GetEntityMetaDataInputParams = Hex
+type GetEntityMetaDataReturnType = EntityMetaData
+type GetEntityMetaDataSchema = {
   Method: 'golembase_getEntityMetaData'
-  Parameters: [GolemGetEntityMetaDataInputParams]
-  ReturnType: GolemGetEntityMetaDataReturnType
+  Parameters: [GetEntityMetaDataInputParams]
+  ReturnType: GetEntityMetaDataReturnType
 }
 
-type GolemGetEntitiesToExpireAtBlockInputParams = number
-type GolemGetEntitiesToExpireAtBlockReturnType = Hex[]
-type GolemGetEntitiesToExpireAtBlockSchema = {
+type GetEntitiesToExpireAtBlockInputParams = number
+type GetEntitiesToExpireAtBlockReturnType = Hex[]
+type GetEntitiesToExpireAtBlockSchema = {
   Method: 'golembase_getEntitiesToExpireAtBlock'
-  Parameters: [GolemGetEntitiesToExpireAtBlockInputParams]
-  ReturnType: GolemGetEntitiesToExpireAtBlockReturnType
+  Parameters: [GetEntitiesToExpireAtBlockInputParams]
+  ReturnType: GetEntitiesToExpireAtBlockReturnType
 }
 
-type GolemGetEntityCountReturnType = number
-type GolemGetEntityCountSchema = {
+type GetEntityCountReturnType = number
+type GetEntityCountSchema = {
   Method: 'golembase_getEntityCount'
   Parameters: []
-  ReturnType: GolemGetEntityCountReturnType
+  ReturnType: GetEntityCountReturnType
 }
 
-type GolemGetAllEntityKeysReturnType = Hex[]
-type GolemGetAllEntityKeysSchema = {
+type GetAllEntityKeysReturnType = Hex[]
+type GetAllEntityKeysSchema = {
   Method: 'golembase_getAllEntityKeys'
   Parameters: []
-  ReturnType: GolemGetAllEntityKeysReturnType
+  ReturnType: GetAllEntityKeysReturnType
 }
 
-type GolemGetEntitiesOfOwnerInputParams = Hex
-type GolemGetEntitiesOfOwnerReturnType = Hex[]
-type GolemGetEntitiesOfOwnerSchema = {
+type GetEntitiesOfOwnerInputParams = Hex
+type GetEntitiesOfOwnerReturnType = Hex[]
+type GetEntitiesOfOwnerSchema = {
   Method: 'golembase_getEntitiesOfOwner'
-  Parameters: [GolemGetEntitiesOfOwnerInputParams]
-  ReturnType: GolemGetEntitiesOfOwnerReturnType
+  Parameters: [GetEntitiesOfOwnerInputParams]
+  ReturnType: GetEntitiesOfOwnerReturnType
 }
 
-type GolemQueryEntitiesInputParams = string
-type GolemQueryEntitiesReturnType = { key: Hex, value: string }
-type GolemQueryEntitiesSchema = {
+type QueryEntitiesInputParams = string
+type QueryEntitiesReturnType = { key: Hex, value: string }
+type QueryEntitiesSchema = {
   Method: 'golembase_queryEntities'
-  Parameters: [GolemQueryEntitiesInputParams]
-  ReturnType: [GolemQueryEntitiesReturnType]
+  Parameters: [QueryEntitiesInputParams]
+  ReturnType: [QueryEntitiesReturnType]
 }
 
 /**
  * Type definition for Arkiv read-only actions that can be performed
  * through the JSON-RPC interface. These methods provide query capabilities
  * for retrieving entity data and metadata.
- * 
+ *
  * @public
  */
 export type ArkivActions = {
   /** Retrieve the raw storage value (data) for a specific entity */
-  getStorageValue(args: GolemGetStorageValueInputParams): Promise<Uint8Array>
+  getStorageValue(args: GetStorageValueInputParams): Promise<Uint8Array>
   /** Get complete metadata for an entity including annotations and expiration info */
-  getEntityMetaData(args: GolemGetEntityMetaDataInputParams): Promise<EntityMetaData>
+  getEntityMetaData(args: GetEntityMetaDataInputParams): Promise<EntityMetaData>
   /**
    * Get all entity keys for entities that will expire at the given block number.
    * Useful for monitoring entities approaching their TTL expiration.
@@ -129,15 +129,15 @@ export type ArkivActions = {
   /** Retrieve all entity keys currently stored in Arkiv */
   getAllEntityKeys(): Promise<Hex[]>
   /** Get all entity keys owned by a specific Ethereum address */
-  getEntitiesOfOwner(args: GolemGetEntitiesOfOwnerInputParams): Promise<Hex[]>
+  getEntitiesOfOwner(args: GetEntitiesOfOwnerInputParams): Promise<Hex[]>
   /** Query entities based on annotation criteria, returning matching keys and values */
-  queryEntities(args: GolemQueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array, }[]>
+  queryEntities(args: QueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array, }[]>
 }
 
 /**
  * Type definition for Arkiv wallet actions that enable writing operations
  * to the blockchain. These methods handle transaction creation and submission.
- * 
+ *
  * @public
  */
 export type ArkivWalletActions = {
@@ -194,7 +194,7 @@ export type AllActions<
 /**
  * Interface for the internal read-only Arkiv client providing access to
  * both HTTP and WebSocket connections for querying blockchain data.
- * 
+ *
  * @public
  */
 export interface ArkivROClient {
@@ -220,7 +220,7 @@ export interface ArkivROClient {
 /**
  * Interface for the internal full Arkiv client extending read-only capabilities
  * with wallet functionality for transaction signing and submission.
- * 
+ *
  * @public
  */
 export interface ArkivClient extends ArkivROClient {
@@ -238,14 +238,14 @@ export interface ArkivClient extends ArkivROClient {
 
 /**
  * Create an HTTP client for Arkiv with extended Arkiv-specific actions.
- * 
+ *
  * This function creates a viem public client configured for the Arkiv chain
  * and extends it with custom RPC methods for interacting with Arkiv entities.
- * 
+ *
  * @param rpcUrl - The HTTP RPC endpoint URL for the Arkiv network
  * @param chain - The chain configuration for the Arkiv network
  * @returns A configured HTTP client with Arkiv actions
- * 
+ *
  * @internal
  */
 function mkHttpClient(rpcUrl: string, chain: Chain): Client<
@@ -263,8 +263,8 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
      * Get the storage value associated with the given entity key
      */
     // TODO: Update all of these to arkiv_ after we update the RPC in op-geth
-    async getStorageValue(args: GolemGetStorageValueInputParams): Promise<Uint8Array> {
-      return Buffer.from(await client.request<GolemGetStorageValueSchema>({
+    async getStorageValue(args: GetStorageValueInputParams): Promise<Uint8Array> {
+      return Buffer.from(await client.request<GetStorageValueSchema>({
         method: 'golembase_getStorageValue',
         params: [args]
       }), "base64")
@@ -272,8 +272,8 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
     /**
      * Get the full entity information
      */
-    async getEntityMetaData(args: GolemGetEntityMetaDataInputParams): Promise<EntityMetaData> {
-      return client.request<GolemGetEntityMetaDataSchema>({
+    async getEntityMetaData(args: GetEntityMetaDataInputParams): Promise<EntityMetaData> {
+      return client.request<GetEntityMetaDataSchema>({
         method: 'golembase_getEntityMetaData',
         params: [args]
       })
@@ -282,7 +282,7 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
      * Get all entity keys for entities that will expire at the given block number
      */
     async getEntitiesToExpireAtBlock(blockNumber: bigint): Promise<Hex[]> {
-      return client.request<GolemGetEntitiesToExpireAtBlockSchema>({
+      return client.request<GetEntitiesToExpireAtBlockSchema>({
         method: 'golembase_getEntitiesToExpireAtBlock',
         // TODO: bigint gets serialised in json as a string, which the api doesn't accept.
         // is there a better workaround?
@@ -290,25 +290,25 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
       })
     },
     async getEntityCount(): Promise<number> {
-      return client.request<GolemGetEntityCountSchema>({
+      return client.request<GetEntityCountSchema>({
         method: 'golembase_getEntityCount',
         params: []
       })
     },
     async getAllEntityKeys(): Promise<Hex[]> {
-      return await client.request<GolemGetAllEntityKeysSchema>({
+      return await client.request<GetAllEntityKeysSchema>({
         method: 'golembase_getAllEntityKeys',
         params: []
       })
     },
-    async getEntitiesOfOwner(args: GolemGetEntitiesOfOwnerInputParams): Promise<Hex[]> {
-      return client.request<GolemGetEntitiesOfOwnerSchema>({
+    async getEntitiesOfOwner(args: GetEntitiesOfOwnerInputParams): Promise<Hex[]> {
+      return client.request<GetEntitiesOfOwnerSchema>({
         method: 'golembase_getEntitiesOfOwner',
         params: [args]
       })
     },
-    async queryEntities(args: GolemQueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array }[]> {
-      return (await client.request<GolemQueryEntitiesSchema>({
+    async queryEntities(args: QueryEntitiesInputParams): Promise<{ key: Hex, value: Uint8Array }[]> {
+      return (await client.request<QueryEntitiesSchema>({
         method: 'golembase_queryEntities',
         params: [args]
       })).map((res: { key: Hex, value: string }) => ({
@@ -321,14 +321,14 @@ function mkHttpClient(rpcUrl: string, chain: Chain): Client<
 
 /**
  * Create a WebSocket client for Arkiv for real-time event monitoring.
- * 
+ *
  * This function creates a viem public client configured to connect via WebSocket
  * for subscribing to blockchain events and real-time updates.
- * 
+ *
  * @param wsUrl - The WebSocket RPC endpoint URL for the Arkiv network
  * @param chain - The chain configuration for the Arkiv network
  * @returns A configured WebSocket client for event subscriptions
- * 
+ *
  * @internal
  */
 function mkWebSocketClient(wsUrl: string, chain: Chain):
@@ -341,15 +341,15 @@ function mkWebSocketClient(wsUrl: string, chain: Chain):
 
 /**
  * Create a wallet client for Arkiv with transaction signing capabilities.
- * 
+ *
  * This function creates a wallet client that can sign and submit transactions
  * to Arkiv. It supports both private key accounts and external wallet providers.
- * 
+ *
  * @param accountData - Either a private key or external wallet provider for signing
  * @param chain - The chain configuration for the Arkiv network
  * @param log - Logger instance for debugging transaction operations
  * @returns A configured wallet client with Arkiv transaction actions
- * 
+ *
  * @internal
  */
 async function mkWalletClient(
@@ -391,10 +391,10 @@ async function mkWalletClient(
 
   /**
    * Create RLP-encoded payload for Arkiv transactions.
-   * 
+   *
    * This internal function converts Arkiv transaction operations into
    * the binary format expected by the Arkiv storage contract.
-   * 
+   *
    * @param tx - The transaction containing create, update, delete, and extend operations
    * @returns Hex-encoded RLP payload ready for blockchain submission
    */
@@ -529,15 +529,15 @@ async function mkWalletClient(
 
 /**
  * Create a viem chain configuration for the Arkiv network.
- * 
+ *
  * This function defines the chain parameters needed by viem to interact
  * with the Arkiv L2 network, including RPC endpoints and network metadata.
- * 
+ *
  * @param chainId - The numeric chain ID of the Arkiv network
  * @param rpcUrl - The HTTP RPC endpoint URL
  * @param wsUrl - The WebSocket RPC endpoint URL
  * @returns A viem Chain configuration object
- * 
+ *
  * @internal
  */
 function createArkivChain(
