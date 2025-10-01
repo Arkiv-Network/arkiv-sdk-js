@@ -5,21 +5,22 @@ import type {
 	Client,
 	ParseAccount,
 	Prettify,
-	PublicClientConfig,
 	RpcSchema,
 	Transport,
+	WalletClientConfig,
 } from "viem"
-import { createClient, publicActions } from "viem"
+import { createClient, publicActions, walletActions } from "viem"
 import type { ArkivRpcSchema } from "../types/rpcSchema"
-import { type PublicArkivActions, publicArkivActions } from "./decorators/arkivPublic"
+import { publicArkivActions } from "./decorators/arkivPublic"
+import { type WalletArkivActions, walletArkivActions } from "./decorators/arkivWallet"
 
-export type PublicArkivClient<
+export type WalletArkivClient<
 	transport extends Transport = Transport,
 	chain extends Chain | undefined = Chain | undefined,
-	accountOrAddress extends Account | undefined = undefined,
+	account extends Account | undefined = Account | undefined,
 	rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
 > = Prettify<
-	Client<transport, chain, accountOrAddress, rpcSchema, PublicArkivActions<transport, chain>>
+	Client<transport, chain, account, rpcSchema, WalletArkivActions<transport, chain, account>>
 >
 
 /**
@@ -41,22 +42,26 @@ export type PublicArkivClient<
  *   transport: http(),
  * })
  */
-export function createPublicClient<
+export function createWalletClient<
 	transport extends Transport,
 	chain extends Chain | undefined = undefined,
 	accountOrAddress extends Account | Address | undefined = undefined,
 	rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
 >(
-	parameters: PublicClientConfig<transport, chain, accountOrAddress, rpcSchema>,
-): PublicArkivClient<transport, chain, ParseAccount<accountOrAddress>, rpcSchema> {
-	const { key = "public", name = "Public Client" } = parameters
+	parameters: WalletClientConfig<transport, chain, accountOrAddress, rpcSchema>,
+): WalletArkivClient<transport, chain, ParseAccount<accountOrAddress>, rpcSchema> {
+	const { key = "wallet", name = "Wallet Client" } = parameters
 	const client = createClient({
 		...parameters,
 		key,
 		name,
 	})
 
-	return client.extend(publicArkivActions).extend(publicActions) as unknown as PublicArkivClient<
+	return client
+		.extend(walletActions)
+		.extend(publicActions)
+		.extend(walletArkivActions)
+		.extend(publicArkivActions) as unknown as WalletArkivClient<
 		transport,
 		chain,
 		ParseAccount<accountOrAddress>,

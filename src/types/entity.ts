@@ -1,16 +1,16 @@
-import { bytesToString } from "viem"
+import { bytesToString, type Hex } from "viem"
 import type { Annotation } from "./annotation"
 
 export class Entity {
-	key: string
-	owner: string
+	key: Hex
+	owner: Hex
 	expiresAtBlock: number
 	payload: Uint8Array
 	annotations: Annotation[]
 
 	constructor(
-		key: string,
-		owner: string,
+		key: Hex,
+		owner: Hex,
 		expiresAtBlock: number,
 		payload: Uint8Array,
 		annotations: Annotation[],

@@ -1,4 +1,4 @@
 export type Annotation = {
-	key: string;
-	value: string | number;
-};
+	key: string
+	value: string | number
+}

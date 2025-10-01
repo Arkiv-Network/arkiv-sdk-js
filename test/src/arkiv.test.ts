@@ -75,12 +75,12 @@ describe("GolemDB Integration Tests for public client", () => {
 		expect(blockNumber).toBeGreaterThanOrEqual(0n)
 	})
 
-	test("should call getEntityByKey with existing key", async () => {
+	test("should call getEntity with existing key", async () => {
 		// First, let's try to store some data if the container supports it
 		// For now, we'll test with a key that might exist or return null/undefined
 		const testKey = "0x567b6b2dfe0d9f87f054b9e3282a579630cab0b011643c4912f3b8b172b14fb7"
 
-		const entity = await client.getEntityByKey(testKey)
+		const entity = await client.getEntity(testKey)
 
 		// The result could be null, undefined, or an actual entity
 		// depending on whether the key exists and what the RPC returns
@@ -88,14 +88,14 @@ describe("GolemDB Integration Tests for public client", () => {
 		// TODO expect some value
 	})
 
-	test("should handle getEntityByKey with non-existent key", async () => {
+	test("should handle getEntity with non-existent key", async () => {
 		const nonExistentKey = "0x567b6b2dfe0d9f87f054b9e3282a579630cab0b011643c4912f3b8b172b14fb7"
 
 		try {
-			const entity = await client.getEntityByKey(nonExistentKey)
+			const entity = await client.getEntity(nonExistentKey)
 			expect(entity).toBeNull()
 		} catch (error) {
-			console.log("getEntityByKey error for non-existent key:", error)
+			console.log("getEntity error for non-existent key:", error)
 			expect(error).toBeDefined()
 		}
 	})

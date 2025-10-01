@@ -16,7 +16,7 @@ test("creates", () => {
 	})
 
 	expect(uid).toBeDefined()
-	expect(client.getEntityByKey).toBeDefined()
-	expect(typeof client.getEntityByKey).toBe("function")
+	expect(client.getEntity).toBeDefined()
+	expect(typeof client.getEntity).toBe("function")
 	expect(client.createEntity).not.toBeDefined()
 })

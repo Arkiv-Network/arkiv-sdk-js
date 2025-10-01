@@ -28,7 +28,7 @@ const client = createPublicClient({
 const chainId = await client.getChainId();
 
 // Get entity by key
-const entity = await client.getEntityByKey({ key: 'my-entity-key' });
+const entity = await client.getEntity({ key: 'my-entity-key' });
 ```
 
 ## TypeScript-Only Package

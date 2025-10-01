@@ -1,4 +1,4 @@
 // Test entry point
-console.log("ArkivJS Integration Tests");
+console.log("ArkivJS Integration Tests")
 
-export * from "./golemdb.test";
+export * from "./arkiv.test"
