@@ -12,9 +12,9 @@ import xdg from "xdg-portable"
 import { Wallet, getBytes } from "ethers"
 import {
   createClient,
-  type GolemBaseClient,
+  type ArkivClient,
   type Hex,
-  type GolemBaseCreate,
+  type ArkivCreate,
   Annotation,
   Tagged,
   type AccountData,
@@ -40,9 +40,9 @@ const wallet = Wallet.fromEncryptedJsonSync(keystore, walletTestPassword);
 let entitiesOwnedCount = 0
 let entityKey: Hex = "0x"
 let expiryBlock: number
-let client: GolemBaseClient
+let client: ArkivClient
 
-describe("the golem-base client", () => {
+describe("the arkiv client", () => {
   it("can be created", async () => {
     const key: AccountData = new Tagged("privatekey", getBytes(wallet.privateKey))
     client = {
@@ -72,11 +72,11 @@ describe("the golem-base client", () => {
   const data = generateRandomBytes(32)
   const stringAnnotation = generateRandomString(32)
 
-  async function getEntitiesOwned(client: GolemBaseClient): Promise<Hex[]> {
+  async function getEntitiesOwned(client: ArkivClient): Promise<Hex[]> {
     return client.getEntitiesOfOwner(await client.getOwnerAddress())
   }
 
-  async function numOfEntitiesOwned(client: GolemBaseClient): Promise<number> {
+  async function numOfEntitiesOwned(client: ArkivClient): Promise<number> {
     const entitiesOwned = await getEntitiesOwned(client)
     log.debug("Entities owned:", entitiesOwned)
     log.debug("Number of entities owned:", entitiesOwned.length)
@@ -84,7 +84,7 @@ describe("the golem-base client", () => {
   }
 
   async function deleteAllEntitiesWithIndex(
-    client: GolemBaseClient,
+    client: ArkivClient,
     index: number,
     txHashCallback: (txHash: Hex) => void,
   ): Promise<void[]> {
@@ -117,7 +117,7 @@ describe("the golem-base client", () => {
   })
 
   it("should be able to create multiple entities", async () => {
-    const creates: GolemBaseCreate[] = [
+    const creates: ArkivCreate[] = [
       {
         data,
         btl: 25,
