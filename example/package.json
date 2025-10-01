@@ -12,9 +12,9 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@types/node": "^22.15.21",
-    "golem-base-sdk": "link:..",
-    "tslog": "^4.9.3",
+    "@types/node": "^22.18.8",
+    "arkiv-sdk": "link:..",
+    "tslog": "^4.10.2",
     "xdg-portable": "^10.6.0"
   }
 }

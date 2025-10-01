@@ -9,22 +9,22 @@ importers:
   .:
     dependencies:
       '@types/node':
-        specifier: ^22.15.21
-        version: 22.15.21
-      golem-base-sdk:
+        specifier: ^22.18.8
+        version: 22.18.8
+      arkiv-sdk:
         specifier: link:..
         version: link:..
       tslog:
-        specifier: ^4.9.3
-        version: 4.9.3
+        specifier: ^4.10.2
+        version: 4.10.2
       xdg-portable:
         specifier: ^10.6.0
         version: 10.6.0
 
 packages:
 
-  '@types/node@22.15.21':
-    resolution: {integrity: sha512-EV/37Td6c+MgKAbkcLG6vqZ2zEYHD7bvSrzqqs2RIhbA6w3x+Dqz8MZM3sP6kGTeLrdoOgKZe+Xja7tUB2DNkQ==}
+  '@types/node@22.18.8':
+    resolution: {integrity: sha512-pAZSHMiagDR7cARo/cch1f3rXy0AEXwsVsVH09FcyeJVAzCnGgmYis7P3JidtTUjyadhTeSo8TgRPswstghDaw==}
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -35,8 +35,8 @@ packages:
     resolution: {integrity: sha512-Ux1J4NUqC6tZayBqLN1kUlDAEvLiQlli/53sSddU4IN+h+3xxnv2HmRSMpVSvr1hvJzotfMs3ERvETGK+f4OwA==}
     engines: {node: '>= 4.0'}
 
-  tslog@4.9.3:
-    resolution: {integrity: sha512-oDWuGVONxhVEBtschLf2cs/Jy8i7h1T+CpdkTNWQgdAF7DhRo2G8vMCgILKe7ojdEkLhICWgI1LYSSKaJsRgcw==}
+  tslog@4.10.2:
+    resolution: {integrity: sha512-XuELoRpMR+sq8fuWwX7P0bcj+PRNiicOKDEb3fGNURhxWVyykCi9BNq7c4uVz7h7P0sj8qgBsr5SWS6yBClq3g==}
     engines: {node: '>=16'}
 
   undici-types@6.21.0:
@@ -48,7 +48,7 @@ packages:
 
 snapshots:
 
-  '@types/node@22.15.21':
+  '@types/node@22.18.8':
     dependencies:
       undici-types: 6.21.0
 
@@ -59,7 +59,7 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  tslog@4.9.3: {}
+  tslog@4.10.2: {}
 
   undici-types@6.21.0: {}
 

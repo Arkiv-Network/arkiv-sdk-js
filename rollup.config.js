@@ -62,7 +62,7 @@ export default [
 
     output: [
       {
-        name: "golem_base_sdk",
+        name: "arkiv_sdk",
         file: `dist/${pkg.name}.min.js`,
         format: "umd",
         sourcemap: true,
