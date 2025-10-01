@@ -18,7 +18,7 @@ import {
 } from "arkiv-sdk"
 
 // Path to a arkiv wallet
-const walletPath = join(xdg.config(), 'arkiv', 'wallet.json');
+const walletPath = join(xdg.config(), 'golembase', 'wallet.json');
 const keystore = readFileSync(walletPath, 'utf8');
 
 /**
