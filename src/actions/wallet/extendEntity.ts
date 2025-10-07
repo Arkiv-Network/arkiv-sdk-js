@@ -1,29 +1,28 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
-import type { Annotation, TxParams } from "../../types"
+import type { TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
-export type CreateEntityParameters = {
-	payload: Uint8Array | string
-	annotations: Annotation[]
+export type ExtendEntityParameters = {
+	entityKey: Hex
 	btl: number
 }
 
-export type CreateEntityReturnType = {
+export type ExtendEntityReturnType = {
 	entityKey: Hex
 	txHash: string
 }
 
-export async function createEntity(
+export async function extendEntity(
 	client: ArkivClient,
-	data: CreateEntityParameters,
+	data: ExtendEntityParameters,
 	txParams?: TxParams,
-): Promise<CreateEntityReturnType> {
-	console.debug("createEntity", data)
-	const txData = opsToTxData({ creates: [data] })
+): Promise<ExtendEntityReturnType> {
+	console.debug("extendEntity", data)
+	const txData = opsToTxData({ extensions: [data] })
 	const receipt = await sendArkivTransaction(client, txData, txParams)
 
-	console.debug("Receipt from createEntity", receipt)
+	console.debug("Receipt from extendEntity", receipt)
 
 	return {
 		txHash: receipt.transactionHash,

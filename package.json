@@ -21,6 +21,11 @@
 			"types": "./src/accounts/index.ts",
 			"import": "./src/accounts/index.ts",
 			"require": "./src/accounts/index.ts"
+		},
+		"./utils": {
+			"types": "./src/utils/index.ts",
+			"import": "./src/utils/index.ts",
+			"require": "./src/utils/index.ts"
 		}
 	},
 	"files": [

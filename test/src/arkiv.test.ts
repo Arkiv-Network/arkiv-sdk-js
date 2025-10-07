@@ -1,75 +1,57 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import type { PublicArkivClient } from "arkiv"
-import { createPublicClient, http } from "arkiv"
-import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
+import type { Hex, PublicArkivClient, WalletArkivClient } from "arkiv"
+import { createPublicClient, createWalletClient, http, toBytes } from "arkiv"
+import { privateKeyToAccount } from "arkiv/accounts"
+import type { StartedTestContainer } from "testcontainers"
+import { getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils"
 
-describe("GolemDB Integration Tests for public client", () => {
-	let container: StartedTestContainer
-	let client: PublicArkivClient
-	let rpcUrl: string
+describe("Arkiv Integration Tests for public client", () => {
+	let arkivNode: StartedTestContainer
+	let publicClient: PublicArkivClient
+	let walletClient: WalletArkivClient
+	const privateKey = process.env.PRIVATE_KEY as Hex
 
 	beforeAll(async () => {
 		// Start GolemDB container
-		container = await new GenericContainer("golemnetwork/golembase-op-geth:latest")
-			.withExposedPorts(8545)
-			.withCommand([
-				"--http",
-				"--http.addr",
-				"0.0.0.0",
-				"--http.port",
-				"8545",
-				"--http.api",
-				"eth,net,web3,golembase",
-				"--http.corsdomain",
-				"*",
-				"--ws",
-				"--ws.addr",
-				"0.0.0.0",
-				"--ws.port",
-				"8546",
-				"--ws.api",
-				"eth,net,web3,golembase",
-				"--ws.origins",
-				"*",
-				"--networkid",
-				"1",
-				"--dev",
-				"--allow-insecure-unlock",
-			])
-			.withWaitStrategy(Wait.forLogMessage("HTTP server started", 1))
-			.withStartupTimeout(30000)
-			.start()
-
-		// Get the container's mapped port
-		const mappedPort = container.getMappedPort(8545)
-		rpcUrl = `http://localhost:${mappedPort}`
+		const { container, httpPort, wsPort } = await launchLocalArkivNode(privateKey)
+		arkivNode = container
+		const localTestNetwork = {
+			id: 1337,
+			name: "Localhost",
+			nativeCurrency: {
+				decimals: 18,
+				name: "Ether",
+				symbol: "ETH",
+			},
+			rpcUrls: getArkivLocalhostRpcUrls(httpPort, wsPort),
+		}
 
 		// Create the public client
-		client = createPublicClient({
-			transport: http(rpcUrl),
-			name: "GolemDB Test Client",
+		publicClient = createPublicClient({
+			transport: http(),
+			chain: localTestNetwork,
+		})
+		walletClient = createWalletClient({
+			transport: http(),
+			chain: localTestNetwork,
+			account: privateKeyToAccount(privateKey),
 		})
 	})
 
 	afterAll(async () => {
-		if (container) {
-			await container.stop()
+		if (arkivNode) {
+			await arkivNode.stop()
 		}
 	})
 
-	test("should connect to GolemDB container", async () => {
-		expect(client).toBeDefined()
-		expect(rpcUrl).toContain("localhost")
-	})
-
 	test("should get chain ID", async () => {
-		const chainId = await client.getChainId()
+		const chainId = await publicClient.getChainId()
 		expect(chainId).toBeDefined()
 		expect(chainId).toBe(1337)
 	})
 
 	test("should get block number", async () => {
-		const blockNumber = await client.getBlockNumber()
+		const blockNumber = await publicClient.getBlockNumber()
 		expect(blockNumber).toBeDefined()
 		expect(typeof blockNumber).toBe("bigint")
 		expect(blockNumber).toBeGreaterThanOrEqual(0n)
@@ -80,7 +62,7 @@ describe("GolemDB Integration Tests for public client", () => {
 		// For now, we'll test with a key that might exist or return null/undefined
 		const testKey = "0x567b6b2dfe0d9f87f054b9e3282a579630cab0b011643c4912f3b8b172b14fb7"
 
-		const entity = await client.getEntity(testKey)
+		const entity = await publicClient.getEntity(testKey)
 
 		// The result could be null, undefined, or an actual entity
 		// depending on whether the key exists and what the RPC returns
@@ -92,15 +74,71 @@ describe("GolemDB Integration Tests for public client", () => {
 		const nonExistentKey = "0x567b6b2dfe0d9f87f054b9e3282a579630cab0b011643c4912f3b8b172b14fb7"
 
 		try {
-			const entity = await client.getEntity(nonExistentKey)
+			const entity = await publicClient.getEntity(nonExistentKey)
 			expect(entity).toBeNull()
 		} catch (error) {
 			console.log("getEntity error for non-existent key:", error)
 			expect(error).toBeDefined()
 		}
 	})
-})
 
-describe("GolemDB Integration Tests for wallet client", () => {
-	test("should handle CRUD operations", async () => {})
+	test("should handle basic CRUD operations", async () => {
+		// create entity
+		const { entityKey, txHash } = await walletClient.createEntity({
+			payload: toBytes(
+				JSON.stringify({
+					entity: {
+						entityType: "test",
+						entityId: "test",
+					},
+				}),
+			),
+			annotations: [{ key: "testKey", value: "testValue" }],
+			btl: 1000,
+		})
+		console.log("result from createEntity", { entityKey, txHash })
+
+		// get entity
+		const entity = await publicClient.getEntity(entityKey)
+		console.log("entity from getEntity", entity)
+		expect(entity).toBeDefined()
+		expect(entity.payload).toEqual(
+			toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+		)
+		expect(entity.annotations).toEqual([{ key: "testKey", value: "testValue" }])
+
+		// update entity
+		const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await walletClient.updateEntity({
+			entityKey,
+			payload: toBytes(JSON.stringify({ entity: { entityType: "test2", entityId: "test2" } })),
+			annotations: [],
+			btl: 1000,
+		})
+		console.log("result from updateEntity", { updatedEntityKey, updatedTxHash })
+
+		// get entity
+		const updatedEntity = await walletClient.getEntity(updatedEntityKey)
+		console.log("entity from getEntity", updatedEntity)
+		expect(updatedEntity).toBeDefined()
+		expect(updatedEntity.payload).toEqual(
+			toBytes(JSON.stringify({ entity: { entityType: "test2", entityId: "test2" } })),
+		)
+		expect(updatedEntity.annotations).toEqual([])
+
+		// extend entity
+		const { entityKey: extendedEntityKey, txHash: extendedTxHash } =
+			await walletClient.extendEntity({
+				entityKey: updatedEntityKey,
+				btl: 1000,
+			})
+		console.log("result from extendEntity", { extendedEntityKey, extendedTxHash })
+		expect(extendedEntityKey).toBeDefined()
+		expect(extendedTxHash).toBeDefined()
+
+		// delete entity
+		const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await walletClient.deleteEntity({
+			entityKey: extendedEntityKey,
+		})
+		console.log("result from deleteEntity", { deletedEntityKey, deletedTxHash })
+	})
 })

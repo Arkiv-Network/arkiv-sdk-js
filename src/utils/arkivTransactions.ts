@@ -1,11 +1,24 @@
-import { type Hex, toHex, toRlp } from "viem"
+import { type Hex, toBytes, toHex, toRlp } from "viem"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
+import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
+import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
+import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS } from "../consts"
 import type { TxParams } from "../types"
 
-export function opsToTxData({ creates }: { creates?: CreateEntityParameters[] }) {
+export function opsToTxData({
+	creates,
+	updates,
+	deletes,
+	extensions,
+}: {
+	creates?: CreateEntityParameters[]
+	updates?: UpdateEntityParameters[]
+	deletes?: DeleteEntityParameters[]
+	extensions?: ExtendEntityParameters[]
+}) {
 	function formatAnnotation<T extends string | number | bigint | boolean>(annotation: {
 		key: string
 		value: T
@@ -16,7 +29,7 @@ export function opsToTxData({ creates }: { creates?: CreateEntityParameters[] })
 		//creates
 		(creates ?? []).map((item) => [
 			toHex(item.btl),
-			toHex(item.payload),
+			typeof item.payload === "string" ? toHex(toBytes(item.payload)) : toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
 				.map(formatAnnotation),
@@ -24,12 +37,22 @@ export function opsToTxData({ creates }: { creates?: CreateEntityParameters[] })
 				.filter((annotation) => typeof annotation.value === "number")
 				.map(formatAnnotation),
 		]),
-		//updates TODO
-		[],
-		//deletes TODO
-		[],
-		//extends TODO
-		[],
+		//updates
+		(updates ?? []).map((item) => [
+			toHex(item.entityKey),
+			toHex(item.btl),
+			typeof item.payload === "string" ? toHex(toBytes(item.payload)) : toHex(item.payload),
+			item.annotations
+				.filter((annotation) => typeof annotation.value === "string")
+				.map(formatAnnotation),
+			item.annotations
+				.filter((annotation) => typeof annotation.value === "number")
+				.map(formatAnnotation),
+		]),
+		//deletes
+		(deletes ?? []).map((item) => [toHex(item.entityKey)]),
+		//extends
+		(extensions ?? []).map((item) => [toHex(item.entityKey), toHex(item.btl)]),
 	]
 
 	console.debug("txData to send as RLP", payload)

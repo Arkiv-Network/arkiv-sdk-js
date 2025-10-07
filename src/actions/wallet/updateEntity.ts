@@ -3,27 +3,28 @@ import type { ArkivClient } from "../../clients/baseClient"
 import type { Annotation, TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
-export type CreateEntityParameters = {
+export type UpdateEntityParameters = {
+	entityKey: Hex
 	payload: Uint8Array | string
 	annotations: Annotation[]
 	btl: number
 }
 
-export type CreateEntityReturnType = {
+export type UpdateEntityReturnType = {
 	entityKey: Hex
 	txHash: string
 }
 
-export async function createEntity(
+export async function updateEntity(
 	client: ArkivClient,
-	data: CreateEntityParameters,
+	data: UpdateEntityParameters,
 	txParams?: TxParams,
-): Promise<CreateEntityReturnType> {
-	console.debug("createEntity", data)
-	const txData = opsToTxData({ creates: [data] })
+): Promise<UpdateEntityReturnType> {
+	console.debug("updateEntity", data)
+	const txData = opsToTxData({ updates: [data] })
 	const receipt = await sendArkivTransaction(client, txData, txParams)
 
-	console.debug("Receipt from createEntity", receipt)
+	console.debug("Receipt from updateEntity", receipt)
 
 	return {
 		txHash: receipt.transactionHash,
