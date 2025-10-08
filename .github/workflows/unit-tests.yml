@@ -1,26 +1,44 @@
 name: Unit Tests
 
 on:
-    push:
-        branches: [main, master, v1-dev]
-    pull_request:
-        branches: [main, master, v1-dev]
+  push:
+    branches: [main, master, v1-dev]
+  pull_request:
+    branches: [main, master, v1-dev]
 
 jobs:
-    unit-tests:
-        runs-on: ubuntu-latest
+  lint:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            - name: Setup Bun
-              uses: oven-sh/setup-bun@v1
-              with:
-                  bun-version: latest
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
 
-            - name: Install dependencies
-              run: bun install
+      - name: Install dependencies
+        run: bun install
 
-            - name: Run unit tests
-              run: bun test src/**/*
+      - name: Run lint
+        run: bun run lint
+
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Run unit tests
+        run: bun test src/**/*
