@@ -7,6 +7,7 @@ describe("processQuery tests", () => {
 	const client = {
 		request: jest.fn(),
 	} as unknown as ArkivClient
+
 	it("should process single predicate", async () => {
 		const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
 		await processQuery(client, {
