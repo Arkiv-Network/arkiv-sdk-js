@@ -1,5 +1,6 @@
 import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem"
 import { getEntity } from "../../actions/public/getEntity"
+import { QueryBuilder } from "../../query/queryBuilder"
 import type { Entity } from "../../types/entity"
 
 export type PublicArkivActions<
@@ -43,6 +44,28 @@ export type PublicArkivActions<
 	 * // }
 	 */
 	getEntity: (key: Hex) => Promise<Entity>
+
+	/**
+	 * Returns a QueryBuilder instance for building and executing queries.
+	 * The QueryBuilder object follows the Builder pattern, allowing you to chain methods to build a query and then execute it.
+	 *
+	 * - Docs: https://docs.golemdb.io/ts-sdk/actions/public/query
+	 *
+	 * @returns A QueryBuilder instance for building and executing queries. {@link QueryBuilder}
+	 *
+	 * @example
+	 * import { createPublicClient, http } from 'arkiv'
+	 * import { kaolin } from 'arkiv/chains'
+	 *
+	 * const client = createPublicClient({
+	 *   chain: kaolin,
+	 *   transport: http(),
+	 * })
+	 * const query = client.query()
+	 * const entities = await query.where("key", "=", "value").ownedBy("0x123").fetch()
+	 *
+	 */
+	query: () => QueryBuilder
 }
 
 export function publicArkivActions<
@@ -52,5 +75,6 @@ export function publicArkivActions<
 >(client: Client<transport, chain, account>) {
 	return {
 		getEntity: (key: Hex) => getEntity(client, key),
+		query: () => new QueryBuilder(client),
 	}
 }

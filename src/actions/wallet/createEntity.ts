@@ -4,7 +4,7 @@ import type { Annotation, TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
 export type CreateEntityParameters = {
-	payload: Uint8Array | string
+	payload: Uint8Array
 	annotations: Annotation[]
 	btl: number
 }

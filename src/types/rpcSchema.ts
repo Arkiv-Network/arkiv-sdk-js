@@ -1,17 +1,22 @@
-import type { PublicRpcSchema } from "viem"
+import type { Hex, PublicRpcSchema } from "viem"
 
 export type ArkivRpcSchema = [
 	{
 		Method: "golembase_getStorageValue"
-		Parameters?: [entityId: string]
+		Parameters?: [entityId: Hex]
 		ReturnType: string
 	},
 	{
+		Method: "golembase_queryEntities"
+		Parameters?: [query: string]
+		ReturnType: [{ key: Hex; value: string }]
+	},
+	{
 		Method: "golembase_getEntityMetaData"
-		Parameters?: [entityId: string]
+		Parameters?: [entityId: Hex]
 		ReturnType: {
 			expiresAtBlock: number
-			owner: string
+			owner: Hex
 			numericAnnotations: [{ key: string; value: number }]
 			stringAnnotations: [{ key: string; value: string }]
 		}

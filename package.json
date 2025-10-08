@@ -26,6 +26,11 @@
 			"types": "./src/utils/index.ts",
 			"import": "./src/utils/index.ts",
 			"require": "./src/utils/index.ts"
+		},
+		"./query": {
+			"types": "./src/query/index.ts",
+			"import": "./src/query/index.ts",
+			"require": "./src/query/index.ts"
 		}
 	},
 	"files": [

@@ -1,4 +1,4 @@
-import { type Hex, toBytes, toHex, toRlp } from "viem"
+import { type Hex, toHex, toRlp } from "viem"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
 import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
@@ -29,7 +29,7 @@ export function opsToTxData({
 		//creates
 		(creates ?? []).map((item) => [
 			toHex(item.btl),
-			typeof item.payload === "string" ? toHex(toBytes(item.payload)) : toHex(item.payload),
+			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
 				.map(formatAnnotation),
@@ -39,9 +39,9 @@ export function opsToTxData({
 		]),
 		//updates
 		(updates ?? []).map((item) => [
-			toHex(item.entityKey),
+			item.entityKey,
 			toHex(item.btl),
-			typeof item.payload === "string" ? toHex(toBytes(item.payload)) : toHex(item.payload),
+			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
 				.map(formatAnnotation),
@@ -50,9 +50,9 @@ export function opsToTxData({
 				.map(formatAnnotation),
 		]),
 		//deletes
-		(deletes ?? []).map((item) => [toHex(item.entityKey)]),
+		(deletes ?? []).map((item) => item.entityKey),
 		//extends
-		(extensions ?? []).map((item) => [toHex(item.entityKey), toHex(item.btl)]),
+		(extensions ?? []).map((item) => [item.entityKey, toHex(item.btl)]),
 	]
 
 	console.debug("txData to send as RLP", payload)
