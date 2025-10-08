@@ -205,5 +205,6 @@ describe("Arkiv Integration Tests for public client", () => {
 			})
 			console.log("result from deleteEntity", { deletedEntityKey, deletedTxHash })
 		},
+		{ timeout: 20000 },
 	)
 })

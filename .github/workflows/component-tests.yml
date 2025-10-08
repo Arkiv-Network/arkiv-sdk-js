@@ -1,0 +1,42 @@
+name: Component Tests
+
+on:
+  push:
+    branches: [main, master, v1-dev]
+  pull_request:
+    branches: [main, master, v1-dev]
+
+jobs:
+  component-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build package for tests
+        run: bun run package:test
+
+      - name: Install test dependencies
+        run: cd test && bun install
+
+      - name: Pull GolemDB Docker image
+        run: docker pull golemnetwork/golembase-op-geth:latest
+
+      # Using a test private key (randomly generated for testing purposes only)
+      - name: Run component tests
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: true
+          PRIVATE_KEY: "0x049f4de101c81033ab95e057fa3535c131b1da022a1922cd175cf6b63d263892"
+        run: cd test && bun test
