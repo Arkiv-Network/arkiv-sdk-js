@@ -3,7 +3,7 @@ import type { ArkivClient } from "../clients/baseClient"
 import { Entity } from "../types/entity"
 import * as entitiesUtils from "../utils/entities"
 import * as engine from "./engine"
-import { and, eq, gte, neq, or } from "./predicate"
+import { and, eq, gt, gte, neq, or } from "./predicate"
 import { QueryBuilder } from "./queryBuilder"
 
 describe("QueryBuilder", () => {
@@ -54,7 +54,7 @@ describe("QueryBuilder", () => {
 			mockProcessQuery.mockResolvedValue([])
 
 			const builder = new QueryBuilder(mockClient)
-			const predicates = [eq("name", "test"), gte("age", 18)]
+			const predicates = [eq("name", "test"), gt("age", 18)]
 			await builder.where(predicates).fetch()
 
 			expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
@@ -74,14 +74,14 @@ describe("QueryBuilder", () => {
 			const builder = new QueryBuilder(mockClient)
 			await builder
 				.where(eq("name", "test"))
-				.where(gte("age", 18))
+				.where(gt("age", 18))
 				.where([neq("status", "inactive"), eq("verified", 1)])
 				.fetch()
 
 			expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
 				predicates: [
 					eq("name", "test"),
-					gte("age", 18),
+					gt("age", 18),
 					neq("status", "inactive"),
 					eq("verified", 1),
 				],
@@ -396,12 +396,12 @@ describe("QueryBuilder", () => {
 			mockProcessQuery.mockResolvedValue([])
 
 			const builder = new QueryBuilder(mockClient)
-			await builder.where(gte("age", 25)).fetch()
+			await builder.where(gt("age", 25)).fetch()
 
 			expect(mockProcessQuery).toHaveBeenCalledWith(
 				mockClient,
 				expect.objectContaining({
-					predicates: [gte("age", 25)],
+					predicates: [gt("age", 25)],
 				}),
 			)
 		})
@@ -410,7 +410,7 @@ describe("QueryBuilder", () => {
 			mockProcessQuery.mockResolvedValue([])
 
 			const builder = new QueryBuilder(mockClient)
-			const predicates = [eq("name", "john"), gte("age", 25), neq("status", "inactive")]
+			const predicates = [eq("name", "john"), gt("age", 25), neq("status", "inactive")]
 			await builder.where(predicates).fetch()
 
 			expect(mockProcessQuery).toHaveBeenCalledWith(

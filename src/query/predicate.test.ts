@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { and, eq, gte, lt, lte, neq, not, or, type Predicate } from "./predicate"
+import { and, eq, gt, gte, lt, lte, neq, not, or, type Predicate } from "./predicate"
 
 describe("Predicate Factory Functions", () => {
 	describe("eq()", () => {
@@ -62,6 +62,38 @@ describe("Predicate Factory Functions", () => {
 				type: "neq",
 				key: "count",
 				value: 0,
+			})
+		})
+	})
+
+	describe("gt()", () => {
+		test("creates greater than predicate with numeric value", () => {
+			const result = gt("age", 18)
+
+			expect(result).toEqual({
+				type: "gt",
+				key: "age",
+				value: 18,
+			})
+		})
+
+		test("creates greater than predicate with negative number", () => {
+			const result = gt("balance", -100)
+
+			expect(result).toEqual({
+				type: "gt",
+				key: "balance",
+				value: -100,
+			})
+		})
+
+		test("creates greater than predicate with string value", () => {
+			const result = gt("name", "abc")
+
+			expect(result).toEqual({
+				type: "gt",
+				key: "name",
+				value: "abc",
 			})
 		})
 	})

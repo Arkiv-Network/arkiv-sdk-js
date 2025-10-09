@@ -28,6 +28,10 @@ export function neq(key: string, value: string | number): Predicate {
 	return { type: "neq", key, value }
 }
 
+export function gt(key: string, value: string | number): Predicate {
+	return { type: "gt", key, value }
+}
+
 export function gte(key: string, value: string | number): Predicate {
 	return { type: "gte", key, value }
 }
