@@ -66,6 +66,13 @@ jobs:
       - name: Build package for tests
         run: bun run package:test
 
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arkiv-package
+          path: arkiv-latest.tgz
+          retention-days: 30
+
       - name: Install test dependencies
         run: cd test && bun install
 
