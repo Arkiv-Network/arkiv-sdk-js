@@ -26,13 +26,13 @@ export class Entity {
 		return bytesToString(this.payload)
 	}
 
-	toJson(): string {
-		return JSON.stringify({
+	toJson(): object {
+		return {
 			$key: this.key,
 			$annotations: this.annotations,
 			$owner: this.owner,
 			$expiresAtBlock: this.expiresAtBlock,
 			...JSON.parse(bytesToString(this.payload)),
-		})
+		}
 	}
 }

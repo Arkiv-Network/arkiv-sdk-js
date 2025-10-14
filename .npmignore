@@ -1,12 +1,21 @@
-# Source files (only include dist)
-src/
-test/
-tsconfig.json
-tsconfig.types.json
-biome.json
-.vscode/
-.gitignore
-README.md
+# Exclude everything from .gitignore EXCEPT build outputs
+# This file ensures built files are included in npm package
 
-# Keep dist directory
-!dist/
+# Keep test files excluded
+test/
+**/*.test.ts
+**/*.spec.ts
+*.tsbuildinfo
+
+# Keep development files excluded
+.vscode/
+.idea/
+.DS_Store
+*.log
+.env
+.env.*
+
+# Include build outputs (override .gitignore)
+!_cjs/
+!_esm/
+!_types/
