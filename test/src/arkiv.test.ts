@@ -5,6 +5,7 @@ import { privateKeyToAccount } from "arkiv/accounts"
 import { eq } from "arkiv/query"
 import { jsonToPayload } from "arkiv/utils"
 import type { StartedTestContainer } from "testcontainers"
+import { PollingWatchKind } from "typescript"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils"
 
 describe("Arkiv Integration Tests for public client", () => {
@@ -134,19 +135,36 @@ describe("Arkiv Integration Tests for public client", () => {
 		const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
 		expect(testKey).toBeDefined()
 
-		const query = client.query()
+		// build query
+		const query = client.buildQuery()
 		const entities = await query
 			.where(eq("key", "value"))
 			.ownedBy(privateKeyToAccount(privateKey).address)
 			.fetch()
 		expect(entities).toBeDefined()
 		expect(entities.entities.length).toBeGreaterThanOrEqual(1)
+
+		// raw query
+		const rawQuery = await client.query(
+			`key = "value" && $owner = "${privateKeyToAccount(privateKey).address}"`,
+		)
+		expect(rawQuery).toBeDefined()
+		expect(rawQuery.length).toBeGreaterThanOrEqual(1)
 	})
 
 	test.each(["http", "webSocket"] as const)(
 		"should handle basic CRUD operations using %s",
 		async (transport) => {
 			const client = transport === "http" ? walletClient : walletClientWS
+
+			// subscribe to entity events
+			const unsubscribe = await client.subscribeEntityEvents(
+				{
+					onError: (error) => console.error("subscribeEntityEvents error", error),
+				},
+				10,
+			)
+
 			// create entity
 			const { entityKey, txHash } = await walletClient.createEntity({
 				payload: toBytes(
@@ -189,21 +207,24 @@ describe("Arkiv Integration Tests for public client", () => {
 			)
 			expect(updatedEntity.annotations).toEqual([])
 
-			// // extend entity
-			// const { entityKey: extendedEntityKey, txHash: extendedTxHash } =
-			// 	await walletClient.extendEntity({
-			// 		entityKey: updatedEntityKey,
-			// 		btl: 1000,
-			// 	})
-			// console.log("result from extendEntity", { extendedEntityKey, extendedTxHash })
-			// expect(extendedEntityKey).toBeDefined()
-			// expect(extendedTxHash).toBeDefined()
+			// extend entity
+			const { entityKey: extendedEntityKey, txHash: extendedTxHash } =
+				await walletClient.extendEntity({
+					entityKey: updatedEntityKey,
+					btl: 1000,
+				})
+			console.log("result from extendEntity", { extendedEntityKey, extendedTxHash })
+			expect(extendedEntityKey).toBeDefined()
+			expect(extendedTxHash).toBeDefined()
 
 			// delete entity
 			const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await client.deleteEntity({
 				entityKey: updatedEntityKey,
 			})
 			console.log("result from deleteEntity", { deletedEntityKey, deletedTxHash })
+
+			// unsubscribe from entity events
+			unsubscribe()
 		},
 		{ timeout: 20000 },
 	)

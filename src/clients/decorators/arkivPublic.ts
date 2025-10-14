@@ -1,7 +1,16 @@
 import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem"
 import { getEntity } from "../../actions/public/getEntity"
+import { query } from "../../actions/public/query"
+import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
 import { QueryBuilder } from "../../query/queryBuilder"
 import type { Entity } from "../../types/entity"
+import type {
+	OnEntityBTLExtendedEvent,
+	OnEntityCreatedEvent,
+	OnEntityDeletedEvent,
+	OnEntityExpiredEvent,
+	OnEntityUpdatedEvent,
+} from "../../types/events"
 
 export type PublicArkivActions<
 	transport extends Transport = Transport,
@@ -18,6 +27,7 @@ export type PublicArkivActions<
 	| "getTransactionCount"
 	| "getTransactionReceipt"
 	| "waitForTransactionReceipt"
+	| "watchEvent"
 > & {
 	/**
 	 * Returns the entity with the given key.
@@ -61,11 +71,47 @@ export type PublicArkivActions<
 	 *   chain: kaolin,
 	 *   transport: http(),
 	 * })
-	 * const query = client.query()
+	 * const query = client.buildQuery()
 	 * const entities = await query.where("key", "=", "value").ownedBy("0x123").fetch()
 	 *
 	 */
-	query: () => QueryBuilder
+	buildQuery: () => QueryBuilder
+
+	/**
+	 * Returns a QueryResult instance for fetching the results of a raw query.
+	 * @returns A QueryResult instance for fetching the results of a raw query. {@link QueryResult}
+	 *
+	 * @example
+	 * import { createPublicClient, http } from 'arkiv'
+	 * import { kaolin } from 'arkiv/chains'
+	 *
+	 * const client = createPublicClient({
+	 *   chain: kaolin,
+	 *   transport: http(),
+	 * })
+	 * const queryResult = client.query('key = value && $owner = 0x123')
+	 *
+	 */
+	query: (query: string) => Promise<Entity[]>
+
+	subscribeEntityEvents: (
+		{
+			onError,
+			onEntityCreated,
+			onEntityUpdated,
+			onEntityDeleted,
+			onEntityBTLExtended,
+		}: {
+			onError?: (error: Error) => void
+			onEntityCreated?: (event: OnEntityCreatedEvent) => void
+			onEntityUpdated?: (event: OnEntityUpdatedEvent) => void
+			onEntityDeleted?: (event: OnEntityDeletedEvent) => void
+			onEntityExpired?: (event: OnEntityExpiredEvent) => void
+			onEntityBTLExtended?: (event: OnEntityBTLExtendedEvent) => void
+		},
+		pollingInterval?: number,
+		fromBlock?: bigint,
+	) => Promise<() => void>
 }
 
 export function publicArkivActions<
@@ -75,6 +121,39 @@ export function publicArkivActions<
 >(client: Client<transport, chain, account>) {
 	return {
 		getEntity: (key: Hex) => getEntity(client, key),
-		query: () => new QueryBuilder(client),
+		query: (rawQuery: string) => query(client, rawQuery),
+		buildQuery: () => new QueryBuilder(client),
+		subscribeEntityEvents: (
+			{
+				onError,
+				onEntityCreated,
+				onEntityUpdated,
+				onEntityDeleted,
+				onEntityExpired,
+				onEntityBTLExtended,
+			}: {
+				onError?: (error: Error) => void
+				onEntityCreated?: (event: OnEntityCreatedEvent) => void
+				onEntityUpdated?: (event: OnEntityUpdatedEvent) => void
+				onEntityDeleted?: (event: OnEntityDeletedEvent) => void
+				onEntityExpired?: (event: OnEntityExpiredEvent) => void
+				onEntityBTLExtended?: (event: OnEntityBTLExtendedEvent) => void
+			},
+			pollingInterval?: number,
+			fromBlock?: bigint,
+		) =>
+			subscribeEntityEvents(
+				client,
+				{
+					onError,
+					onEntityCreated,
+					onEntityUpdated,
+					onEntityDeleted,
+					onEntityBTLExtended,
+					onEntityExpired,
+				},
+				pollingInterval,
+				fromBlock,
+			),
 	}
 }
