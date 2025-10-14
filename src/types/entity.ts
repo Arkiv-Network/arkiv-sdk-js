@@ -26,7 +26,7 @@ export class Entity {
 		return bytesToString(this.payload)
 	}
 
-	toJson(): object {
+	toJson(): any {
 		return {
 			$key: this.key,
 			$annotations: this.annotations,

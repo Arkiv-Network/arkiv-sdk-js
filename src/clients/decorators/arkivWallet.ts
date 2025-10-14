@@ -33,7 +33,15 @@ export type WalletArkivActions<
 	chain extends Chain | undefined = Chain | undefined,
 	account extends Account | undefined = Account | undefined,
 > = PublicArkivActions<transport, chain, account> &
-	Pick<WalletActions<chain, account>, "sendTransaction" | "signMessage" | "signTransaction"> & {
+	Pick<
+		WalletActions<chain, account>,
+		| "sendTransaction"
+		| "sendTransactionSync"
+		| "sendRawTransaction"
+		| "sendRawTransactionSync"
+		| "signMessage"
+		| "signTransaction"
+	> & {
 		/**
 		 * Returns the entity with the given key.
 		 *

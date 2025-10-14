@@ -5,7 +5,6 @@ import { privateKeyToAccount } from "arkiv/accounts"
 import { eq } from "arkiv/query"
 import { jsonToPayload } from "arkiv/utils"
 import type { StartedTestContainer } from "testcontainers"
-import { PollingWatchKind } from "typescript"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils"
 
 describe("Arkiv Integration Tests for public client", () => {
@@ -225,6 +224,79 @@ describe("Arkiv Integration Tests for public client", () => {
 
 			// unsubscribe from entity events
 			unsubscribe()
+		},
+		{ timeout: 20000 },
+	)
+
+	test.each(["http", "webSocket"] as const)(
+		"should handle mutateEntities using %s",
+		async (transport) => {
+			const client = transport === "http" ? walletClient : walletClientWS
+
+			// need to create a few entities first
+			const { entityKey: entityKey1, txHash: txHash1 } = await client.createEntity({
+				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				annotations: [{ key: "testKey", value: "testValue" }],
+				btl: 1000,
+			})
+
+			const { entityKey: entityKey2, txHash: txHash2 } = await client.createEntity({
+				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				annotations: [{ key: "testKey", value: "testValue" }],
+				btl: 1000,
+			})
+
+			const { entityKey: entityKey3, txHash: txHash3 } = await client.createEntity({
+				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				annotations: [{ key: "testKey", value: "testValue" }],
+				btl: 1000,
+			})
+
+			const { entityKey: entityKey4, txHash: txHash4 } = await client.createEntity({
+				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				annotations: [{ key: "testKey", value: "testValue" }],
+				btl: 1000,
+			})
+
+			// mutate entities using various operations
+			const result = await client.mutateEntities({
+				creates: [
+					{
+						payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+						annotations: [{ key: "testKey", value: "testValue" }],
+						btl: 1000,
+					},
+				],
+				updates: [
+					{
+						entityKey: entityKey1,
+						payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+						annotations: [{ key: "testKey", value: "testValue" }],
+						btl: 1000,
+					},
+				],
+				deletes: [
+					{
+						entityKey: entityKey2,
+					},
+					{
+						entityKey: entityKey3,
+					},
+				],
+				extensions: [
+					{
+						entityKey: entityKey4,
+						btl: 1000,
+					},
+				],
+			})
+			console.log("result from mutateEntities", result)
+			expect(result).toBeDefined()
+			expect(result.txHash).toBeDefined()
+			expect(result.createdEntities).toBeDefined()
+			expect(result.updatedEntities).toBeDefined()
+			expect(result.deletedEntities).toBeDefined()
+			expect(result.extendedEntities).toBeDefined()
 		},
 		{ timeout: 20000 },
 	)

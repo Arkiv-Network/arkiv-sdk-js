@@ -108,6 +108,6 @@
 		"url": "https://github.com/golemnetwork/arkivjs.git"
 	},
 	"dependencies": {
-		"viem": "^2.37.8"
+		"viem": "^2.38.2"
 	}
 }

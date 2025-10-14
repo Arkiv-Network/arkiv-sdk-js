@@ -25,6 +25,7 @@ export function opsToTxData({
 	}): [Hex, Hex] {
 		return [toHex(annotation.key), toHex(annotation.value)]
 	}
+
 	const payload = [
 		//creates
 		(creates ?? []).map((item) => [
@@ -64,6 +65,15 @@ export async function sendArkivTransaction(client: ArkivClient, data: Hex, txPar
 	if (!client.account) throw new Error("Account required")
 	const walletClient = client as WalletArkivClient
 
+	console.debug("Sending transaction", {
+		account: client.account,
+		chain: client.chain,
+		to: ARKIV_ADDRESS,
+		value: 0n,
+		data,
+		...txParams,
+	})
+
 	const txHash = await walletClient.sendTransaction({
 		account: client.account,
 		chain: client.chain,
@@ -74,6 +84,7 @@ export async function sendArkivTransaction(client: ArkivClient, data: Hex, txPar
 	})
 
 	const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash })
+
 	console.debug("Tx receipt", receipt)
 
 	return receipt
