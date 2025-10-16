@@ -5,7 +5,7 @@ import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions
 
 export type ExtendEntityParameters = {
 	entityKey: Hex
-	btl: number
+	expiresIn: number
 }
 
 export type ExtendEntityReturnType = {

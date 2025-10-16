@@ -7,7 +7,7 @@ export type UpdateEntityParameters = {
 	entityKey: Hex
 	payload: Uint8Array | string
 	annotations: Annotation[]
-	btl: number
+	expiresIn: number
 }
 
 export type UpdateEntityReturnType = {

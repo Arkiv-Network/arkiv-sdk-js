@@ -175,7 +175,7 @@ describe("Arkiv Integration Tests for public client", () => {
 					}),
 				),
 				annotations: [{ key: "testKey", value: "testValue" }],
-				btl: 1000,
+				expiresIn: 1000,
 			})
 			console.log("result from createEntity", { entityKey, txHash })
 
@@ -193,7 +193,7 @@ describe("Arkiv Integration Tests for public client", () => {
 				entityKey,
 				payload: jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } }),
 				annotations: [],
-				btl: 1000,
+				expiresIn: 1000,
 			})
 			console.log("result from updateEntity", { updatedEntityKey, updatedTxHash })
 
@@ -210,7 +210,7 @@ describe("Arkiv Integration Tests for public client", () => {
 			const { entityKey: extendedEntityKey, txHash: extendedTxHash } =
 				await walletClient.extendEntity({
 					entityKey: updatedEntityKey,
-					btl: 1000,
+					expiresIn: 1000,
 				})
 			console.log("result from extendEntity", { extendedEntityKey, extendedTxHash })
 			expect(extendedEntityKey).toBeDefined()
@@ -237,25 +237,25 @@ describe("Arkiv Integration Tests for public client", () => {
 			const { entityKey: entityKey1, txHash: txHash1 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
 				annotations: [{ key: "testKey", value: "testValue" }],
-				btl: 1000,
+				expiresIn: 1000,
 			})
 
 			const { entityKey: entityKey2, txHash: txHash2 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
 				annotations: [{ key: "testKey", value: "testValue" }],
-				btl: 1000,
+				expiresIn: 1000,
 			})
 
 			const { entityKey: entityKey3, txHash: txHash3 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
 				annotations: [{ key: "testKey", value: "testValue" }],
-				btl: 1000,
+				expiresIn: 1000,
 			})
 
 			const { entityKey: entityKey4, txHash: txHash4 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
 				annotations: [{ key: "testKey", value: "testValue" }],
-				btl: 1000,
+				expiresIn: 1000,
 			})
 
 			// mutate entities using various operations
@@ -264,7 +264,7 @@ describe("Arkiv Integration Tests for public client", () => {
 					{
 						payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
 						annotations: [{ key: "testKey", value: "testValue" }],
-						btl: 1000,
+						expiresIn: 1000,
 					},
 				],
 				updates: [
@@ -272,7 +272,7 @@ describe("Arkiv Integration Tests for public client", () => {
 						entityKey: entityKey1,
 						payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
 						annotations: [{ key: "testKey", value: "testValue" }],
-						btl: 1000,
+						expiresIn: 1000,
 					},
 				],
 				deletes: [
@@ -286,7 +286,7 @@ describe("Arkiv Integration Tests for public client", () => {
 				extensions: [
 					{
 						entityKey: entityKey4,
-						btl: 1000,
+						expiresIn: 1000,
 					},
 				],
 			})

@@ -63,7 +63,7 @@ export type WalletArkivActions<
 		 * const { entityKey, txHash } = await client.createEntity({
 		 *   payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
 		 *   annotations: [{ key: "testKey", value: "testValue" }],
-		 *   btl: 1000,
+		 *   expiresIn: 1000,
 		 * })
 		 * console.log("entityKey", entityKey)
 		 * console.log("txHash", txHash)
@@ -148,7 +148,7 @@ export type WalletArkivActions<
 		 *   transport: http(),
 		 * })
 		 * const { entityKey, txHash } = await client.extendEntity("0x123", {
-		 *   btl: 1000,
+		 *   expiresIn: 1000,
 		 * })
 		 * console.log("entityKey", entityKey)
 		 * console.log("txHash", txHash)
@@ -183,20 +183,20 @@ export type WalletArkivActions<
 		 *   creates: [{
 		 *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
 		 *     annotations: [{ key: "testKey", value: "testValue" }],
-		 *     btl: 1000,
+		 *     expiresIn: 1000,
 		 *   }],
 		 *   updates: [{
 		 *     entityKey: "0x123",
 		 *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
 		 *     annotations: [{ key: "testKey", value: "testValue" }],
-		 *     btl: 1000,
+		 *     expiresIn: 1000,
 		 *   }],
 		 *   deletes: [{
 		 *     entityKey: "0x321",
 		 *   }],
 		 *   extensions: [{
 		 *     entityKey: "0x1234",
-		 *     btl: 1000,
+		 *     expiresIn: 1000,
 		 *   }],
 		 * })
 		 * console.log("entityKey", entityKey)

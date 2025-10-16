@@ -6,7 +6,7 @@ import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions
 export type CreateEntityParameters = {
 	payload: Uint8Array
 	annotations: Annotation[]
-	btl: number
+	expiresIn: number
 }
 
 export type CreateEntityReturnType = {

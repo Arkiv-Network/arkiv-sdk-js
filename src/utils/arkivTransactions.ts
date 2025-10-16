@@ -29,7 +29,7 @@ export function opsToTxData({
 	const payload = [
 		//creates
 		(creates ?? []).map((item) => [
-			toHex(item.btl),
+			toHex(item.expiresIn),
 			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
@@ -41,7 +41,7 @@ export function opsToTxData({
 		//updates
 		(updates ?? []).map((item) => [
 			item.entityKey,
-			toHex(item.btl),
+			toHex(item.expiresIn),
 			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
@@ -53,7 +53,7 @@ export function opsToTxData({
 		//deletes
 		(deletes ?? []).map((item) => item.entityKey),
 		//extends
-		(extensions ?? []).map((item) => [item.entityKey, toHex(item.btl)]),
+		(extensions ?? []).map((item) => [item.entityKey, toHex(item.expiresIn)]),
 	]
 
 	console.debug("txData to send as RLP", payload)
