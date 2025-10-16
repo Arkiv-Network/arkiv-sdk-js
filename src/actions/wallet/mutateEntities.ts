@@ -7,6 +7,13 @@ import type { DeleteEntityParameters } from "./deleteEntity"
 import type { ExtendEntityParameters } from "./extendEntity"
 import type { UpdateEntityParameters } from "./updateEntity"
 
+/**
+ * Parameters for the mutateEntities function.
+ * - creates: The creates to perform.
+ * - updates: The updates to perform.
+ * - deletes: The deletes to perform.
+ * - extensions: The extensions to perform.
+ */
 export type MutateEntitiesParameters = {
 	creates?: CreateEntityParameters[]
 	updates?: UpdateEntityParameters[]
@@ -44,6 +51,14 @@ function parseReceipt(receipt: TransactionReceipt, params: MutateEntitiesParamet
 	return { createdEntities, updatedEntities, deletedEntities, extendedEntities }
 }
 
+/**
+ * Return type for the mutateEntities function.
+ * - txHash: The transaction hash.
+ * - createdEntities: The keys of the created entities.
+ * - updatedEntities: The keys of the updated entities.
+ * - deletedEntities: The keys of the deleted entities.
+ * - extendedEntities: The keys of the extended entities.
+ */
 export type MutateEntitiesReturnType = {
 	txHash: string
 	createdEntities: Hex[]

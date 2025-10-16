@@ -3,11 +3,21 @@ import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
+/**
+ * Parameters for the extendEntity function.
+ * - entityKey: The key of the entity to extend.
+ * - expiresIn: The expires in of the entity in seconds.
+ */
 export type ExtendEntityParameters = {
 	entityKey: Hex
 	expiresIn: number
 }
 
+/**
+ * Return type for the extendEntity function.
+ * - entityKey: The key of the entity.
+ * - txHash: The transaction hash.
+ */
 export type ExtendEntityReturnType = {
 	entityKey: Hex
 	txHash: string

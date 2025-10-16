@@ -3,10 +3,19 @@ import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
+/**
+ * Parameters for the deleteEntity function.
+ * - entityKey: The key of the entity to delete.
+ */
 export type DeleteEntityParameters = {
 	entityKey: Hex
 }
 
+/**
+ * Return type for the deleteEntity function.
+ * - entityKey: The key of the entity.
+ * - txHash: The transaction hash.
+ */
 export type DeleteEntityReturnType = {
 	entityKey: Hex
 	txHash: string

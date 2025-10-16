@@ -5,7 +5,7 @@ import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
 import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
-import { ARKIV_ADDRESS } from "../consts"
+import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
 import type { TxParams } from "../types"
 
 export function opsToTxData({
@@ -29,7 +29,7 @@ export function opsToTxData({
 	const payload = [
 		//creates
 		(creates ?? []).map((item) => [
-			toHex(item.expiresIn),
+			toHex(item.expiresIn / BLOCK_TIME),
 			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
@@ -41,7 +41,7 @@ export function opsToTxData({
 		//updates
 		(updates ?? []).map((item) => [
 			item.entityKey,
-			toHex(item.expiresIn),
+			toHex(item.expiresIn / BLOCK_TIME),
 			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
@@ -53,7 +53,7 @@ export function opsToTxData({
 		//deletes
 		(deletes ?? []).map((item) => item.entityKey),
 		//extends
-		(extensions ?? []).map((item) => [item.entityKey, toHex(item.expiresIn)]),
+		(extensions ?? []).map((item) => [item.entityKey, toHex(item.expiresIn / BLOCK_TIME)]),
 	]
 
 	console.debug("txData to send as RLP", payload)

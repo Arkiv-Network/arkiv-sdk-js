@@ -3,6 +3,13 @@ import type { ArkivClient } from "../../clients/baseClient"
 import type { Annotation, TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
+/**
+ * Parameters for the updateEntity function.
+ * - entityKey: The key of the entity to update.
+ * - payload: The payload of the entity.
+ * - annotations: The annotations of the entity.
+ * - expiresIn: The expires in of the entity in seconds.
+ */
 export type UpdateEntityParameters = {
 	entityKey: Hex
 	payload: Uint8Array | string
@@ -10,6 +17,11 @@ export type UpdateEntityParameters = {
 	expiresIn: number
 }
 
+/**
+ * Return type for the updateEntity function.
+ * - entityKey: The key of the entity.
+ * - txHash: The transaction hash.
+ */
 export type UpdateEntityReturnType = {
 	entityKey: Hex
 	txHash: string
