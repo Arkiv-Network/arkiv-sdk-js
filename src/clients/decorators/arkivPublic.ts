@@ -5,10 +5,10 @@ import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvent
 import { QueryBuilder } from "../../query/queryBuilder"
 import type { Entity } from "../../types/entity"
 import type {
-	OnEntityBTLExtendedEvent,
 	OnEntityCreatedEvent,
 	OnEntityDeletedEvent,
 	OnEntityExpiredEvent,
+	OnEntityExpiresInExtendedEvent,
 	OnEntityUpdatedEvent,
 } from "../../types/events"
 
@@ -100,14 +100,14 @@ export type PublicArkivActions<
 			onEntityCreated,
 			onEntityUpdated,
 			onEntityDeleted,
-			onEntityBTLExtended,
+			onEntityExpiresInExtended,
 		}: {
 			onError?: (error: Error) => void
 			onEntityCreated?: (event: OnEntityCreatedEvent) => void
 			onEntityUpdated?: (event: OnEntityUpdatedEvent) => void
 			onEntityDeleted?: (event: OnEntityDeletedEvent) => void
 			onEntityExpired?: (event: OnEntityExpiredEvent) => void
-			onEntityBTLExtended?: (event: OnEntityBTLExtendedEvent) => void
+			onEntityExpiresInExtended?: (event: OnEntityExpiresInExtendedEvent) => void
 		},
 		pollingInterval?: number,
 		fromBlock?: bigint,
@@ -130,14 +130,14 @@ export function publicArkivActions<
 				onEntityUpdated,
 				onEntityDeleted,
 				onEntityExpired,
-				onEntityBTLExtended,
+				onEntityExpiresInExtended,
 			}: {
 				onError?: (error: Error) => void
 				onEntityCreated?: (event: OnEntityCreatedEvent) => void
 				onEntityUpdated?: (event: OnEntityUpdatedEvent) => void
 				onEntityDeleted?: (event: OnEntityDeletedEvent) => void
 				onEntityExpired?: (event: OnEntityExpiredEvent) => void
-				onEntityBTLExtended?: (event: OnEntityBTLExtendedEvent) => void
+				onEntityExpiresInExtended?: (event: OnEntityExpiresInExtendedEvent) => void
 			},
 			pollingInterval?: number,
 			fromBlock?: bigint,
@@ -149,8 +149,8 @@ export function publicArkivActions<
 					onEntityCreated,
 					onEntityUpdated,
 					onEntityDeleted,
-					onEntityBTLExtended,
 					onEntityExpired,
+					onEntityExpiresInExtended,
 				},
 				pollingInterval,
 				fromBlock,

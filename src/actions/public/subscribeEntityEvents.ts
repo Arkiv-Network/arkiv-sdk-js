@@ -2,10 +2,10 @@ import { decodeEventLog, parseAbi, toHex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { PublicArkivClient } from "../../clients/createPublicClient"
 import type {
-	OnEntityBTLExtendedEvent,
 	OnEntityCreatedEvent,
 	OnEntityDeletedEvent,
 	OnEntityExpiredEvent,
+	OnEntityExpiresInExtendedEvent,
 	OnEntityUpdatedEvent,
 } from "../../types/events"
 
@@ -25,14 +25,14 @@ export async function subscribeEntityEvents(
 		onEntityUpdated,
 		onEntityDeleted,
 		onEntityExpired,
-		onEntityBTLExtended,
+		onEntityExpiresInExtended,
 	}: {
 		onError: ((error: Error) => void) | undefined
 		onEntityCreated?: ((event: OnEntityCreatedEvent) => void) | undefined
 		onEntityUpdated?: ((event: OnEntityUpdatedEvent) => void) | undefined
 		onEntityDeleted?: ((event: OnEntityDeletedEvent) => void) | undefined
 		onEntityExpired?: ((event: OnEntityExpiredEvent) => void) | undefined
-		onEntityBTLExtended?: ((event: OnEntityBTLExtendedEvent) => void) | undefined
+		onEntityExpiresInExtended?: ((event: OnEntityExpiresInExtendedEvent) => void) | undefined
 	},
 	pollingInterval?: number,
 	fromBlock?: bigint,
@@ -75,7 +75,7 @@ export async function subscribeEntityEvents(
 						})
 						break
 					case "ArkivEntityBTLExtended":
-						onEntityBTLExtended?.({
+						onEntityExpiresInExtended?.({
 							entityKey: toHex(event.args.entityKey, { size: 32 }),
 							owner: event.args.ownerAddress,
 							oldExpirationBlock: Number(event.args.oldExpirationBlock),

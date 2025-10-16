@@ -25,7 +25,7 @@ export type OnEntityExpiredEvent = {
 	owner: Hex
 }
 
-export type OnEntityBTLExtendedEvent = {
+export type OnEntityExpiresInExtendedEvent = {
 	entityKey: Hex
 	owner: Hex
 	oldExpirationBlock: number
