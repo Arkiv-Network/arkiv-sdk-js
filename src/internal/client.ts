@@ -389,6 +389,23 @@ async function mkWalletClient(
     })
   }
 
+  let publicClient = createPublicClient({
+    chain,
+    transport: http(),
+  })
+
+  // Calculate the chain cadence
+  let headBlock = await publicClient.getBlock({
+    includeTransactions: false,
+    blockTag: "latest",
+  })
+  let prevBlock = await publicClient.getBlock({
+    includeTransactions: false,
+    blockHash: headBlock.parentHash,
+  })
+  // seconds per block
+  let chainCadence = Number(headBlock.timestamp - prevBlock.timestamp)
+
   /**
    * Create RLP-encoded payload for Arkiv transactions.
    *
@@ -405,11 +422,24 @@ async function mkWalletClient(
       return [toHex(annotation.key), toHex(annotation.value)]
     }
 
+    function getBTL(blocks: number | undefined, seconds: number | undefined): number {
+      if (blocks != undefined && seconds != undefined) {
+        throw new Error("You cannot define BTL and expiresIn at the same time")
+      }
+      if (seconds != undefined) {
+        return Math.ceil(seconds / chainCadence)
+      }
+      if (blocks != undefined) {
+        return blocks
+      }
+      throw new Error("You need to define either BTL or expiresIn")
+    }
+
     log.debug("Transaction:", JSON.stringify(tx, null, 2))
     const payload = [
       // Create
       (tx.creates || []).map(el => [
-        toHex(el.btl),
+        toHex(getBTL(el.btl, el.expiresIn)),
         toHex(el.data),
         el.stringAnnotations.map(formatAnnotation),
         el.numericAnnotations.map(formatAnnotation),
@@ -418,7 +448,7 @@ async function mkWalletClient(
       // Update
       (tx.updates || []).map(el => [
         el.entityKey,
-        toHex(el.btl),
+        toHex(getBTL(el.btl, el.expiresIn)),
         toHex(el.data),
         el.stringAnnotations.map(formatAnnotation),
         el.numericAnnotations.map(formatAnnotation),
@@ -430,7 +460,7 @@ async function mkWalletClient(
       // Extend
       (tx.extensions || []).map(el => [
         el.entityKey,
-        toHex(el.numberOfBlocks),
+        toHex(getBTL(el.numberOfBlocks, el.numberOfSeconds)),
       ]),
     ]
     log.debug("Payload before RLP encoding:", JSON.stringify(payload, null, 2))

@@ -45,26 +45,26 @@ let client: ArkivClient
 describe("the arkiv client", () => {
   it("can be created", async () => {
     const key: AccountData = new Tagged("privatekey", getBytes(wallet.privateKey))
-    client = {
-      local: await createClient(
+    client = await {
+      local: async () => await createClient(
         1337,
         key,
         'http://localhost:8545',
         'ws://localhost:8545',
         log),
-      demo: await createClient(
+      demo: async () => await createClient(
         1337,
         key,
         'https://api.golembase.demo.golem-base.io',
         'wss://ws-api.golembase.demo.golem-base.io',
         log),
-      kaolin: await createClient(
+      kaolin: async () => await createClient(
         600606,
         key,
         'https://rpc.kaolin.holesky.golem-base.io',
         'wss://ws.rpc.kaolin.holesky.golem-base.io',
       ),
-    }.local
+    }.local()
 
     expect(client).to.exist
   })
@@ -260,7 +260,30 @@ describe("the arkiv client", () => {
     expect(result).to.exist
     log.debug(`Extend result: ${JSON.stringify(result, (_, v) => typeof v === 'bigint' ? v.toString() : v)}`)
     expect(await numOfEntitiesOwned(client)).to.eql(entitiesOwnedCount, "wrong number of entities owned")
-    expect(result.newExpirationBlock - result.oldExpirationBlock == numberOfBlocks)
+    expect(result.newExpirationBlock - result.oldExpirationBlock).to.eql(numberOfBlocks)
+  })
+
+  it("should be able to extend entities using expiresIn", async () => {
+    const numberOfSeconds = 499
+    callbackCanary = false
+    const [result] = await client.extendEntities(
+      [{
+        entityKey,
+        numberOfSeconds,
+      }],
+      {
+        txHashCallback: (txHash) => {
+          expect(txHash).to.exist
+          callbackCanary = true
+        }
+      }
+    )
+    expect(callbackCanary).to.eql(true)
+    expect(result).to.exist
+    log.debug(`Extend result: ${JSON.stringify(result, (_, v) => typeof v === 'bigint' ? v.toString() : v)}`)
+    expect(await numOfEntitiesOwned(client)).to.eql(entitiesOwnedCount, "wrong number of entities owned")
+    // Doesn't work unless geth is started with --dev.period 2
+    //expect(result.newExpirationBlock - result.oldExpirationBlock).to.eql(250)
   })
 
   it("should be able to delete entities", async () => {

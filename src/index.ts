@@ -229,7 +229,9 @@ export type ArkivCreate = {
   /** The binary data to store in the entity */
   readonly data: Uint8Array,
   /** Block-to-Live: number of blocks after which the entity expires */
-  readonly btl: number,
+  readonly btl?: number | undefined,
+  /** expiresIn: number of seconds after which the entity expires */
+  readonly expiresIn?: number | undefined,
   /** String-valued metadata annotations for querying and categorization */
   readonly stringAnnotations: StringAnnotation[]
   /** Numeric-valued metadata annotations for indexing and filtering */
@@ -266,7 +268,9 @@ export type ArkivUpdate = {
   /** The new binary data to store in the entity */
   readonly data: Uint8Array,
   /** New Block-to-Live value for the entity */
-  readonly btl: number,
+  readonly btl?: number | undefined,
+  /** expiresIn: number of seconds after which the entity expires */
+  readonly expiresIn?: number | undefined,
   /** New string-valued metadata annotations */
   readonly stringAnnotations: StringAnnotation[]
   /** New numeric-valued metadata annotations */
@@ -293,7 +297,9 @@ export type ArkivExtend = {
   /** The hexadecimal key of the entity to extend */
   readonly entityKey: Hex,
   /** Number of additional blocks to add to the entity's current expiration */
-  readonly numberOfBlocks: number,
+  readonly numberOfBlocks?: number | undefined,
+  /** expiresIn: number of additional seconds to add to the entity's current expiration */
+  readonly numberOfSeconds?: number | undefined,
 }
 /**
  * Comprehensive transaction specification for atomic Arkiv operations.
