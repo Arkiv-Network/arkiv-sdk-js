@@ -1,4 +1,5 @@
 import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem"
+import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { query } from "../../actions/public/query"
 import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
@@ -94,6 +95,12 @@ export type PublicArkivActions<
 	 */
 	query: (query: string) => Promise<Entity[]>
 
+	getBlockTiming: () => Promise<{
+		currentBlock: bigint
+		currentBlockTime: number
+		blockDuration: number
+	}>
+
 	subscribeEntityEvents: (
 		{
 			onError,
@@ -123,6 +130,7 @@ export function publicArkivActions<
 		getEntity: (key: Hex) => getEntity(client, key),
 		query: (rawQuery: string) => query(client, rawQuery),
 		buildQuery: () => new QueryBuilder(client),
+		getBlockTiming: () => getBlockTiming(client),
 		subscribeEntityEvents: (
 			{
 				onError,

@@ -3,7 +3,7 @@ import type { Hex, PublicArkivClient, WalletArkivClient } from "arkiv"
 import { createPublicClient, createWalletClient, http, toBytes, webSocket } from "arkiv"
 import { privateKeyToAccount } from "arkiv/accounts"
 import { eq } from "arkiv/query"
-import { jsonToPayload } from "arkiv/utils"
+import { ExpirationTime, jsonToPayload } from "arkiv/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils"
 
@@ -72,6 +72,22 @@ describe("Arkiv Integration Tests for public client", () => {
 			expect(blockNumber).toBeDefined()
 			expect(typeof blockNumber).toBe("bigint")
 			expect(blockNumber).toBeGreaterThanOrEqual(0n)
+		},
+	)
+
+	test.each(["http", "webSocket"] as const)(
+		"should get block timing using %s",
+		async (transport) => {
+			const client = transport === "http" ? publicClient : publicClientWS
+			const blockTiming = await client.getBlockTiming()
+			console.log("blockTiming", blockTiming)
+			expect(blockTiming).toBeDefined()
+			expect(blockTiming.currentBlock).toBeDefined()
+			expect(blockTiming.currentBlock).toBeGreaterThan(0n)
+			expect(blockTiming.currentBlockTime).toBeDefined()
+			expect(blockTiming.currentBlockTime).toBeGreaterThan(0)
+			expect(blockTiming.blockDuration).toBeDefined()
+			expect(blockTiming.blockDuration).toBeGreaterThan(0)
 		},
 	)
 
@@ -145,7 +161,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
 		// raw query
 		const rawQuery = await client.query(
-			`key = "value" && $owner = "${privateKeyToAccount(privateKey).address}"`,
+			`key = "value" && $owner = ${privateKeyToAccount(privateKey).address}`,
 		)
 		expect(rawQuery).toBeDefined()
 		expect(rawQuery.length).toBeGreaterThanOrEqual(1)
@@ -175,7 +191,7 @@ describe("Arkiv Integration Tests for public client", () => {
 					}),
 				),
 				annotations: [{ key: "testKey", value: "testValue" }],
-				expiresIn: 1000,
+				expiresIn: ExpirationTime.fromBlocks(1000),
 			})
 			console.log("result from createEntity", { entityKey, txHash })
 

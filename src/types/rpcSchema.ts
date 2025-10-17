@@ -21,6 +21,15 @@ export type ArkivRpcSchema = [
 			stringAnnotations: [{ key: string; value: string }]
 		}
 	},
+	{
+		Method: "arkiv_getBlockTiming"
+		Parameters?: []
+		ReturnType: {
+			current_block: bigint
+			current_block_time: number
+			duration: number
+		}
+	},
 ]
 
 export type PublicArkivRpcSchema = [...PublicRpcSchema, ...ArkivRpcSchema]

@@ -58,7 +58,7 @@ export async function processQuery(
 
 	let query = processPredicates(predicates)
 	if (ownedBy) {
-		query += ` && $owner="${ownedBy}"`
+		query += ` && $owner=${ownedBy}`
 	}
 	if (limit) {
 		query += ` limit=${limit}`
