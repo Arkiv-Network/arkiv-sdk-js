@@ -39,6 +39,8 @@ import {
   type EntityMetaData,
   type ArkivExtend,
   type AccountData,
+  resolveExpirationBlocks,
+  resolveExtensionBlocks,
 } from ".."
 import { SmartAccount } from 'viem/_types/account-abstraction/accounts/types';
 
@@ -409,7 +411,7 @@ async function mkWalletClient(
     const payload = [
       // Create
       (tx.creates || []).map(el => [
-        toHex(el.btl),
+        toHex(resolveExpirationBlocks(el)),
         toHex(el.data),
         el.stringAnnotations.map(formatAnnotation),
         el.numericAnnotations.map(formatAnnotation),
@@ -418,7 +420,7 @@ async function mkWalletClient(
       // Update
       (tx.updates || []).map(el => [
         el.entityKey,
-        toHex(el.btl),
+        toHex(resolveExpirationBlocks(el)),
         toHex(el.data),
         el.stringAnnotations.map(formatAnnotation),
         el.numericAnnotations.map(formatAnnotation),
@@ -430,7 +432,7 @@ async function mkWalletClient(
       // Extend
       (tx.extensions || []).map(el => [
         el.entityKey,
-        toHex(el.numberOfBlocks),
+        toHex(resolveExtensionBlocks(el)),
       ]),
     ]
     log.debug("Payload before RLP encoding:", JSON.stringify(payload, null, 2))
