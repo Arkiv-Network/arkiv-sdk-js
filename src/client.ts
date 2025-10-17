@@ -14,6 +14,7 @@ import {
   arkivABI,
 } from "."
 import {
+  AbiEventSignatureNotFoundError,
   decodeEventLog,
   Log,
   pad,
@@ -477,11 +478,19 @@ function parseTransactionLogs(
       paddedData = txlog.data
     }
     log.debug("padded data:", paddedData)
-    const parsed = decodeEventLog({
-      abi: arkivABI,
-      data: paddedData,
-      topics: txlog.topics
-    })
+    let parsed
+    try {
+      parsed = decodeEventLog({
+        abi: arkivABI,
+        data: paddedData,
+        topics: txlog.topics
+      })
+    } catch (error: unknown) {
+      if (error instanceof AbiEventSignatureNotFoundError) {
+        return receipts
+      }
+      throw error
+    }
     // TODO: Update these when we update them in op-geth
     switch (parsed.eventName) {
       case "GolemBaseStorageEntityCreated": {
