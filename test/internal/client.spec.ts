@@ -82,26 +82,26 @@ let expirationBlock: number
 describe("the internal golem-base client", () => {
   it("can be created", async () => {
     const key: AccountData = new Tagged("privatekey", getBytes(wallet.privateKey))
-    client = {
-      local: await internal.createClient(
+    client = await {
+      local: async () => await internal.createClient(
         1337,
         key,
         'http://localhost:8545',
         'ws://localhost:8545',
         log),
-      demo: await internal.createClient(
+      demo: async () => await internal.createClient(
         1337,
         key,
         'https://api.golembase.demo.golem-base.io',
         'wss://ws-api.golembase.demo.golem-base.io',
         log),
-      kaolin: await internal.createClient(
+      kaolin: async () => await internal.createClient(
         600606,
         key,
         'https://rpc.kaolin.holesky.golem-base.io',
         'wss://ws.rpc.kaolin.holesky.golem-base.io',
       ),
-    }.local
+    }.local()
 
     expect(client).to.exist
   })
@@ -224,13 +224,17 @@ describe("the internal golem-base client", () => {
 
   it("should be able to retrieve the entity metadata", async () => {
     const value = await client.httpClient.getEntityMetaData(entityKey)
-    expect(value).to.eql({
+    expect(value).to.deep.include({
       expiresAtBlock: expirationBlock,
       stringAnnotations: [{ key: "key", value: stringAnnotation }],
       numericAnnotations: [{ key: "ix", value: 2 }],
       // We get back a non-checksum-encoded address, so we convert back to all lower case here
-      owner: (await ownerAddress(client)).toLowerCase()
+      owner: (await ownerAddress(client)).toLowerCase(),
     })
+    expect(value).to.have.property("createdAtBlock")
+    expect(value).to.have.property("lastModifiedAtBlock")
+    expect(value).to.have.property("transactionIndex")
+    expect(value).to.have.property("operationIndex")
   })
 
   it("should be able to retrieve the entities that expire at a given block", async () => {

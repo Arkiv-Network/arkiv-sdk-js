@@ -14,6 +14,7 @@ import {
   arkivABI,
 } from "."
 import {
+  AbiEventSignatureNotFoundError,
   decodeEventLog,
   Log,
   pad,
@@ -68,7 +69,7 @@ export type ExtendEntityReceipt = {
 /**
  * Generic interface for Arkiv clients providing core functionality for interacting
  * with the Arkiv L2 network for decentralized data storage and management.
- * 
+ *
  * @template Internal - The type of the internal client implementation
  * @public
  */
@@ -102,35 +103,35 @@ interface GenericClient<Internal> {
    * @param address The address whose owned entities should be returned.
    * @returns A promise that resolves to an array of entity keys owned by the address.
    */
-   getEntitiesOfOwner(address: Hex): Promise<Hex[]>
+  getEntitiesOfOwner(address: Hex): Promise<Hex[]>
 
   /**
    * Returns the raw base64-encoded storage value associated with a given entity key.
    * @param key The entity key to fetch the data for.
    * @returns A Uint8Array containing the base64 encoded  value stored in the entity.
    */
-   getStorageValue(key: Hex): Promise<Uint8Array>
+  getStorageValue(key: Hex): Promise<Uint8Array>
 
   /**
    * Queries entities in Arkiv using annotations or metadata filters.
    * @param query A query string in the Arkiv filter syntax.
    * @returns A promise that resolves to an array of matching entity keys.
    */
-   queryEntities(query: string): Promise<{ entityKey: Hex, storageValue: Uint8Array }[]>
+  queryEntities(query: string): Promise<{ entityKey: Hex, storageValue: Uint8Array }[]>
 
   /**
    * Finds all entities that are scheduled to expire at a specific block.
    * @param blockNumber The block number to check against.
    * @returns A promise that resolves to an array of entity keys expiring at the given block.
    */
-   getEntitiesToExpireAtBlock(blockNumber: bigint): Promise<Hex[]>
+  getEntitiesToExpireAtBlock(blockNumber: bigint): Promise<Hex[]>
 
- /**
-   * Retrieves metadata for a given entity key.
-   * @param key The key to retrieve metadata for.
-   * @returns An EntityMetaData object with structured information about the entity.
-   */
-   getEntityMetaData(key: Hex): Promise<EntityMetaData>
+  /**
+    * Retrieves metadata for a given entity key.
+    * @param key The key to retrieve metadata for.
+    * @returns An EntityMetaData object with structured information about the entity.
+    */
+  getEntityMetaData(key: Hex): Promise<EntityMetaData>
 
   /**
    * Install callbacks that will be invoked for every Arkiv transaction
@@ -162,10 +163,10 @@ interface GenericClient<Internal> {
 /**
  * Read-only client interface for Arkiv providing access to query operations
  * without the ability to modify data on the blockchain.
- * 
+ *
  * Use this client when you only need to read data from Arkiv and don't require
  * transaction capabilities.
- * 
+ *
  * @public
  * @example
  * ```typescript
@@ -179,17 +180,17 @@ export interface ArkivROClient extends GenericClient<internal.ArkivROClient> { }
 /**
  * The ArkivClient interface provides both read and write operations
  * for interacting with the Arkiv L2 network.
- * 
+ *
  * This client can perform CRUD operations on entities, manage their BTL (Block-to-Live),
  * and handle transactions on the blockchain.
- * 
+ *
  * This interface extends the ArkivROClient interface, inheriting all its read-only methods.
  *
  * @public
  * @example
  * ```typescript
  * const client = await createClient(chainId, accountData, rpcUrl, wsUrl);
- * 
+ *
  * // Create entities with annotations
  * const receipts = await client.createEntities([
  *   {
@@ -204,10 +205,10 @@ export interface ArkivROClient extends GenericClient<internal.ArkivROClient> { }
 export interface ArkivClient extends GenericClient<internal.ArkivClient> {
   /**
    * Get the Ethereum address of the owner of the Ethereum account used by this client
-   * 
+   *
    * @returns A promise that resolves to the address as a Hex string.
    * @throws Will throw an error if the client is not properly configured with account data
-   * 
+   *
    * @example
    * ```typescript
    * const client = await createClient(chainId, accountData, rpcUrl, wsUrl);
@@ -221,9 +222,9 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
   /**
    * Send a combined transaction to Arkiv that can include multiple operations:
    * create, update, delete, and extend operations in a single atomic transaction.
-   * 
+   *
    * @param creates - Array of create operations to include in this transaction
-   * @param updates - Array of update operations to include in this transaction  
+   * @param updates - Array of update operations to include in this transaction
    * @param deletes - Array of entity keys to delete in this transaction
    * @param extensions - Array of BTL extension operations to include in this transaction
    * @param args - Optional transaction configuration
@@ -231,10 +232,10 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
    * @param args.gas - Manual gas limit override for the transaction
    * @param args.maxFeePerGas - Maximum fee per gas unit (EIP-1559)
    * @param args.maxPriorityFeePerGas - Maximum priority fee per gas unit (EIP-1559)
-   * 
+   *
    * @returns A promise that resolves to an object with arrays of receipts for each type of operation.
    * @throws Will throw an error if the transaction fails or is reverted
-   * 
+   *
    * @example
    * ```typescript
    * const result = await client.sendTransaction(
@@ -276,7 +277,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
 
   /**
    * Create one or more new entities in Arkiv with specified data and annotations.
-   * 
+   *
    * Each entity is stored with a configurable BTL (Block-to-Live) that determines when
    * the entity will automatically expire and be removed from the network.
    *
@@ -289,7 +290,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
    *
    * @returns Promise resolving to an array of creation receipts, each including the new entity key and its expiration block.
    * @throws Will throw an error if the transaction fails or any entity creation fails
-   * 
+   *
    * @example
    * ```typescript
    * const receipts = await client.createEntities([
@@ -305,7 +306,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
    *     ]
    *   }
    * ]);
-   * 
+   *
    * console.log('Created entity:', receipts[0].entityKey);
    * console.log('Expires at block:', receipts[0].expirationBlock);
    * ```
@@ -322,7 +323,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
 
   /**
    * Update one or more existing entities in Arkiv with new data and annotations.
-   * 
+   *
    * Updates replace the entire entity content, including data and annotations.
    * The BTL can also be modified to extend or reduce the entity's lifetime.
    *
@@ -335,7 +336,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
    *
    * @returns A promise that resolves to an array of `UpdateEntityReceipt` objects, each including the entity key and its new expiration block.
    * @throws Will throw an error if the transaction fails, entity doesn't exist, or caller lacks permission
-   * 
+   *
    * @example
    * ```typescript
    * const receipts = await client.updateEntities([
@@ -361,7 +362,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
 
   /**
    * Deletes one or more entities from Arkiv permanently.
-   * 
+   *
    * Only the entity owner can delete their entities. Deleted entities cannot be recovered
    * and their storage is immediately freed on the network.
    *
@@ -374,14 +375,14 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
    *
    * @returns A promise that resolves to an array of `DeleteEntityReceipt` objects (usually just the deleted keys).
    * @throws Will throw an error if the transaction fails, entity doesn't exist, or caller lacks permission
-   * 
+   *
    * @example
    * ```typescript
    * const receipts = await client.deleteEntities([
    *   "0x1234567890abcdef...",
    *   "0xfedcba0987654321..."
    * ]);
-   * 
+   *
    * receipts.forEach(receipt => {
    *   console.log('Deleted entity:', receipt.entityKey);
    * });
@@ -399,7 +400,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
 
   /**
    * Extends the BTL (Block-to-Live) of one or more entities in Arkiv.
-   * 
+   *
    * This operation increases the lifetime of entities by adding additional blocks
    * to their expiration time, preventing them from being automatically deleted.
    *
@@ -412,7 +413,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
    *
    * @returns A promise resolving to n array of `ExtendEntityReceipt` objects, each showing the old and new expiration blocks.
    * @throws Will throw an error if the transaction fails, entity doesn't exist, or caller lacks permission
-   * 
+   *
    * @example
    * ```typescript
    * const receipts = await client.extendEntities([
@@ -421,7 +422,7 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
    *     numberOfBlocks: 500 // Add 500 more blocks to the entity's lifetime
    *   }
    * ]);
-   * 
+   *
    * receipts.forEach(receipt => {
    *   console.log(`Entity ${receipt.entityKey}:`);
    *   console.log(`  Old expiration: block ${receipt.oldExpirationBlock}`);
@@ -443,14 +444,14 @@ export interface ArkivClient extends GenericClient<internal.ArkivClient> {
 
 /**
  * Parse transaction logs from Arkiv operations to extract receipts for different entity operations.
- * 
+ *
  * This internal function processes blockchain event logs and categorizes them into the appropriate
  * operation types (create, update, delete, extend) based on the event signatures.
- * 
+ *
  * @param log - Logger instance for debugging transaction log parsing
  * @param logs - Array of blockchain transaction logs to parse
  * @returns Object containing arrays of receipts categorized by operation type
- * 
+ *
  * @internal
  */
 function parseTransactionLogs(
@@ -477,11 +478,19 @@ function parseTransactionLogs(
       paddedData = txlog.data
     }
     log.debug("padded data:", paddedData)
-    const parsed = decodeEventLog({
-      abi: arkivABI,
-      data: paddedData,
-      topics: txlog.topics
-    })
+    let parsed
+    try {
+      parsed = decodeEventLog({
+        abi: arkivABI,
+        data: paddedData,
+        topics: txlog.topics
+      })
+    } catch (error: unknown) {
+      if (error instanceof AbiEventSignatureNotFoundError) {
+        return receipts
+      }
+      throw error
+    }
     // TODO: Update these when we update them in op-geth
     switch (parsed.eventName) {
       case "GolemBaseStorageEntityCreated": {
@@ -535,16 +544,16 @@ function parseTransactionLogs(
 /**
  * Create a generic client wrapper that provides common functionality for both
  * read-only and full Arkiv clients.
- * 
+ *
  * This factory function wraps the internal client with high-level methods that handle
  * common operations like querying entities, watching blockchain events, and managing
  * entity metadata.
- * 
+ *
  * @template Internal - Type of the internal client (read-only or full client)
  * @param client - The internal client instance to wrap
  * @param logger - Logger instance for debugging and monitoring operations
  * @returns A generic client with common Arkiv functionality
- * 
+ *
  * @internal
  */
 function createGenericClient<Internal extends internal.ArkivROClient>(
@@ -670,7 +679,7 @@ export function createROClient(
 }
 
 /**
- * Creates a read-write client for a arkiv op-geth node. 
+ * Creates a read-write client for a arkiv op-geth node.
  * This client supports all available operations, including writing
  * new entities and fetching metadata.
  * @param chainId The numeric chain ID of the Ethereum-compatible network you're connecting to.
