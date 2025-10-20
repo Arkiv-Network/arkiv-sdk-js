@@ -1,53 +1,53 @@
 {
-  "name": "arkiv-sdk",
-  "version": "0.1.18",
-  "description": "",
-  "homepage": "https://Arkiv-Network/arkiv-sdk-js/",
-  "repository": {
-    "type": "git",
-    "url": "git+https://Arkiv-Network/arkiv-sdk-js"
-  },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "./dist"
-  ],
-  "exports": {
-    ".": {
-      "require": "./dist/index.js",
-      "import": "./dist/index.js"
-    }
-  },
-  "keywords": [],
-  "author": "",
-  "license": "GPL-3.0-only",
-  "packageManager": "pnpm@10.5.2",
-  "dependencies": {
-    "@types/node": "^22.18.7",
-    "ethers": "^6.15.0",
-    "tslog": "^4.10.2",
-    "viem": "^2.37.9"
-  },
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^28.0.6",
-    "@rollup/plugin-node-resolve": "^16.0.1",
-    "@rollup/plugin-terser": "^0.4.4",
-    "@rollup/plugin-typescript": "^12.1.4",
-    "@types/chai": "^5.2.2",
-    "@types/mocha": "^10.0.10",
-    "chai": "^5.3.3",
-    "glob": "^11.0.3",
-    "mocha": "^11.7.3",
-    "rollup": "^4.52.3",
-    "rollup-plugin-polyfill-node": "^0.13.0",
-    "ts-mocha": "^11.1.0",
-    "tslib": "^2.8.1",
-    "typedoc": "^0.28.13",
-    "xdg-portable": "^10.6.0"
-  },
-  "scripts": {
-    "clean": "rm -rf ./dist",
-    "build": "rm -rf ./dist && rollup -c && ./node_modules/typedoc/bin/typedoc ./src/index.ts",
-    "test": "ts-mocha --recursive --extension .spec.ts ./test"
-  }
+	"name": "arkiv-sdk",
+	"version": "0.1.19",
+	"description": "",
+	"homepage": "https://Arkiv-Network/arkiv-sdk/",
+	"repository": {
+		"type": "git",
+		"url": "git+https://Arkiv-Network/arkiv-sdk"
+	},
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"./dist"
+	],
+	"exports": {
+		".": {
+			"require": "./dist/index.js",
+			"import": "./dist/index.js"
+		}
+	},
+	"keywords": [],
+	"author": "",
+	"license": "GPL-3.0-only",
+	"packageManager": "pnpm@10.5.2",
+	"dependencies": {
+		"@types/node": "^22.18.7",
+		"ethers": "^6.15.0",
+		"tslog": "^4.10.2",
+		"viem": "^2.37.9"
+	},
+	"devDependencies": {
+		"@rollup/plugin-commonjs": "^28.0.6",
+		"@rollup/plugin-node-resolve": "^16.0.1",
+		"@rollup/plugin-terser": "^0.4.4",
+		"@rollup/plugin-typescript": "^12.1.4",
+		"@types/chai": "^5.2.2",
+		"@types/mocha": "^10.0.10",
+		"chai": "^5.3.3",
+		"glob": "^11.0.3",
+		"mocha": "^11.7.3",
+		"rollup": "^4.52.3",
+		"rollup-plugin-polyfill-node": "^0.13.0",
+		"ts-mocha": "^11.1.0",
+		"tslib": "^2.8.1",
+		"typedoc": "^0.28.13",
+		"xdg-portable": "^10.6.0"
+	},
+	"scripts": {
+		"clean": "rm -rf ./dist",
+		"build": "rm -rf ./dist && rollup -c && ./node_modules/typedoc/bin/typedoc ./src/index.ts",
+		"test": "ts-mocha --recursive --extension .spec.ts ./test"
+	}
 }

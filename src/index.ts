@@ -9,20 +9,14 @@
  * @see {@link https://docs.arkiv.network/} - Official Arkiv Documentation
  */
 
-import {
-  getAbiItem,
-  parseAbi,
-  toEventHash,
-} from "viem"
-
-// Export all high-level client functionality
-export * from "./client"
-
-// Export internal implementation for advanced use cases
-export * as internal from "./internal/client"
+import { getAbiItem, parseAbi, toEventHash } from "viem";
 
 // Re-export useful viem utilities
-export { formatEther } from "viem"
+export { formatEther } from "viem";
+// Export all high-level client functionality
+export * from "./client";
+// Export internal implementation for advanced use cases
+export * as internal from "./internal/client";
 
 /**
  * The Application Binary Interface (ABI) for Arkiv storage contract events.
@@ -34,45 +28,48 @@ export { formatEther } from "viem"
  * @public
  */
 export const arkivABI = parseAbi([
-  // TODO: Update these when we update them in op-geth
-  "event GolemBaseStorageEntityCreated(uint256 indexed entityKey, uint256 expirationBlock)",
-  "event GolemBaseStorageEntityUpdated(uint256 indexed entityKey, uint256 expirationBlock)",
-  "event GolemBaseStorageEntityDeleted(uint256 indexed entityKey)",
-  "event GolemBaseStorageEntityBTLExtended(uint256 indexed entityKey, uint256 oldExpirationBlock, uint256 newExpirationBlock)",
-])
+	// TODO: Update these when we update them in op-geth
+	"event GolemBaseStorageEntityCreated(uint256 indexed entityKey, uint256 expirationBlock)",
+	"event GolemBaseStorageEntityUpdated(uint256 indexed entityKey, uint256 expirationBlock)",
+	"event GolemBaseStorageEntityDeleted(uint256 indexed entityKey)",
+	"event GolemBaseStorageEntityBTLExtended(uint256 indexed entityKey, uint256 oldExpirationBlock, uint256 newExpirationBlock)",
+]);
 
 /**
  * Pre-computed event signature hash for ArkivStorageEntityCreated events.
  * Used for efficient event filtering and monitoring in blockchain queries.
  * @public
  */
-export const arkivStorageEntityCreatedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityCreated" }))
+export const arkivStorageEntityCreatedSignature = toEventHash(
+	getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityCreated" }),
+);
 
 /**
  * Pre-computed event signature hash for ArkivStorageEntityUpdated events.
  * Used for efficient event filtering and monitoring in blockchain queries.
  * @public
  */
-export const arkivStorageEntityUpdatedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityUpdated" }))
+export const arkivStorageEntityUpdatedSignature = toEventHash(
+	getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityUpdated" }),
+);
 
 /**
  * Pre-computed event signature hash for ArkivStorageEntityDeleted events.
  * Used for efficient event filtering and monitoring in blockchain queries.
  * @public
  */
-export const arkivStorageEntityDeletedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityDeleted" }))
+export const arkivStorageEntityDeletedSignature = toEventHash(
+	getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityDeleted" }),
+);
 
 /**
  * Pre-computed event signature hash for ArkivStorageEntityBTLExtended events.
  * Used for efficient event filtering and monitoring in blockchain queries.
  * @public
  */
-export const arkivStorageEntityBTLExtendedSignature =
-  toEventHash(getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityBTLExtended" }))
-
+export const arkivStorageEntityBTLExtendedSignature = toEventHash(
+	getAbiItem({ abi: arkivABI, name: "GolemBaseStorageEntityBTLExtended" }),
+);
 
 /**
  * Generic annotation class for attaching metadata to Arkiv entities.
@@ -96,34 +93,34 @@ export const arkivStorageEntityBTLExtendedSignature =
  * ```
  */
 export class Annotation<V> {
-  /** The annotation key identifier */
-  readonly key: string
-  /** The annotation value */
-  readonly value: V
+	/** The annotation key identifier */
+	readonly key: string;
+	/** The annotation value */
+	readonly value: V;
 
-  /**
-   * Create a new annotation with the specified key and value.
-   *
-   * @param key - The string identifier for this annotation
-   * @param value - The value to associate with the key
-   */
-  constructor(key: string, value: V) {
-    this.key = key
-    this.value = value
-  }
+	/**
+	 * Create a new annotation with the specified key and value.
+	 *
+	 * @param key - The string identifier for this annotation
+	 * @param value - The value to associate with the key
+	 */
+	constructor(key: string, value: V) {
+		this.key = key;
+		this.value = value;
+	}
 }
 
 /**
  * Type alias for string-valued annotations, commonly used for categorization and tagging.
  * @public
  */
-export type StringAnnotation = Annotation<string>
+export type StringAnnotation = Annotation<string>;
 
 /**
  * Type alias for numeric-valued annotations, commonly used for scoring and indexing.
  * @public
  */
-export type NumericAnnotation = Annotation<number>
+export type NumericAnnotation = Annotation<number>;
 
 /**
  * Generic tagged union helper class for type-safe discrimination.
@@ -136,21 +133,21 @@ export type NumericAnnotation = Annotation<number>
  * @public
  */
 export class Tagged<Tag, Data> {
-  /** The discriminant tag for this tagged value */
-  readonly tag: Tag
-  /** The associated data payload */
-  readonly data: Data
+	/** The discriminant tag for this tagged value */
+	readonly tag: Tag;
+	/** The associated data payload */
+	readonly data: Data;
 
-  /**
-   * Create a new tagged value with the specified tag and data.
-   *
-   * @param tag - The discriminant tag
-   * @param data - The associated data payload
-   */
-  constructor(tag: Tag, data: Data) {
-    this.tag = tag
-    this.data = data
-  }
+	/**
+	 * Create a new tagged value with the specified tag and data.
+	 *
+	 * @param tag - The discriminant tag
+	 * @param data - The associated data payload
+	 */
+	constructor(tag: Tag, data: Data) {
+		this.tag = tag;
+		this.data = data;
+	}
 }
 
 /**
@@ -181,8 +178,8 @@ export class Tagged<Tag, Data> {
  * ```
  */
 export type AccountData =
-  Tagged<"privatekey", Uint8Array> |
-  Tagged<"ethereumprovider", { request(...args: any): Promise<any> }>
+	| Tagged<"privatekey", Uint8Array>
+	| Tagged<"ethereumprovider", { request(...args: any): Promise<any> }>;
 
 /**
  * Type representing hexadecimal-encoded values used throughout the Arkiv protocol.
@@ -198,7 +195,7 @@ export type AccountData =
  * const address: Hex = "0x742d35Cc9e1e3FbD000de0e98a3b8b8c0d3b2F8e";
  * ```
  */
-export type Hex = `0x${string}`
+export type Hex = `0x${string}`;
 
 /**
  * Builder class for creating expiration time values with convenient conversion methods.
@@ -227,78 +224,78 @@ export type Hex = `0x${string}`
  * ```
  */
 export class ExpirationTime {
-  /** Number of blocks representing this expiration time */
-  readonly blocks: number;
+	/** Number of blocks representing this expiration time */
+	readonly blocks: number;
 
-  /**
-   * Block time in seconds (Arkiv produces blocks every 2 seconds)
-   * TODO: replace with new RPC method
-   */
-  private static readonly BLOCK_TIME_SECONDS = 2;
+	/**
+	 * Block time in seconds (Arkiv produces blocks every 2 seconds)
+	 * TODO: replace with new RPC method
+	 */
+	private static readonly BLOCK_TIME_SECONDS = 2;
 
-  private constructor(blocks: number) {
-    if (blocks <= 0) {
-      throw new Error("Expiration time must be positive");
-    }
-    this.blocks = Math.floor(blocks);
-  }
+	private constructor(blocks: number) {
+		if (blocks <= 0) {
+			throw new Error("Expiration time must be positive");
+		}
+		this.blocks = Math.floor(blocks);
+	}
 
-  /**
-   * Create expiration time from seconds
-   * @param seconds - Duration in seconds
-   * @returns ExpirationTime instance
-   */
-  static fromSeconds(seconds: number): ExpirationTime {
-    return new ExpirationTime(seconds / ExpirationTime.BLOCK_TIME_SECONDS);
-  }
+	/**
+	 * Create expiration time from seconds
+	 * @param seconds - Duration in seconds
+	 * @returns ExpirationTime instance
+	 */
+	static fromSeconds(seconds: number): ExpirationTime {
+		return new ExpirationTime(seconds / ExpirationTime.BLOCK_TIME_SECONDS);
+	}
 
-  /**
-   * Create expiration time from block count
-   * @param blocks - Number of blocks
-   * @returns ExpirationTime instance
-   */
-  static fromBlocks(blocks: number): ExpirationTime {
-    return new ExpirationTime(blocks);
-  }
+	/**
+	 * Create expiration time from block count
+	 * @param blocks - Number of blocks
+	 * @returns ExpirationTime instance
+	 */
+	static fromBlocks(blocks: number): ExpirationTime {
+		return new ExpirationTime(blocks);
+	}
 
-  /**
-   * Create expiration time from hours
-   * @param hours - Duration in hours
-   * @returns ExpirationTime instance
-   */
-  static fromHours(hours: number): ExpirationTime {
-    return ExpirationTime.fromSeconds(hours * 3600);
-  }
+	/**
+	 * Create expiration time from hours
+	 * @param hours - Duration in hours
+	 * @returns ExpirationTime instance
+	 */
+	static fromHours(hours: number): ExpirationTime {
+		return ExpirationTime.fromSeconds(hours * 3600);
+	}
 
-  /**
-   * Create expiration time from days
-   * @param days - Duration in days
-   * @returns ExpirationTime instance
-   */
-  static fromDays(days: number): ExpirationTime {
-    return ExpirationTime.fromSeconds(days * 86400);
-  }
+	/**
+	 * Create expiration time from days
+	 * @param days - Duration in days
+	 * @returns ExpirationTime instance
+	 */
+	static fromDays(days: number): ExpirationTime {
+		return ExpirationTime.fromSeconds(days * 86400);
+	}
 
-  /**
-   * Convert expiration time to seconds
-   * @returns Duration in seconds
-   */
-  toSeconds(): number {
-    return this.blocks * ExpirationTime.BLOCK_TIME_SECONDS;
-  }
+	/**
+	 * Convert expiration time to seconds
+	 * @returns Duration in seconds
+	 */
+	toSeconds(): number {
+		return this.blocks * ExpirationTime.BLOCK_TIME_SECONDS;
+	}
 }
 
 /**
  * Internal helper to resolve expiration time from either new API or legacy BTL.
- * Priority: expires_in > btl
+ * Priority: expiresIn > BTL
  * @internal
  */
 export function resolveExpirationBlocks(options: {
-  expires_in?: number | ExpirationTime;
-  btl?: number;
+	expiresIn?: number | ExpirationTime;
+	btl?: number;
 }): number {
-  const { expires_in, btl } = options;
-  return getBTL(expires_in, btl)
+	const { expiresIn, btl } = options;
+	return getBTL(expiresIn, btl);
 }
 
 /**
@@ -307,35 +304,38 @@ export function resolveExpirationBlocks(options: {
  * @internal
  */
 export function resolveExtensionBlocks(options: {
-  duration?: number | ExpirationTime;
-  numberOfBlocks?: number;
+	duration?: number | ExpirationTime;
+	numberOfBlocks?: number;
 }): number {
-  const { duration, numberOfBlocks } = options;
-  return getBTL(duration, numberOfBlocks)
+	const { duration, numberOfBlocks } = options;
+	return getBTL(duration, numberOfBlocks);
 }
 
-export function getBTL(duration: number | ExpirationTime | undefined, numberOfBlocks: number | undefined) {
-  // Priority: duration takes precedence
-  if (duration !== undefined) {
-    // If it's a number, treat it as seconds and convert to blocks
-    if (typeof duration === 'number') {
-      return ExpirationTime.fromSeconds(duration).blocks;
-    }
-    // Otherwise it's an ExpirationTime object
-    return duration.blocks;
-  }
+export function getBTL(
+	duration: number | ExpirationTime | undefined,
+	numberOfBlocks: number | undefined,
+) {
+	// Priority: duration takes precedence
+	if (duration !== undefined) {
+		// If it's a number, treat it as seconds and convert to blocks
+		if (typeof duration === "number") {
+			return ExpirationTime.fromSeconds(duration).blocks;
+		}
+		// Otherwise it's an ExpirationTime object
+		return duration.blocks;
+	}
 
-  if (numberOfBlocks !== undefined) {
-    // Warn about deprecated numberOfBlocks
-    console.warn(
-      "⚠️  numberOfBlocks is deprecated and will be removed in a future version. " +
-      "Please use 'duration' instead. " +
-      "Example: duration: 86400 (seconds) or duration: ExpirationTime.fromDays(1)"
-    );
-    return numberOfBlocks;
-  }
+	if (numberOfBlocks !== undefined) {
+		// Warn about deprecated numberOfBlocks
+		console.warn(
+			"⚠️  numberOfBlocks is deprecated and will be removed in a future version. " +
+				"Please use 'duration' instead. " +
+				"Example: duration: 86400 (seconds) or duration: ExpirationTime.fromDays(1)",
+		);
+		return numberOfBlocks;
+	}
 
-  throw new Error("Either 'duration' or 'numberOfBlocks' must be specified");
+	throw new Error("Either 'duration' or 'numberOfBlocks' must be specified");
 }
 
 /**
@@ -348,11 +348,11 @@ export function getBTL(duration: number | ExpirationTime | undefined, numberOfBl
  * @public
  *
  * @example
- * Using the new expires_in API with seconds (recommended):
+ * Using the new expiresIn API with seconds (recommended):
  * ```typescript
  * const createSpec: ArkivCreate = {
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Hello Arkiv" })),
- *   expires_in: 86400, // Expires in 24 hours (86400 seconds)
+ *   expiresIn: 86400, // Expires in 24 hours (86400 seconds)
  *   stringAnnotations: [
  *     new Annotation("type", "message"),
  *     new Annotation("category", "greeting")
@@ -369,7 +369,7 @@ export function getBTL(duration: number | ExpirationTime | undefined, numberOfBl
  * ```typescript
  * const createSpec: ArkivCreate = {
  *   data: new TextEncoder().encode("Data"),
- *   expires_in: ExpirationTime.fromHours(24), // More readable
+ *   expiresIn: ExpirationTime.fromHours(24), // More readable
  *   stringAnnotations: [],
  *   numericAnnotations: []
  * };
@@ -380,30 +380,30 @@ export function getBTL(duration: number | ExpirationTime | undefined, numberOfBl
  * ```typescript
  * const createSpec: ArkivCreate = {
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Hello Arkiv" })),
- *   btl: 1000, // Deprecated: use expires_in instead
+ *   btl: 1000, // Deprecated: use expiresIn instead
  *   stringAnnotations: [],
  *   numericAnnotations: []
  * };
  * ```
  */
 export type ArkivCreate = {
-  /** The binary data to store in the entity */
-  readonly data: Uint8Array,
-  /**
-   * @deprecated Use `expires_in` instead. BTL will be removed in a future version.
-   * Block-to-Live: number of blocks after which the entity expires
-   */
-  readonly btl?: number,
-  /**
-   * Expiration time for the entity in seconds, or ExpirationTime object (preferred over btl).
-   * When using number, it represents duration in seconds (not blocks).
-   */
-  readonly expires_in?: number | ExpirationTime,
-  /** String-valued metadata annotations for querying and categorization */
-  readonly stringAnnotations: StringAnnotation[]
-  /** Numeric-valued metadata annotations for indexing and filtering */
-  readonly numericAnnotations: NumericAnnotation[],
-}
+	/** The binary data to store in the entity */
+	readonly data: Uint8Array;
+	/**
+	 * @deprecated Use `expiresIn` instead. BTL will be removed in a future version.
+	 * Block-to-Live: number of blocks after which the entity expires
+	 */
+	readonly btl?: number;
+	/**
+	 * Expiration time for the entity in seconds, or ExpirationTime object (preferred over btl).
+	 * When using number, it represents duration in seconds (not blocks).
+	 */
+	readonly expiresIn?: number | ExpirationTime;
+	/** String-valued metadata annotations for querying and categorization */
+	readonly stringAnnotations: StringAnnotation[];
+	/** Numeric-valued metadata annotations for indexing and filtering */
+	readonly numericAnnotations: NumericAnnotation[];
+};
 /**
  * Specification for updating existing entities in Arkiv.
  *
@@ -414,12 +414,12 @@ export type ArkivCreate = {
  * @public
  *
  * @example
- * Using the new expires_in API (recommended):
+ * Using the new expiresIn API (recommended):
  * ```typescript
  * const updateSpec: ArkivUpdate = {
  *   entityKey: "0x1234567890abcdef12345678",
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Updated content" })),
- *   expires_in: ExpirationTime.fromDays(7),
+ *   expiresIn: ExpirationTime.fromDays(7),
  *   stringAnnotations: [
  *     new Annotation("status", "updated"),
  *     new Annotation("version", "2.0")
@@ -436,32 +436,32 @@ export type ArkivCreate = {
  * const updateSpec: ArkivUpdate = {
  *   entityKey: "0x1234567890abcdef12345678",
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Updated content" })),
- *   btl: 2000, // Deprecated: use expires_in instead
+ *   btl: 2000, // Deprecated: use expiresIn instead
  *   stringAnnotations: [],
  *   numericAnnotations: []
  * };
  * ```
  */
 export type ArkivUpdate = {
-  /** The hexadecimal key of the entity to update */
-  readonly entityKey: Hex,
-  /** The new binary data to store in the entity */
-  readonly data: Uint8Array,
-  /**
-   * @deprecated Use `expires_in` instead. BTL will be removed in a future version.
-   * New Block-to-Live value for the entity
-   */
-  readonly btl?: number,
-  /**
-   * New expiration time for the entity in seconds, or ExpirationTime object (preferred over btl).
-   * When using number, it represents duration in seconds (not blocks).
-   */
-  readonly expires_in?: number | ExpirationTime,
-  /** New string-valued metadata annotations */
-  readonly stringAnnotations: StringAnnotation[]
-  /** New numeric-valued metadata annotations */
-  readonly numericAnnotations: NumericAnnotation[],
-}
+	/** The hexadecimal key of the entity to update */
+	readonly entityKey: Hex;
+	/** The new binary data to store in the entity */
+	readonly data: Uint8Array;
+	/**
+	 * @deprecated Use `expiresIn` instead. BTL will be removed in a future version.
+	 * New Block-to-Live value for the entity
+	 */
+	readonly btl?: number;
+	/**
+	 * New expiration time for the entity in seconds, or ExpirationTime object (preferred over BTL).
+	 * When using number, it represents duration in seconds (not blocks).
+	 */
+	readonly expiresIn?: number | ExpirationTime;
+	/** New string-valued metadata annotations */
+	readonly stringAnnotations: StringAnnotation[];
+	/** New numeric-valued metadata annotations */
+	readonly numericAnnotations: NumericAnnotation[];
+};
 /**
  * Specification for extending the lifetime of existing entities.
  *
@@ -490,19 +490,19 @@ export type ArkivUpdate = {
  * ```
  */
 export type ArkivExtend = {
-  /** The hexadecimal key of the entity to extend */
-  readonly entityKey: Hex,
-  /**
-   * @deprecated Use `duration` instead. numberOfBlocks will be removed in a future version.
-   * Number of additional blocks to add to the entity's current expiration
-   */
-  readonly numberOfBlocks?: number,
-  /**
-   * Duration to extend the entity's lifetime in seconds, or ExpirationTime object (preferred over numberOfBlocks).
-   * When using number, it represents duration in seconds (not blocks).
-   */
-  readonly duration?: number | ExpirationTime,
-}
+	/** The hexadecimal key of the entity to extend */
+	readonly entityKey: Hex;
+	/**
+	 * @deprecated Use `duration` instead. numberOfBlocks will be removed in a future version.
+	 * Number of additional blocks to add to the entity's current expiration
+	 */
+	readonly numberOfBlocks?: number;
+	/**
+	 * Duration to extend the entity's lifetime in seconds, or ExpirationTime object (preferred over numberOfBlocks).
+	 * When using number, it represents duration in seconds (not blocks).
+	 */
+	readonly duration?: number | ExpirationTime;
+};
 /**
  * Comprehensive transaction specification for atomic Arkiv operations.
  *
@@ -537,15 +537,15 @@ export type ArkivExtend = {
  * ```
  */
 export type ArkivTransaction = {
-  /** Array of entity creation specifications */
-  readonly creates?: ArkivCreate[],
-  /** Array of entity update specifications */
-  readonly updates?: ArkivUpdate[],
-  /** Array of entity keys to delete */
-  readonly deletes?: Hex[],
-  /** Array of BTL extension specifications */
-  readonly extensions?: ArkivExtend[],
-}
+	/** Array of entity creation specifications */
+	readonly creates?: ArkivCreate[];
+	/** Array of entity update specifications */
+	readonly updates?: ArkivUpdate[];
+	/** Array of entity keys to delete */
+	readonly deletes?: Hex[];
+	/** Array of BTL extension specifications */
+	readonly extensions?: ArkivExtend[];
+};
 
 /**
  * Complete metadata information for an entity stored in Arkiv.
@@ -571,14 +571,14 @@ export type ArkivTransaction = {
  * ```
  */
 export type EntityMetaData = {
-  /** The block number at which this entity will expire and be automatically deleted */
-  readonly expiresAtBlock: bigint,
-  /** The base64-encoded data payload stored in the entity */
-  readonly payload: string,
-  /** String-valued metadata annotations attached to the entity */
-  readonly stringAnnotations: StringAnnotation[],
-  /** Numeric-valued metadata annotations attached to the entity */
-  readonly numericAnnotations: NumericAnnotation[],
-  /** The Ethereum address of the entity owner */
-  readonly owner: Hex,
-}
+	/** The block number at which this entity will expire and be automatically deleted */
+	readonly expiresAtBlock: bigint;
+	/** The base64-encoded data payload stored in the entity */
+	readonly payload: string;
+	/** String-valued metadata annotations attached to the entity */
+	readonly stringAnnotations: StringAnnotation[];
+	/** Numeric-valued metadata annotations attached to the entity */
+	readonly numericAnnotations: NumericAnnotation[];
+	/** The Ethereum address of the entity owner */
+	readonly owner: Hex;
+};
