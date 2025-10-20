@@ -1,9 +1,9 @@
 /**
  * @fileoverview Arkiv TypeScript SDK - Main entry point for interacting with the Arkiv L2 network.
- * 
+ *
  * This module provides comprehensive functionality for decentralized data storage and management
  * on Arkiv, including entity CRUD operations, real-time event monitoring, and blockchain interactions.
- * 
+ *
  * @author Arkiv Team
  * @version 1.0.0
  * @see {@link https://docs.arkiv.network/} - Official Arkiv Documentation
@@ -26,11 +26,11 @@ export { formatEther } from "viem"
 
 /**
  * The Application Binary Interface (ABI) for Arkiv storage contract events.
- * 
+ *
  * This ABI defines the event signatures emitted by the Arkiv storage contract
  * for all entity lifecycle operations. These events are used to track entity creation,
  * updates, deletions, and BTL extensions on the blockchain.
- * 
+ *
  * @public
  */
 export const arkivABI = parseAbi([
@@ -76,20 +76,20 @@ export const arkivStorageEntityBTLExtendedSignature =
 
 /**
  * Generic annotation class for attaching metadata to Arkiv entities.
- * 
+ *
  * Annotations provide a key-value mechanism for adding searchable metadata
  * to entities, enabling efficient querying and categorization of stored data.
  * They are essential for building database-like functionality on top of Arkiv.
- * 
+ *
  * @template V - The type of the annotation value (string, number, etc.)
  * @public
- * 
+ *
  * @example
  * ```typescript
  * // String annotations for categorization
  * const typeAnnotation = new Annotation("type", "user-profile");
  * const statusAnnotation = new Annotation("status", "active");
- * 
+ *
  * // Numeric annotations for indexing and filtering
  * const priorityAnnotation = new Annotation("priority", 1);
  * const timestampAnnotation = new Annotation("created_at", Date.now());
@@ -103,7 +103,7 @@ export class Annotation<V> {
 
   /**
    * Create a new annotation with the specified key and value.
-   * 
+   *
    * @param key - The string identifier for this annotation
    * @param value - The value to associate with the key
    */
@@ -127,10 +127,10 @@ export type NumericAnnotation = Annotation<number>
 
 /**
  * Generic tagged union helper class for type-safe discrimination.
- * 
+ *
  * This utility class provides a way to create discriminated unions with
  * compile-time type safety, commonly used in functional programming patterns.
- * 
+ *
  * @template Tag - The discriminant tag type
  * @template Data - The associated data type
  * @public
@@ -143,7 +143,7 @@ export class Tagged<Tag, Data> {
 
   /**
    * Create a new tagged value with the specified tag and data.
-   * 
+   *
    * @param tag - The discriminant tag
    * @param data - The associated data payload
    */
@@ -155,22 +155,22 @@ export class Tagged<Tag, Data> {
 
 /**
  * Account data discriminated union for different authentication methods.
- * 
+ *
  * Arkiv supports two primary authentication mechanisms:
  * - Private key accounts for server-side applications and testing
  * - Ethereum provider integration for browser wallets (MetaMask, WalletConnect, etc.)
- * 
+ *
  * @public
- * 
+ *
  * @example
  * Private key account:
  * ```typescript
  * const privateKeyAccount: AccountData = new Tagged(
- *   "privatekey", 
+ *   "privatekey",
  *   new Uint8Array([...]) // 32-byte private key
  * );
  * ```
- * 
+ *
  * @example
  * Browser wallet provider:
  * ```typescript
@@ -186,12 +186,12 @@ export type AccountData =
 
 /**
  * Type representing hexadecimal-encoded values used throughout the Arkiv protocol.
- * 
+ *
  * This type ensures type safety for Ethereum addresses, entity keys, transaction hashes,
  * and other blockchain-related hexadecimal values that must start with '0x'.
- * 
+ *
  * @public
- * 
+ *
  * @example
  * ```typescript
  * const entityKey: Hex = "0x1234567890abcdef1234567890abcdef12345678";
@@ -295,28 +295,7 @@ export function resolveExpirationBlocks(options: {
   btl?: number;
 }): number {
   const { expires_in, btl } = options;
-
-  // Priority: expires_in takes precedence
-  if (expires_in !== undefined) {
-    // If it's a number, treat it as seconds and convert to blocks
-    if (typeof expires_in === 'number') {
-      return ExpirationTime.fromSeconds(expires_in).blocks;
-    }
-    // Otherwise it's an ExpirationTime object
-    return expires_in.blocks;
-  }
-
-  if (btl !== undefined) {
-    // Warn about deprecated BTL
-    console.warn(
-      "⚠️  BTL is deprecated and will be removed in a future version. " +
-      "Please use 'expires_in' instead. " +
-      "Example: expires_in: 3600 (seconds) or expires_in: ExpirationTime.fromHours(1)"
-    );
-    return btl;
-  }
-
-  throw new Error("Either 'expires_in' or 'btl' must be specified");
+  return getBTL(expires_in, btl)
 }
 
 /**
@@ -329,7 +308,10 @@ export function resolveExtensionBlocks(options: {
   numberOfBlocks?: number;
 }): number {
   const { duration, numberOfBlocks } = options;
+  return getBTL(duration, numberOfBlocks)
+}
 
+export function getBTL(duration: number | ExpirationTime | undefined, numberOfBlocks: number | undefined) {
   // Priority: duration takes precedence
   if (duration !== undefined) {
     // If it's a number, treat it as seconds and convert to blocks
@@ -520,13 +502,13 @@ export type ArkivExtend = {
 }
 /**
  * Comprehensive transaction specification for atomic Arkiv operations.
- * 
+ *
  * This type allows combining multiple entity operations (create, update, delete, extend)
  * into a single atomic blockchain transaction. All operations within a transaction
  * either succeed together or fail together, ensuring data consistency.
- * 
+ *
  * @public
- * 
+ *
  * @example
  * ```typescript
  * const transaction: ArkivTransaction = {
@@ -564,21 +546,21 @@ export type ArkivTransaction = {
 
 /**
  * Complete metadata information for an entity stored in Arkiv.
- * 
+ *
  * This type contains all the information about an entity including its expiration,
  * data payload, annotations, and ownership details. It's returned by query operations
  * to provide comprehensive entity information.
- * 
+ *
  * @public
- * 
+ *
  * @example
  * ```typescript
  * const metadata: EntityMetaData = await client.getEntityMetaData("0x1234567890abcdef");
- * 
+ *
  * console.log(`Entity expires at block: ${metadata.expiresAtBlock}`);
  * console.log(`Entity owner: ${metadata.owner}`);
  * console.log(`Data payload: ${metadata.payload}`);
- * 
+ *
  * // Access annotations
  * metadata.stringAnnotations.forEach(ann => {
  *   console.log(`${ann.key}: ${ann.value}`);
