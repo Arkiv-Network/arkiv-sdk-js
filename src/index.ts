@@ -290,15 +290,15 @@ export class ExpirationTime {
 
 /**
  * Internal helper to resolve expiration time from either new API or legacy BTL.
- * Priority: expires_in > btl
+ * Priority: expiresIn > btl
  * @internal
  */
 export function resolveExpirationBlocks(options: {
-  expires_in?: number | ExpirationTime;
+  expiresIn?: number | ExpirationTime;
   btl?: number;
 }): number {
-  const { expires_in, btl } = options;
-  return getBTL(expires_in, btl)
+  const { expiresIn, btl } = options;
+  return getBTL(expiresIn, btl)
 }
 
 /**
@@ -348,11 +348,11 @@ export function getBTL(duration: number | ExpirationTime | undefined, numberOfBl
  * @public
  *
  * @example
- * Using the new expires_in API with seconds (recommended):
+ * Using the new expiresIn API with seconds (recommended):
  * ```typescript
  * const createSpec: ArkivCreate = {
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Hello Arkiv" })),
- *   expires_in: 86400, // Expires in 24 hours (86400 seconds)
+ *   expiresIn: 86400, // Expires in 24 hours (86400 seconds)
  *   stringAnnotations: [
  *     new Annotation("type", "message"),
  *     new Annotation("category", "greeting")
@@ -369,7 +369,7 @@ export function getBTL(duration: number | ExpirationTime | undefined, numberOfBl
  * ```typescript
  * const createSpec: ArkivCreate = {
  *   data: new TextEncoder().encode("Data"),
- *   expires_in: ExpirationTime.fromHours(24), // More readable
+ *   expiresIn: ExpirationTime.fromHours(24), // More readable
  *   stringAnnotations: [],
  *   numericAnnotations: []
  * };
@@ -380,7 +380,7 @@ export function getBTL(duration: number | ExpirationTime | undefined, numberOfBl
  * ```typescript
  * const createSpec: ArkivCreate = {
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Hello Arkiv" })),
- *   btl: 1000, // Deprecated: use expires_in instead
+ *   btl: 1000, // Deprecated: use expiresIn instead
  *   stringAnnotations: [],
  *   numericAnnotations: []
  * };
@@ -390,7 +390,7 @@ export type ArkivCreate = {
   /** The binary data to store in the entity */
   readonly data: Uint8Array,
   /**
-   * @deprecated Use `expires_in` instead. BTL will be removed in a future version.
+   * @deprecated Use `expiresIn` instead. BTL will be removed in a future version.
    * Block-to-Live: number of blocks after which the entity expires
    */
   readonly btl?: number,
@@ -398,7 +398,7 @@ export type ArkivCreate = {
    * Expiration time for the entity in seconds, or ExpirationTime object (preferred over btl).
    * When using number, it represents duration in seconds (not blocks).
    */
-  readonly expires_in?: number | ExpirationTime,
+  readonly expiresIn?: number | ExpirationTime,
   /** String-valued metadata annotations for querying and categorization */
   readonly stringAnnotations: StringAnnotation[]
   /** Numeric-valued metadata annotations for indexing and filtering */
@@ -414,12 +414,12 @@ export type ArkivCreate = {
  * @public
  *
  * @example
- * Using the new expires_in API (recommended):
+ * Using the new expiresIn API (recommended):
  * ```typescript
  * const updateSpec: ArkivUpdate = {
  *   entityKey: "0x1234567890abcdef12345678",
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Updated content" })),
- *   expires_in: ExpirationTime.fromDays(7),
+ *   expiresIn: ExpirationTime.fromDays(7),
  *   stringAnnotations: [
  *     new Annotation("status", "updated"),
  *     new Annotation("version", "2.0")
@@ -436,7 +436,7 @@ export type ArkivCreate = {
  * const updateSpec: ArkivUpdate = {
  *   entityKey: "0x1234567890abcdef12345678",
  *   data: new TextEncoder().encode(JSON.stringify({ message: "Updated content" })),
- *   btl: 2000, // Deprecated: use expires_in instead
+ *   btl: 2000, // Deprecated: use expiresIn instead
  *   stringAnnotations: [],
  *   numericAnnotations: []
  * };
@@ -448,7 +448,7 @@ export type ArkivUpdate = {
   /** The new binary data to store in the entity */
   readonly data: Uint8Array,
   /**
-   * @deprecated Use `expires_in` instead. BTL will be removed in a future version.
+   * @deprecated Use `expiresIn` instead. BTL will be removed in a future version.
    * New Block-to-Live value for the entity
    */
   readonly btl?: number,
@@ -456,7 +456,7 @@ export type ArkivUpdate = {
    * New expiration time for the entity in seconds, or ExpirationTime object (preferred over btl).
    * When using number, it represents duration in seconds (not blocks).
    */
-  readonly expires_in?: number | ExpirationTime,
+  readonly expiresIn?: number | ExpirationTime,
   /** New string-valued metadata annotations */
   readonly stringAnnotations: StringAnnotation[]
   /** New numeric-valued metadata annotations */
