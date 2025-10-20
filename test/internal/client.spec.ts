@@ -29,7 +29,7 @@ import { decodeEventLog, toHex } from 'viem'
 const log = new Logger<ILogObj>({
   name: "internal client spec",
   type: "pretty",
-  minLevel: 3,
+  minLevel: 2,
 })
 
 async function getEntitiesOwned(client: internal.ArkivClient): Promise<Hex[]> {
