@@ -230,7 +230,10 @@ export class ExpirationTime {
   /** Number of blocks representing this expiration time */
   readonly blocks: number;
 
-  /** Block time in seconds (Arkiv produces blocks every 2 seconds) */
+  /**
+   * Block time in seconds (Arkiv produces blocks every 2 seconds)
+   * TODO: replace with new RPC method
+   */
   private static readonly BLOCK_TIME_SECONDS = 2;
 
   private constructor(blocks: number) {

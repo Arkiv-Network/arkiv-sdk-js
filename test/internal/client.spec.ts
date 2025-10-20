@@ -82,26 +82,26 @@ let expirationBlock: number
 describe("the internal golem-base client", () => {
   it("can be created", async () => {
     const key: AccountData = new Tagged("privatekey", getBytes(wallet.privateKey))
-    client = {
-      local: await internal.createClient(
+    client = await {
+      local: async () => await internal.createClient(
         1337,
         key,
         'http://localhost:8545',
         'ws://localhost:8545',
         log),
-      demo: await internal.createClient(
+      demo: async () => await internal.createClient(
         1337,
         key,
         'https://api.golembase.demo.golem-base.io',
         'wss://ws-api.golembase.demo.golem-base.io',
         log),
-      kaolin: await internal.createClient(
+      kaolin: async () => await internal.createClient(
         600606,
         key,
         'https://rpc.kaolin.holesky.golem-base.io',
         'wss://ws.rpc.kaolin.holesky.golem-base.io',
       ),
-    }.local
+    }.local()
 
     expect(client).to.exist
   })

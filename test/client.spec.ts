@@ -45,26 +45,26 @@ let client: ArkivClient
 describe("the arkiv client", () => {
   it("can be created", async () => {
     const key: AccountData = new Tagged("privatekey", getBytes(wallet.privateKey))
-    client = {
-      local: await createClient(
+    client = await {
+      local: async () => await createClient(
         1337,
         key,
         'http://localhost:8545',
         'ws://localhost:8545',
         log),
-      demo: await createClient(
+      demo: async () => await createClient(
         1337,
         key,
         'https://api.golembase.demo.golem-base.io',
         'wss://ws-api.golembase.demo.golem-base.io',
         log),
-      kaolin: await createClient(
+      kaolin: async () => await createClient(
         600606,
         key,
         'https://rpc.kaolin.holesky.golem-base.io',
         'wss://ws.rpc.kaolin.holesky.golem-base.io',
       ),
-    }.local
+    }.local()
 
     expect(client).to.exist
   })
@@ -260,7 +260,31 @@ describe("the arkiv client", () => {
     expect(result).to.exist
     log.debug(`Extend result: ${JSON.stringify(result, (_, v) => typeof v === 'bigint' ? v.toString() : v)}`)
     expect(await numOfEntitiesOwned(client)).to.eql(entitiesOwnedCount, "wrong number of entities owned")
-    expect(result.newExpirationBlock - result.oldExpirationBlock == numberOfBlocks)
+    expect(result.newExpirationBlock - result.oldExpirationBlock).to.eql(numberOfBlocks)
+  })
+
+  it("should be able to extend entities using a duration", async () => {
+    const numberOfSeconds = 20
+    callbackCanary = false
+    const [result] = await client.extendEntities(
+      [{
+        entityKey,
+        duration: numberOfSeconds,
+      }],
+      {
+        txHashCallback: (txHash) => {
+          expect(txHash).to.exist
+          callbackCanary = true
+        }
+      }
+    )
+    expect(callbackCanary).to.eql(true)
+    expect(result).to.exist
+    log.debug(`Extend result: ${JSON.stringify(result, (_, v) => typeof v === 'bigint' ? v.toString() : v)}`)
+    expect(await numOfEntitiesOwned(client)).to.eql(entitiesOwnedCount, "wrong number of entities owned")
+    // hard-coded 2 as the chain cadence, this might need to be updated in the future
+    // we can use the new RPC method to fetch this once it exists
+    expect(result.newExpirationBlock - result.oldExpirationBlock).to.eql(numberOfSeconds / 2)
   })
 
   it("should be able to delete entities", async () => {
