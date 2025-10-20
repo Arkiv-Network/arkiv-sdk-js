@@ -10,7 +10,7 @@
 		"refresh": "cd .. && bun run package && cd test && bun install --force"
 	},
 	"dependencies": {
-		"arkiv": "file:../arkiv-latest.tgz"
+		"arkiv": "file:../arkiv-network-sdk-latest.tgz"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",

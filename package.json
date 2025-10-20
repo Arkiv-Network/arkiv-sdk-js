@@ -1,7 +1,7 @@
 {
-	"name": "arkiv",
-	"version": "0.0.25",
-	"description": "TypeScript-only client library for GolemDB/Arkiv blockchain interactions",
+	"name": "@arkiv-network/sdk",
+	"version": "0.0.35",
+	"description": "TypeScript-only client library for Arkiv blockchain interactions",
 	"type": "module",
 	"main": "./dist/_cjs/index.js",
 	"module": "./dist/_esm/index.js",
@@ -75,8 +75,12 @@
 		"type-check": "tsc --noEmit",
 		"lint": "biome check src/",
 		"lint:fix": "biome check --write src/",
-		"package": "rimraf arkiv-*.tgz && bun run build && bun pm pack --no-cache",
-		"package:test": "bun run package && mv arkiv-*.tgz arkiv-latest.tgz"
+		"package": "rimraf arkiv-network-sdk-*.tgz && bun run build && bun pm pack --no-cache",
+		"package:test": "bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
+		"publish-main": "npm publish --access public",
+		"publish-main:dry": "npm publish --access public --dry-run",
+		"publish-dev": "npm version prerelease --preid=dev && npm publish --access public --tag dev",
+		"publish-dev:dry": "npm version prerelease --preid=dev && npm publish --access public --tag dev --dry-run"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.4",
@@ -105,7 +109,7 @@
 	],
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/golemnetwork/arkivjs.git"
+		"url": "https://github.com/Arkiv-Network/arkiv-sdk-js.git"
 	},
 	"dependencies": {
 		"viem": "^2.38.2"

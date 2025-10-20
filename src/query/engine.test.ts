@@ -151,7 +151,7 @@ describe("processQuery tests", () => {
 
 		expect(client.request).lastCalledWith({
 			method: "golembase_queryEntities",
-			params: [`key = "value" && $owner="0x123"`],
+			params: [`key = "value" && $owner=0x123`],
 		})
 	})
 
@@ -166,7 +166,7 @@ describe("processQuery tests", () => {
 
 		expect(client.request).lastCalledWith({
 			method: "golembase_queryEntities",
-			params: [`$owner="0x123"`],
+			params: [`$owner=0x123`],
 		})
 	})
 })
