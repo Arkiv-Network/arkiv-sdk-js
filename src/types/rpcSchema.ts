@@ -30,6 +30,11 @@ export type ArkivRpcSchema = [
 			duration: number
 		}
 	},
+	{
+		Method: "arkiv_getEntityCount"
+		Parameters?: []
+		ReturnType: number
+	},
 ]
 
 export type PublicArkivRpcSchema = [...PublicRpcSchema, ...ArkivRpcSchema]

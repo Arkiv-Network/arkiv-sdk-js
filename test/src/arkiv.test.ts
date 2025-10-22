@@ -76,6 +76,17 @@ describe("Arkiv Integration Tests for public client", () => {
 	)
 
 	test.each(["http", "webSocket"] as const)(
+		"should get entity count using %s",
+		async (transport) => {
+			const client = transport === "http" ? publicClient : publicClientWS
+			const entityCount = await client.getEntityCount()
+			console.log("entityCount", entityCount)
+			expect(entityCount).toBeDefined()
+			expect(entityCount).toEqual(0)
+		},
+	)
+
+	test.each(["http", "webSocket"] as const)(
 		"should get block timing using %s",
 		async (transport) => {
 			const client = transport === "http" ? publicClient : publicClientWS
@@ -194,6 +205,8 @@ describe("Arkiv Integration Tests for public client", () => {
 				expiresIn: ExpirationTime.fromBlocks(1000),
 			})
 			console.log("result from createEntity", { entityKey, txHash })
+			const entityCount = await client.getEntityCount()
+			expect(entityCount).toBeGreaterThanOrEqual(1)
 
 			// get entity
 			const entity = await client.getEntity(entityKey)

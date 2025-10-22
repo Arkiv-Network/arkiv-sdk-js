@@ -1,6 +1,7 @@
 import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem"
 import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
+import { getEntityCount } from "../../actions/public/getEntityCount"
 import { query } from "../../actions/public/query"
 import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
 import { QueryBuilder } from "../../query/queryBuilder"
@@ -95,6 +96,42 @@ export type PublicArkivActions<
 	 */
 	query: (query: string) => Promise<Entity[]>
 
+	/**
+	 * Returns the number of entities in the DBChain.
+	 * @returns The number of entities in the DBChain. {@link number}
+	 *
+	 * @example
+	 * import { createPublicClient, http } from 'arkiv'
+	 * import { kaolin } from 'arkiv/chains'
+	 *
+	 * const client = createPublicClient({
+	 *   chain: kaolin,
+	 *   transport: http(),
+	 * })
+	 * const entityCount = await client.getEntityCount()
+	 * // entityCount = 0
+	 */
+	getEntityCount: () => Promise<number>
+
+	/**
+	 * Returns the current block timing.
+	 * @returns The current block timing. {@link GetBlockTimingReturnType}
+	 *
+	 * @example
+	 * import { createPublicClient, http } from 'arkiv'
+	 * import { kaolin } from 'arkiv/chains'
+	 *
+	 * const client = createPublicClient({
+	 *   chain: kaolin,
+	 *   transport: http(),
+	 * })
+	 * const blockTiming = await client.getBlockTiming()
+	 * // {
+	 * //   currentBlock: 10n, // block number
+	 * //   currentBlockTime: 1234567890, // block timestamp
+	 * //   blockDuration: 2, // in seconds
+	 * // }
+	 */
 	getBlockTiming: () => Promise<{
 		currentBlock: bigint
 		currentBlockTime: number
@@ -131,6 +168,7 @@ export function publicArkivActions<
 		query: (rawQuery: string) => query(client, rawQuery),
 		buildQuery: () => new QueryBuilder(client),
 		getBlockTiming: () => getBlockTiming(client),
+		getEntityCount: () => getEntityCount(client),
 		subscribeEntityEvents: (
 			{
 				onError,
