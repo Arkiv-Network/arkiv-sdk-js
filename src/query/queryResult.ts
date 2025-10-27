@@ -1,46 +1,57 @@
 import type { Entity } from "../types/entity"
-import { NoMoreResultsError, NoOffsetOrLimitError, OffsetCannotBeLessThanZeroError } from "./errors"
+import { NoCursorOrLimitError, NoMoreResultsError } from "./errors"
 import type { QueryBuilder } from "./queryBuilder"
 
 export class QueryResult {
 	entities: Entity[]
-	private limit: number | undefined
-	private offset: number | undefined
-	private queryBuilder: QueryBuilder
+	private _endOfIteration: boolean
+	private _cursor: string | undefined
+	private _limit: number | undefined
+	private _validAtBlock: bigint | undefined
+	private _queryBuilder: QueryBuilder
+
+	// Public getters for internal state
+	get queryBuilder(): QueryBuilder {
+		return this._queryBuilder
+	}
+
+	get cursor(): string | undefined {
+		return this._cursor
+	}
 
 	constructor(
 		entities: Entity[],
 		queryBuilder: QueryBuilder,
-		limit: number | undefined = undefined,
-		offset: number | undefined = undefined,
+		cursor: string | undefined,
+		limit: number | undefined,
+		validAtBlock: bigint | undefined,
 	) {
 		this.entities = entities
-		this.limit = limit
-		this.offset = offset
-		this.queryBuilder = queryBuilder
+		this._queryBuilder = queryBuilder
+		this._endOfIteration = !limit || entities.length < limit
+		this._cursor = cursor
+		this._limit = limit
+		this._validAtBlock = validAtBlock
 	}
 
 	async next() {
-		if (this.offset === undefined || this.limit === undefined) {
-			throw new NoOffsetOrLimitError()
+		if (this._cursor === undefined || this._limit === undefined) {
+			throw new NoCursorOrLimitError()
 		}
-		if (this.limit < this.entities.length) {
+		if (this._endOfIteration) {
 			throw new NoMoreResultsError()
 		}
-		this.offset += this.limit
-		const result = await this.queryBuilder.offset(this.offset).fetch()
+		this._queryBuilder.cursor(this._cursor)
+		const result = await this._queryBuilder.fetch()
 		this.entities = result.entities
-	}
+		// Update the query builder reference
+		this._queryBuilder = result.queryBuilder
+		// Check if we've reached the end (no more cursor or we got fewer entities than limit)
+		this._endOfIteration = !result.cursor || result.entities.length < this._limit
+		// Update the cursor
+		this._cursor = result.cursor
 
-	async previous() {
-		if (this.offset === undefined || this.limit === undefined) {
-			throw new NoOffsetOrLimitError()
-		}
-		if (this.offset - this.limit < 0) {
-			throw new OffsetCannotBeLessThanZeroError()
-		}
-		this.offset -= this.limit
-		const result = await this.queryBuilder.offset(this.offset).fetch()
-		this.entities = result.entities
+		// TODO check current block height and if it is not too old
+		console.debug("Current block height for next page: ", this._validAtBlock)
 	}
 }

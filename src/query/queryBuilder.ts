@@ -14,11 +14,12 @@ import { QueryResult } from "./queryResult"
 export class QueryBuilder {
 	private _client: ArkivClient
 	private _ownedBy: Hex | undefined
-	private _validBeforeBlock: number | undefined
+	private _validAtBlock: bigint | undefined
 	private _withAnnotations: boolean | undefined
 	private _withMetadata: boolean | undefined
+	private _withPayload: boolean | undefined
 	private _limit: number | undefined
-	private _offset: number | undefined
+	private _cursor: string | undefined
 	private _predicates: Predicate[]
 
 	constructor(client: ArkivClient) {
@@ -69,6 +70,20 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Sets the withPayload flag which will return the payload for the entities if true
+	 * @param withPayload - The boolean value to set
+	 * @returns The QueryBuilder instance
+	 *
+	 * @example
+	 * const builder = new QueryBuilder(client)
+	 * builder.withPayload(true)
+	 */
+	withPayload(withPayload: boolean = true) {
+		this._withPayload = withPayload
+		return this
+	}
+
+	/**
 	 * Sets the limit for the query
 	 * @param limit - The number of entities to return
 	 * @returns The QueryBuilder instance
@@ -83,16 +98,31 @@ export class QueryBuilder {
 	}
 
 	/**
-	 * Sets the offset for the query
-	 * @param offset - The number of entities to skip
+	 * Sets the cursor for the query - it is advances setting which rather shouldn't be used manually but it is provided from query result if limit is used (pagination).
+	 * @param cursor - The cursor to set which tells to RPC Query server where to start or continue the query.
 	 * @returns The QueryBuilder instance
 	 *
 	 * @example
 	 * const builder = new QueryBuilder(client)
 	 * builder.offset(10)
 	 */
-	offset(offset: number) {
-		this._offset = offset
+	cursor(cursor: string) {
+		this._cursor = cursor
+		return this
+	}
+
+	/**
+	 * Sets the validAtBlock for the query which tells at which block height the state we are intested.
+	 * If not set, the latest block is  used.
+	 * @param validAtBlock - The block number to set
+	 * @returns The QueryBuilder instance
+	 *
+	 * @example
+	 * const builder = new QueryBuilder(client)
+	 * builder.validAtBlock(10000)
+	 */
+	validAtBlock(validAtBlock: bigint) {
+		this._validAtBlock = validAtBlock
 		return this
 	}
 
@@ -135,18 +165,22 @@ export class QueryBuilder {
 		const queryResult = await processQuery(this._client, {
 			predicates: this._predicates,
 			limit: this._limit,
-			offset: this._offset,
+			cursor: this._cursor,
 			ownedBy: this._ownedBy,
-			validBeforeBlock: this._validBeforeBlock,
+			validAtBlock: this._validAtBlock,
 			withAnnotations: this._withAnnotations,
 			withMetadata: this._withMetadata,
+			withPayload: this._withPayload,
 		})
 
 		const entities = await Promise.all(
-			queryResult.map((entity) => entityFromRpcResult(this._client, entity.key, entity.value)),
+			queryResult.data.map((entity) => entityFromRpcResult(entity)),
 		)
 
-		return new QueryResult(entities, this, this._limit, this._offset)
+		this.cursor(queryResult.cursor)
+		this.validAtBlock(queryResult.blockNumber)
+
+		return new QueryResult(entities, this, this._cursor, this._limit, this._validAtBlock)
 	}
 
 	/**
@@ -162,13 +196,14 @@ export class QueryBuilder {
 		const queryResult = await processQuery(this._client, {
 			predicates: this._predicates,
 			limit: this._limit,
-			offset: this._offset,
+			cursor: this._cursor,
 			ownedBy: this._ownedBy,
-			validBeforeBlock: this._validBeforeBlock,
-			withAnnotations: this._withAnnotations,
-			withMetadata: this._withMetadata,
+			validAtBlock: this._validAtBlock,
+			withAnnotations: false,
+			withMetadata: false,
+			withPayload: false,
 		})
 
-		return queryResult.length
+		return queryResult.data.length ?? 0
 	}
 }

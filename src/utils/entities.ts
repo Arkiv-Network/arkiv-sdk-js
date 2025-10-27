@@ -1,20 +1,14 @@
-import type { Hex } from "viem"
-import type { ArkivClient } from "../clients/baseClient"
+import { toBytes } from "viem"
 import { Entity } from "../types/entity"
+import type { RpcEntity } from "../types/rpcSchema"
 
-export async function entityFromRpcResult(client: ArkivClient, key: Hex, payload: string) {
-	const metadata = await client.request({
-		method: "golembase_getEntityMetaData",
-		params: [key],
-	})
-	console.debug("Metadata", metadata)
-
-	return new Entity(key, metadata.owner, metadata.expiresAtBlock, Uint8Array.fromBase64(payload), [
-		...(metadata.stringAnnotations ?? []).map(({ key, value }) => ({
+export async function entityFromRpcResult(rpcEntity: RpcEntity) {
+	return new Entity(rpcEntity.key, rpcEntity.owner, rpcEntity.expiresAt, toBytes(rpcEntity.value), [
+		...(rpcEntity.stringAnnotations ?? []).map(({ key, value }) => ({
 			key,
 			value,
 		})),
-		...(metadata.numericAnnotations ?? []).map(({ key, value }) => ({
+		...(rpcEntity.numericAnnotations ?? []).map(({ key, value }) => ({
 			key,
 			value: value,
 		})),

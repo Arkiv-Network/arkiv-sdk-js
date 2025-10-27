@@ -1,5 +1,5 @@
 import type { Hex } from "arkiv"
-import { GenericContainer, type StartedTestContainer, TestContainers, Wait } from "testcontainers"
+import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
 export async function launchLocalArkivNode(withFundingAccount: Hex | undefined = undefined) {
 	const container = await new GenericContainer("golemnetwork/golembase-op-geth:latest")

@@ -4,14 +4,14 @@ import type { Annotation } from "./annotation"
 export class Entity {
 	key: Hex
 	owner: Hex
-	expiresAtBlock: number
+	expiresAtBlock: bigint
 	payload: Uint8Array
 	annotations: Annotation[]
 
 	constructor(
 		key: Hex,
 		owner: Hex,
-		expiresAtBlock: number,
+		expiresAtBlock: bigint,
 		payload: Uint8Array,
 		annotations: Annotation[],
 	) {

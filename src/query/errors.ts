@@ -4,14 +4,20 @@ export class NoMoreResultsError extends Error {
 	}
 }
 
-export class NoOffsetOrLimitError extends Error {
+export class NoCursorOrLimitError extends Error {
 	constructor() {
-		super("Offset and limit must be defined to fetch next or previous")
+		super("Cursor and limit must be defined to fetch next")
 	}
 }
 
 export class OffsetCannotBeLessThanZeroError extends Error {
 	constructor() {
 		super("Offset cannot be less than 0")
+	}
+}
+
+export class NoEntityFoundError extends Error {
+	constructor() {
+		super("No entity found")
 	}
 }

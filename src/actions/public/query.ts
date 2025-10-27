@@ -3,13 +3,11 @@ import { entityFromRpcResult } from "../../utils/entities"
 
 export async function query(client: ArkivClient, query: string) {
 	const result = await client.request({
-		method: "golembase_queryEntities",
+		method: "arkiv_query",
 		params: [query],
 	})
 
-	const entities = await Promise.all(
-		result.map((entity) => entityFromRpcResult(client, entity.key, entity.value)),
-	)
+	const entities = await Promise.all(result.data.map((entity) => entityFromRpcResult(entity)))
 
 	return entities
 }

@@ -1,5 +1,29 @@
 import type { Hex, PublicRpcSchema } from "viem"
 
+export type RpcEntity = {
+	key: Hex
+	value: string
+	expiresAt: bigint
+	owner: Hex
+	stringAnnotations?: [{ key: string; value: string }]
+	numericAnnotations?: [{ key: string; value: number }]
+}
+
+export type RpcQueryOptions = {
+	atBlock?: bigint
+	includeData?: RpcIncludeData
+	resultsPerPage?: number
+	cursor?: string
+}
+
+export type RpcIncludeData = {
+	key: boolean
+	annotations: boolean
+	payload: boolean
+	expiration: boolean
+	owner: boolean
+}
+
 export type ArkivRpcSchema = [
 	{
 		Method: "golembase_getStorageValue"
@@ -7,9 +31,13 @@ export type ArkivRpcSchema = [
 		ReturnType: string
 	},
 	{
-		Method: "golembase_queryEntities"
-		Parameters?: [query: string]
-		ReturnType: [{ key: Hex; value: string }]
+		Method: "arkiv_query"
+		Parameters?: [query: string, queryOptions?: RpcQueryOptions]
+		ReturnType: {
+			data: [RpcEntity]
+			blockNumber: bigint
+			cursor: string
+		}
 	},
 	{
 		Method: "golembase_getEntityMetaData"

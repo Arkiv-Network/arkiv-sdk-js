@@ -329,4 +329,122 @@ describe("Arkiv Integration Tests for public client", () => {
 		},
 		{ timeout: 20000 },
 	)
+
+	test.each(["http", "webSocket"] as const)(
+		"should handle query with pagination using",
+		async (transport) => {
+			const client = transport === "http" ? walletClient : walletClientWS
+			const value = transport === "http" ? "testValuePaging" : "testValuePagingWS"
+			// create 10 entities
+			for (let i = 0; i < 10; i++) {
+				await client.createEntity({
+					payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+					annotations: [{ key: "testKey", value }],
+					expiresIn: 1000,
+				})
+			}
+
+			// query with pagination - irregular number of entities (6,4)
+			const query = client.buildQuery()
+			const queryResult = await query
+				.where(eq("testKey", value))
+				.limit(6)
+				.ownedBy(privateKeyToAccount(privateKey).address)
+				.fetch()
+			expect(queryResult).toBeDefined()
+			expect(queryResult.entities).toBeDefined()
+			expect(queryResult.entities.length).toEqual(6)
+
+			// fetch next page
+			await queryResult.next()
+			expect(queryResult.entities).toBeDefined()
+			expect(queryResult.entities.length).toEqual(4)
+
+			// and there is no more results
+			await expect(queryResult.next()).rejects.toThrow()
+
+			// query with pagination - irregular number of entities (5,5)
+			const query2 = client.buildQuery()
+			const queryResult2 = await query2
+				.where(eq("testKey", value))
+				.limit(5)
+				.ownedBy(privateKeyToAccount(privateKey).address)
+				.fetch()
+			expect(queryResult2).toBeDefined()
+			expect(queryResult2.entities).toBeDefined()
+			expect(queryResult2.entities.length).toEqual(5)
+
+			// fetch next page
+			await queryResult2.next()
+			expect(queryResult2.entities).toBeDefined()
+			expect(queryResult2.entities.length).toEqual(5)
+
+			// and there is no more results
+			await expect(queryResult.next()).rejects.toThrow()
+		},
+		{ timeout: 30000 },
+	)
+	test.each(["http", "webSocket"] as const)(
+		"Query with various projections using withAnnotations, withMetadata, withPayload",
+		async (transport) => {
+			const client = transport === "http" ? walletClient : walletClientWS
+			// create entity
+			await walletClient.createEntity({
+				payload: jsonToPayload({
+					entity: {
+						entityType: "test",
+						entityId: "test",
+					},
+				}),
+				annotations: [{ key: "testKey", value: "testValue" }],
+				expiresIn: ExpirationTime.fromBlocks(1000),
+			})
+
+			// query with no data fetched - just key (it is always fetched)
+			let queryResult = await client.buildQuery().where(eq("testKey", "testValue")).fetch()
+			expect(queryResult).toBeDefined()
+			expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
+			expect(queryResult.entities[0].owner).toBeUndefined()
+			expect(queryResult.entities[0].payload).toHaveLength(0)
+			expect(queryResult.entities[0].annotations).toHaveLength(0)
+			expect(queryResult.entities[0].expiresAtBlock).toBeUndefined()
+
+			// query with payload only
+			queryResult = await client
+				.buildQuery()
+				.where(eq("testKey", "testValue"))
+				.withAnnotations(false)
+				.withMetadata(false)
+				.withPayload(true)
+				.fetch()
+			expect(queryResult).toBeDefined()
+			expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
+			expect(queryResult.entities[0].payload.length).toBeGreaterThan(0)
+
+			// query with metadata only
+			queryResult = await client
+				.buildQuery()
+				.where(eq("testKey", "testValue"))
+				.withAnnotations(false)
+				.withMetadata(true)
+				.withPayload(false)
+				.fetch()
+			expect(queryResult).toBeDefined()
+			expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
+			expect(queryResult.entities[0].owner).toBeDefined()
+			expect(queryResult.entities[0].expiresAtBlock).toBeDefined()
+
+			// query with annotations only
+			queryResult = await client
+				.buildQuery()
+				.where(eq("testKey", "testValue"))
+				.withAnnotations(true)
+				.withMetadata(false)
+				.withPayload(false)
+				.fetch()
+			expect(queryResult).toBeDefined()
+			expect(queryResult.entities[0].annotations.length).toBeGreaterThanOrEqual(1)
+		},
+		{ timeout: 20000 },
+	)
 })

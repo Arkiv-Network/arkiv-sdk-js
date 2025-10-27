@@ -1,5 +1,6 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
+import type { RpcQueryOptions } from "../types/rpcSchema"
 import type { Predicate } from "./predicate"
 
 function processPredicates(predicates: Predicate[]): string {
@@ -42,30 +43,32 @@ export async function processQuery(
 	queryParams: {
 		predicates: Predicate[]
 		limit: number | undefined
-		offset: number | undefined
+		cursor: string | undefined
 		ownedBy: Hex | undefined
-		validBeforeBlock?: number | undefined
+		validAtBlock?: bigint | undefined
 		withAnnotations?: boolean | undefined
 		withMetadata?: boolean | undefined
+		withPayload?: boolean | undefined
 	},
 ) {
-	const { predicates, limit, offset, ownedBy, validBeforeBlock, withAnnotations, withMetadata } =
-		queryParams
+	const {
+		predicates,
+		limit,
+		cursor,
+		ownedBy,
+		validAtBlock,
+		withAnnotations,
+		withMetadata,
+		withPayload,
+	} = queryParams
 
 	console.debug(
-		`Processing query with params: predicates: ${predicates}, limit: ${limit}, offset: ${offset}, ownedBy: ${ownedBy}, validBeforeBlock: ${validBeforeBlock}, withAnnotations: ${withAnnotations}, withMetadata: ${withMetadata}`,
+		`Processing query with params: predicates: ${predicates}, cursor: ${cursor}, limit: ${limit}, ownedBy: ${ownedBy}, validAtBlock: ${validAtBlock}, withAnnotations: ${withAnnotations}, withMetadata: ${withMetadata}, withPayload: ${withPayload}`,
 	)
 
 	let query = processPredicates(predicates)
 	if (ownedBy) {
 		query += ` && $owner=${ownedBy}`
-	}
-	if (limit) {
-		query += ` limit=${limit}`
-	}
-
-	if (offset) {
-		query += ` offset=${offset}`
 	}
 
 	// remove leading and trailing spaces and leading &&
@@ -74,11 +77,31 @@ export async function processQuery(
 		query = query.slice(3)
 	}
 
-	console.debug(`Built query to send: ${query}`)
+	const queryOptions: RpcQueryOptions = {
+		includeData: {
+			key: true,
+			annotations: withAnnotations ?? false,
+			payload: withPayload ?? false,
+			expiration: withMetadata ?? false,
+			owner: withMetadata ?? false,
+		},
+	}
+
+	if (validAtBlock !== undefined) {
+		queryOptions.atBlock = validAtBlock
+	}
+	if (limit !== undefined) {
+		queryOptions.resultsPerPage = limit
+	}
+	if (cursor !== undefined) {
+		queryOptions.cursor = cursor
+	}
+
+	console.debug(`Built query to send: ${query}, queryOptions: ${JSON.stringify(queryOptions)}`)
 
 	const result = await client.request({
-		method: "golembase_queryEntities",
-		params: [query],
+		method: "arkiv_query",
+		params: [query, queryOptions],
 	})
 	console.debug("Raw result from query: ", result)
 

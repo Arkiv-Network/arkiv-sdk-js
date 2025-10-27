@@ -13,16 +13,28 @@ describe("processQuery tests", () => {
 		await processQuery(client, {
 			predicates,
 			limit: undefined,
-			offset: undefined,
+			cursor: undefined,
 			ownedBy: undefined,
-			validBeforeBlock: undefined,
+			validAtBlock: undefined,
 			withAnnotations: undefined,
 			withMetadata: undefined,
+			withPayload: undefined,
 		})
 
 		expect(client.request).lastCalledWith({
-			method: "golembase_queryEntities",
-			params: [`key = "value"`],
+			method: "arkiv_query",
+			params: [
+				`key = "value"`,
+				{
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
+			],
 		})
 	})
 
@@ -38,17 +50,26 @@ describe("processQuery tests", () => {
 		await processQuery(client, {
 			predicates,
 			limit: undefined,
-			offset: undefined,
+			cursor: undefined,
 			ownedBy: undefined,
-			validBeforeBlock: undefined,
+			validAtBlock: undefined,
 			withAnnotations: undefined,
 			withMetadata: undefined,
 		})
 
 		expect(client.request).lastCalledWith({
-			method: "golembase_queryEntities",
+			method: "arkiv_query",
 			params: [
 				`key = "value" && key2 > 1 && key3 >= 2 && key4 < 3 && key5 <= 4 && key6 != "value6"`,
+				{
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
 			],
 		})
 	})
@@ -67,16 +88,27 @@ describe("processQuery tests", () => {
 		await processQuery(client, {
 			predicates,
 			limit: undefined,
-			offset: undefined,
+			cursor: undefined,
 			ownedBy: undefined,
-			validBeforeBlock: undefined,
+			validAtBlock: undefined,
 			withAnnotations: undefined,
 			withMetadata: undefined,
 		})
 
 		expect(client.request).lastCalledWith({
-			method: "golembase_queryEntities",
-			params: [`key = "value" && (key2 = "value2" || key3 = "value3")`],
+			method: "arkiv_query",
+			params: [
+				`key = "value" && (key2 = "value2" || key3 = "value3")`,
+				{
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
+			],
 		})
 	})
 
@@ -94,16 +126,27 @@ describe("processQuery tests", () => {
 		await processQuery(client, {
 			predicates,
 			limit: undefined,
-			offset: undefined,
+			cursor: undefined,
 			ownedBy: undefined,
-			validBeforeBlock: undefined,
+			validAtBlock: undefined,
 			withAnnotations: undefined,
 			withMetadata: undefined,
 		})
 
 		expect(client.request).lastCalledWith({
-			method: "golembase_queryEntities",
-			params: [`key = "value" && (key2 = "value2" && key3 = "value3")`],
+			method: "arkiv_query",
+			params: [
+				`key = "value" && (key2 = "value2" && key3 = "value3")`,
+				{
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
+			],
 		})
 	})
 
@@ -127,16 +170,27 @@ describe("processQuery tests", () => {
 		await processQuery(client, {
 			predicates,
 			limit: undefined,
-			offset: undefined,
+			cursor: undefined,
 			ownedBy: undefined,
-			validBeforeBlock: undefined,
+			validAtBlock: undefined,
 			withAnnotations: undefined,
 			withMetadata: undefined,
 		})
 
 		expect(client.request).lastCalledWith({
-			method: "golembase_queryEntities",
-			params: [`key = "value" && (key2 = "value2" && (key3 = "value3" || key4 = "value4"))`],
+			method: "arkiv_query",
+			params: [
+				`key = "value" && (key2 = "value2" && (key3 = "value3" || key4 = "value4"))`,
+				{
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
+			],
 		})
 	})
 
@@ -145,13 +199,24 @@ describe("processQuery tests", () => {
 		await processQuery(client, {
 			predicates,
 			limit: undefined,
-			offset: undefined,
+			cursor: undefined,
 			ownedBy: "0x123",
 		})
 
 		expect(client.request).lastCalledWith({
-			method: "golembase_queryEntities",
-			params: [`key = "value" && $owner=0x123`],
+			method: "arkiv_query",
+			params: [
+				`key = "value" && $owner=0x123`,
+				{
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
+			],
 		})
 	})
 
@@ -160,13 +225,27 @@ describe("processQuery tests", () => {
 		await processQuery(client, {
 			predicates,
 			limit: undefined,
-			offset: undefined,
+			cursor: undefined,
+			validAtBlock: undefined,
+			withAnnotations: undefined,
+			withMetadata: undefined,
 			ownedBy: "0x123",
 		})
 
 		expect(client.request).lastCalledWith({
-			method: "golembase_queryEntities",
-			params: [`$owner=0x123`],
+			method: "arkiv_query",
+			params: [
+				`$owner=0x123`,
+				{
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
+			],
 		})
 	})
 })
