@@ -119,6 +119,17 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "github-actions[bot]@golem.network"
 
+      - name: Prepare package for publish
+        run: |
+          echo "=== Preparing package for publish ==="
+          bun prepublishOnly
+          if ! bun run prepublishOnly 2>&1; then
+            echo "=== PREPUBLISH FAILED ==="
+            echo "Exit code: $?"
+            echo "=== Full output (stdout + stderr) ==="
+            exit 1
+          fi
+
       - name: Run publish to dev
         if: github.ref == 'refs/heads/v1-dev'
         run: |
