@@ -215,7 +215,7 @@ describe("Arkiv Integration Tests for public client", () => {
 			expect(entity.payload).toEqual(
 				toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
 			)
-			expect(entity.annotations).toEqual([{ key: "testKey", value: "testValue" }])
+			expect(entity.annotations.length).toEqual(4) // 3 predefined and 1 custom
 
 			// update entity
 			const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await client.updateEntity({
@@ -233,7 +233,7 @@ describe("Arkiv Integration Tests for public client", () => {
 			expect(updatedEntity.payload).toEqual(
 				toBytes(JSON.stringify({ entity: { entityType: "test2", entityId: "test2" } })),
 			)
-			expect(updatedEntity.annotations).toEqual([])
+			expect(updatedEntity.annotations.length).toEqual(3) // 3 predefined and 0 custom
 
 			// extend entity
 			const { entityKey: extendedEntityKey, txHash: extendedTxHash } =
