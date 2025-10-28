@@ -77,10 +77,11 @@
 		"lint:fix": "biome check --write src/",
 		"package": "rimraf arkiv-network-sdk-*.tgz && bun run build && bun pm pack --no-cache",
 		"package:test": "bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
-		"publish-main": "npm publish --access public",
-		"publish-main:dry": "npm publish --access public --dry-run",
-		"publish-dev": "npm version prerelease --preid=dev && npm publish --access public --tag dev",
-		"publish-dev:dry": "npm version prerelease --preid=dev && npm publish --access public --tag dev --dry-run"
+		"prepublishOnly": "bun run build && bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
+		"publish-main": "npm publish ./arkiv-network-sdk-latest.tgz --access public",
+		"publish-main:dry": "npm publish ./arkiv-network-sdk-latest.tgz --access public --dry-run",
+		"publish-dev": "npm version prerelease --preid=dev && npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev",
+		"publish-dev:dry": "npm version prerelease --preid=dev && npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev --dry-run"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.4",
