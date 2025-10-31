@@ -1,6 +1,6 @@
 {
 	"name": "@arkiv-network/sdk",
-	"version": "0.0.36-dev.6",
+	"version": "0.0.36-dev.7",
 	"description": "TypeScript-only client library for Arkiv blockchain interactions",
 	"type": "module",
 	"main": "./dist/_cjs/index.js",
