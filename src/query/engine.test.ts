@@ -248,4 +248,33 @@ describe("processQuery tests", () => {
 			],
 		})
 	})
+
+	it("should process simple predicate with validAtBlock and paging", async () => {
+		const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+		await processQuery(client, {
+			predicates,
+			limit: 10,
+			cursor: undefined,
+			validAtBlock: 123n,
+			ownedBy: "0x123",
+		})
+
+		expect(client.request).lastCalledWith({
+			method: "arkiv_query",
+			params: [
+				`key = "value" && $owner=0x123`,
+				{
+					atBlock: 123n,
+					resultsPerPage: 10,
+					includeData: {
+						key: true,
+						annotations: false,
+						payload: false,
+						expiration: false,
+						owner: false,
+					},
+				},
+			],
+		})
+	})
 })

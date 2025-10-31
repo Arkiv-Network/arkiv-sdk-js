@@ -54,4 +54,8 @@ export class QueryResult {
 		// TODO check current block height and if it is not too old
 		console.debug("Current block height for next page: ", this._validAtBlock)
 	}
+
+	hasNextPage() {
+		return !this._endOfIteration
+	}
 }

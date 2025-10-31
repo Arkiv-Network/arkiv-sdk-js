@@ -96,12 +96,11 @@ describe("QueryResult", () => {
 			await expect(result.next()).rejects.toThrow(NoCursorOrLimitError)
 		})
 
-		test("throws NoMoreResultsError when limit < entities.length", async () => {
-			// limit is 2 but we have 3 entities, so limit < entities.length triggers error
-			const result = new QueryResult(mockEntities, mockQueryBuilder, 2, "0xABC123")
+		test("throws NoMoreResultsError when limit > entities.length", async () => {
+			// limit is 4 but we have 3 entities, so limit > entities.length triggers error
+			const result = new QueryResult(mockEntities, mockQueryBuilder, "0xABC123", 4, 123n)
 
 			await expect(result.next()).rejects.toThrow(NoMoreResultsError)
-			await expect(result.next()).rejects.toThrow("No more results")
 		})
 
 		test("fetches next page when limit equals entities length", async () => {

@@ -97,7 +97,9 @@ export async function processQuery(
 		queryOptions.cursor = cursor
 	}
 
-	console.debug(`Built query to send: ${query}, queryOptions: ${JSON.stringify(queryOptions)}`)
+	console.debug(
+		`Built query to send: ${query}, queryOptions: ${JSON.stringify({ atBlock: queryOptions.atBlock?.toString(), resultsPerPage: queryOptions.resultsPerPage, cursor: queryOptions.cursor })}`,
+	)
 
 	const result = await client.request({
 		method: "arkiv_query",

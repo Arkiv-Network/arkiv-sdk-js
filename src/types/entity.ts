@@ -27,12 +27,6 @@ export class Entity {
 	}
 
 	toJson(): any {
-		return {
-			$key: this.key,
-			$annotations: this.annotations,
-			$owner: this.owner,
-			$expiresAtBlock: this.expiresAtBlock,
-			...JSON.parse(bytesToString(this.payload)),
-		}
+		return JSON.parse(bytesToString(this.payload))
 	}
 }

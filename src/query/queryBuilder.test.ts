@@ -466,6 +466,7 @@ describe("QueryBuilder", () => {
 				.ownedBy(owner)
 				.limit(50)
 				.cursor("0xABC123")
+				.validAtBlock(123n)
 				.count()
 
 			expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
@@ -473,7 +474,7 @@ describe("QueryBuilder", () => {
 				limit: 50,
 				cursor: "0xABC123",
 				ownedBy: owner,
-				validAtBlock: undefined,
+				validAtBlock: 123n,
 				withAnnotations: false,
 				withMetadata: false,
 				withPayload: false,
