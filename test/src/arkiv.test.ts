@@ -210,6 +210,7 @@ describe("Arkiv Integration Tests for public client", () => {
 						},
 					}),
 				),
+				contentType: "application/json",
 				annotations: [{ key: "testKey", value: "testValue" }],
 				expiresIn: ExpirationTime.fromBlocks(1000),
 			})
@@ -230,6 +231,7 @@ describe("Arkiv Integration Tests for public client", () => {
 			const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await client.updateEntity({
 				entityKey,
 				payload: jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } }),
+				contentType: "application/json",
 				annotations: [],
 				expiresIn: 1000,
 			})
@@ -274,24 +276,28 @@ describe("Arkiv Integration Tests for public client", () => {
 			// need to create a few entities first
 			const { entityKey: entityKey1, txHash: txHash1 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				contentType: "application/json",
 				annotations: [{ key: "testKey", value: "testValue" }],
 				expiresIn: 1000,
 			})
 
 			const { entityKey: entityKey2, txHash: txHash2 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				contentType: "application/json",
 				annotations: [{ key: "testKey", value: "testValue" }],
 				expiresIn: 1000,
 			})
 
 			const { entityKey: entityKey3, txHash: txHash3 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				contentType: "application/json",
 				annotations: [{ key: "testKey", value: "testValue" }],
 				expiresIn: 1000,
 			})
 
 			const { entityKey: entityKey4, txHash: txHash4 } = await client.createEntity({
 				payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+				contentType: "application/json",
 				annotations: [{ key: "testKey", value: "testValue" }],
 				expiresIn: 1000,
 			})
@@ -301,6 +307,7 @@ describe("Arkiv Integration Tests for public client", () => {
 				creates: [
 					{
 						payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+						contentType: "application/json",
 						annotations: [{ key: "testKey", value: "testValue" }],
 						expiresIn: 1000,
 					},
@@ -309,6 +316,7 @@ describe("Arkiv Integration Tests for public client", () => {
 					{
 						entityKey: entityKey1,
 						payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+						contentType: "application/json",
 						annotations: [{ key: "testKey", value: "testValue" }],
 						expiresIn: 1000,
 					},
@@ -348,6 +356,7 @@ describe("Arkiv Integration Tests for public client", () => {
 			for (let i = 0; i < 10; i++) {
 				await client.createEntity({
 					payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+					contentType: "application/json",
 					annotations: [{ key: "testKey", value }],
 					expiresIn: 1000,
 				})
@@ -405,6 +414,7 @@ describe("Arkiv Integration Tests for public client", () => {
 						entityId: "test",
 					},
 				}),
+				contentType: "application/json",
 				annotations: [{ key: "testKey", value: "testValue" }],
 				expiresIn: ExpirationTime.fromBlocks(1000),
 			})

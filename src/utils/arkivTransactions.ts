@@ -2,6 +2,7 @@ import { type Hex, toHex, toRlp } from "viem"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
 import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
+import type { OwnershipChangeParameters } from "../actions/wallet/ownershipChange"
 import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
@@ -13,11 +14,13 @@ export function opsToTxData({
 	updates,
 	deletes,
 	extensions,
+	ownershipChanges,
 }: {
 	creates?: CreateEntityParameters[]
 	updates?: UpdateEntityParameters[]
 	deletes?: DeleteEntityParameters[]
 	extensions?: ExtendEntityParameters[]
+	ownershipChanges?: OwnershipChangeParameters[]
 }) {
 	function formatAnnotation<T extends string | number | bigint | boolean>(annotation: {
 		key: string
@@ -30,6 +33,7 @@ export function opsToTxData({
 		//creates
 		(creates ?? []).map((item) => [
 			toHex(item.expiresIn / BLOCK_TIME),
+			toHex(item.contentType),
 			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
@@ -42,6 +46,7 @@ export function opsToTxData({
 		(updates ?? []).map((item) => [
 			item.entityKey,
 			toHex(item.expiresIn / BLOCK_TIME),
+			toHex(item.contentType),
 			toHex(item.payload),
 			item.annotations
 				.filter((annotation) => typeof annotation.value === "string")
@@ -54,6 +59,8 @@ export function opsToTxData({
 		(deletes ?? []).map((item) => item.entityKey),
 		//extends
 		(extensions ?? []).map((item) => [item.entityKey, toHex(item.expiresIn / BLOCK_TIME)]),
+		//ownershipChanges TODO
+		(ownershipChanges ?? []).map((item) => [item.entityKey, item.newOwner]),
 	]
 
 	console.debug("txData to send as RLP", payload)
