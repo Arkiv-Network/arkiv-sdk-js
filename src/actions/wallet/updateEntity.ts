@@ -1,6 +1,6 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
-import type { Annotation, TxParams } from "../../types"
+import type { Annotation, MimeType, TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
 /**
@@ -12,8 +12,9 @@ import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions
  */
 export type UpdateEntityParameters = {
 	entityKey: Hex
-	payload: Uint8Array | string
+	payload: Uint8Array
 	annotations: Annotation[]
+	contentType: MimeType
 	expiresIn: number
 }
 
