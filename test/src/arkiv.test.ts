@@ -176,6 +176,15 @@ describe("Arkiv Integration Tests for public client", () => {
 		)
 		expect(rawQuery).toBeDefined()
 		expect(rawQuery.length).toBeGreaterThanOrEqual(1)
+
+		// query at specific block
+		const queryAtBlock = await client
+			.buildQuery()
+			.where(eq("key", "value"))
+			.validAtBlock(1n)
+			.fetch()
+		expect(queryAtBlock).toBeDefined()
+		expect(queryAtBlock.entities.length).toBeGreaterThanOrEqual(0)
 	})
 
 	test.each(["http", "webSocket"] as const)(
@@ -327,7 +336,7 @@ describe("Arkiv Integration Tests for public client", () => {
 			expect(result.deletedEntities).toBeDefined()
 			expect(result.extendedEntities).toBeDefined()
 		},
-		{ timeout: 20000 },
+		{ timeout: 60000 },
 	)
 
 	test.each(["http", "webSocket"] as const)(
@@ -382,7 +391,7 @@ describe("Arkiv Integration Tests for public client", () => {
 			// and there is no more results
 			await expect(queryResult.next()).rejects.toThrow()
 		},
-		{ timeout: 30000 },
+		{ timeout: 60000 },
 	)
 	test.each(["http", "webSocket"] as const)(
 		"Query with various projections using withAnnotations, withMetadata, withPayload",

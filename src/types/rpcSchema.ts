@@ -10,7 +10,7 @@ export type RpcEntity = {
 }
 
 export type RpcQueryOptions = {
-	atBlock?: bigint
+	atBlock?: number
 	includeData?: RpcIncludeData
 	resultsPerPage?: number
 	cursor?: string

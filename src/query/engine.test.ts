@@ -264,7 +264,7 @@ describe("processQuery tests", () => {
 			params: [
 				`key = "value" && $owner=0x123`,
 				{
-					atBlock: 123n,
+					atBlock: 123,
 					resultsPerPage: 10,
 					includeData: {
 						key: true,

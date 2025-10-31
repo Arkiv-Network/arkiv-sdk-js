@@ -88,7 +88,7 @@ export async function processQuery(
 	}
 
 	if (validAtBlock !== undefined) {
-		queryOptions.atBlock = validAtBlock
+		queryOptions.atBlock = Number(validAtBlock)
 	}
 	if (limit !== undefined) {
 		queryOptions.resultsPerPage = limit
