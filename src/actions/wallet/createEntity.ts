@@ -10,10 +10,10 @@ import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions
  * - expiresIn: The expires in of the entity in seconds.
  */
 export type CreateEntityParameters = {
-	payload: Uint8Array
-	annotations: Annotation[]
-	contentType: MimeType
-	expiresIn: number
+  payload: Uint8Array
+  annotations: Annotation[]
+  contentType: MimeType
+  expiresIn: number
 }
 
 /**
@@ -22,23 +22,23 @@ export type CreateEntityParameters = {
  * - txHash: The transaction hash.
  */
 export type CreateEntityReturnType = {
-	entityKey: Hex
-	txHash: string
+  entityKey: Hex
+  txHash: string
 }
 
 export async function createEntity(
-	client: ArkivClient,
-	data: CreateEntityParameters,
-	txParams?: TxParams,
+  client: ArkivClient,
+  data: CreateEntityParameters,
+  txParams?: TxParams,
 ): Promise<CreateEntityReturnType> {
-	console.debug("createEntity", data)
-	const txData = opsToTxData({ creates: [data] })
-	const receipt = await sendArkivTransaction(client, txData, txParams)
+  console.debug("createEntity", data)
+  const txData = opsToTxData({ creates: [data] })
+  const receipt = await sendArkivTransaction(client, txData, txParams)
 
-	console.debug("Receipt from createEntity", receipt)
+  console.debug("Receipt from createEntity", receipt)
 
-	return {
-		txHash: receipt.transactionHash,
-		entityKey: receipt.logs[0].topics[1] as Hex,
-	}
+  return {
+    txHash: receipt.transactionHash,
+    entityKey: receipt.logs[0].topics[1] as Hex,
+  }
 }

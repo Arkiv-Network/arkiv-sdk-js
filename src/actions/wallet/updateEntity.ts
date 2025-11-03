@@ -11,11 +11,11 @@ import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions
  * - expiresIn: The expires in of the entity in seconds.
  */
 export type UpdateEntityParameters = {
-	entityKey: Hex
-	payload: Uint8Array
-	annotations: Annotation[]
-	contentType: MimeType
-	expiresIn: number
+  entityKey: Hex
+  payload: Uint8Array
+  annotations: Annotation[]
+  contentType: MimeType
+  expiresIn: number
 }
 
 /**
@@ -24,23 +24,23 @@ export type UpdateEntityParameters = {
  * - txHash: The transaction hash.
  */
 export type UpdateEntityReturnType = {
-	entityKey: Hex
-	txHash: string
+  entityKey: Hex
+  txHash: string
 }
 
 export async function updateEntity(
-	client: ArkivClient,
-	data: UpdateEntityParameters,
-	txParams?: TxParams,
+  client: ArkivClient,
+  data: UpdateEntityParameters,
+  txParams?: TxParams,
 ): Promise<UpdateEntityReturnType> {
-	console.debug("updateEntity", data)
-	const txData = opsToTxData({ updates: [data] })
-	const receipt = await sendArkivTransaction(client, txData, txParams)
+  console.debug("updateEntity", data)
+  const txData = opsToTxData({ updates: [data] })
+  const receipt = await sendArkivTransaction(client, txData, txParams)
 
-	console.debug("Receipt from updateEntity", receipt)
+  console.debug("Receipt from updateEntity", receipt)
 
-	return {
-		txHash: receipt.transactionHash,
-		entityKey: receipt.logs[0].topics[1] as Hex,
-	}
+  return {
+    txHash: receipt.transactionHash,
+    entityKey: receipt.logs[0].topics[1] as Hex,
+  }
 }

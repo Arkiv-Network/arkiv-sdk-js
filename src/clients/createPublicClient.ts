@@ -1,25 +1,25 @@
 import type {
-	Account,
-	Address,
-	Chain,
-	Client,
-	ParseAccount,
-	Prettify,
-	PublicClientConfig,
-	RpcSchema,
-	Transport,
+  Account,
+  Address,
+  Chain,
+  Client,
+  ParseAccount,
+  Prettify,
+  PublicClientConfig,
+  RpcSchema,
+  Transport,
 } from "viem"
 import { createClient, publicActions } from "viem"
 import type { ArkivRpcSchema } from "../types/rpcSchema"
 import { type PublicArkivActions, publicArkivActions } from "./decorators/arkivPublic"
 
 export type PublicArkivClient<
-	transport extends Transport = Transport,
-	chain extends Chain | undefined = Chain | undefined,
-	accountOrAddress extends Account | undefined = undefined,
-	rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain | undefined,
+  accountOrAddress extends Account | undefined = undefined,
+  rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
 > = Prettify<
-	Client<transport, chain, accountOrAddress, rpcSchema, PublicArkivActions<transport, chain>>
+  Client<transport, chain, accountOrAddress, rpcSchema, PublicArkivActions<transport, chain>>
 >
 
 /**
@@ -42,24 +42,24 @@ export type PublicArkivClient<
  * })
  */
 export function createPublicClient<
-	transport extends Transport,
-	chain extends Chain | undefined = undefined,
-	accountOrAddress extends Account | Address | undefined = undefined,
-	rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
+  transport extends Transport,
+  chain extends Chain | undefined = undefined,
+  accountOrAddress extends Account | Address | undefined = undefined,
+  rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
 >(
-	parameters: PublicClientConfig<transport, chain, accountOrAddress, rpcSchema>,
+  parameters: PublicClientConfig<transport, chain, accountOrAddress, rpcSchema>,
 ): PublicArkivClient<transport, chain, ParseAccount<accountOrAddress>, rpcSchema> {
-	const { key = "public", name = "Public Client" } = parameters
-	const client = createClient({
-		...parameters,
-		key,
-		name,
-	})
+  const { key = "public", name = "Public Client" } = parameters
+  const client = createClient({
+    ...parameters,
+    key,
+    name,
+  })
 
-	return client.extend(publicArkivActions).extend(publicActions) as unknown as PublicArkivClient<
-		transport,
-		chain,
-		ParseAccount<accountOrAddress>,
-		rpcSchema
-	>
+  return client.extend(publicArkivActions).extend(publicActions) as unknown as PublicArkivClient<
+    transport,
+    chain,
+    ParseAccount<accountOrAddress>,
+    rpcSchema
+  >
 }

@@ -8,7 +8,7 @@ import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions
  * - entityKey: The key of the entity to delete.
  */
 export type DeleteEntityParameters = {
-	entityKey: Hex
+  entityKey: Hex
 }
 
 /**
@@ -17,23 +17,23 @@ export type DeleteEntityParameters = {
  * - txHash: The transaction hash.
  */
 export type DeleteEntityReturnType = {
-	entityKey: Hex
-	txHash: string
+  entityKey: Hex
+  txHash: string
 }
 
 export async function deleteEntity(
-	client: ArkivClient,
-	data: DeleteEntityParameters,
-	txParams?: TxParams,
+  client: ArkivClient,
+  data: DeleteEntityParameters,
+  txParams?: TxParams,
 ): Promise<DeleteEntityReturnType> {
-	console.debug("deleteEntity", data)
-	const txData = opsToTxData({ deletes: [data] })
-	const receipt = await sendArkivTransaction(client, txData, txParams)
+  console.debug("deleteEntity", data)
+  const txData = opsToTxData({ deletes: [data] })
+  const receipt = await sendArkivTransaction(client, txData, txParams)
 
-	console.debug("Receipt from deleteEntity", receipt)
+  console.debug("Receipt from deleteEntity", receipt)
 
-	return {
-		txHash: receipt.transactionHash,
-		entityKey: data.entityKey,
-	}
+  return {
+    txHash: receipt.transactionHash,
+    entityKey: data.entityKey,
+  }
 }

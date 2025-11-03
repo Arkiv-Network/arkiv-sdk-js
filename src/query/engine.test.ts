@@ -4,277 +4,277 @@ import { processQuery } from "./engine"
 import type { Predicate } from "./predicate"
 
 describe("processQuery tests", () => {
-	const client = {
-		request: jest.fn(),
-	} as unknown as ArkivClient
+  const client = {
+    request: jest.fn(),
+  } as unknown as ArkivClient
 
-	it("should process single predicate", async () => {
-		const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
-		await processQuery(client, {
-			predicates,
-			limit: undefined,
-			cursor: undefined,
-			ownedBy: undefined,
-			validAtBlock: undefined,
-			withAnnotations: undefined,
-			withMetadata: undefined,
-			withPayload: undefined,
-		})
+  it("should process single predicate", async () => {
+    const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      validAtBlock: undefined,
+      withAnnotations: undefined,
+      withMetadata: undefined,
+      withPayload: undefined,
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`key = "value"`,
-				{
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value"`,
+        {
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 
-	it("should process all simple predicates - flat", async () => {
-		const predicates = [
-			{ type: "eq" as const, key: "key", value: "value" },
-			{ type: "gt" as const, key: "key2", value: 1 },
-			{ type: "gte" as const, key: "key3", value: 2 },
-			{ type: "lt" as const, key: "key4", value: 3 },
-			{ type: "lte" as const, key: "key5", value: 4 },
-			{ type: "neq" as const, key: "key6", value: "value6" },
-		]
-		await processQuery(client, {
-			predicates,
-			limit: undefined,
-			cursor: undefined,
-			ownedBy: undefined,
-			validAtBlock: undefined,
-			withAnnotations: undefined,
-			withMetadata: undefined,
-		})
+  it("should process all simple predicates - flat", async () => {
+    const predicates = [
+      { type: "eq" as const, key: "key", value: "value" },
+      { type: "gt" as const, key: "key2", value: 1 },
+      { type: "gte" as const, key: "key3", value: 2 },
+      { type: "lt" as const, key: "key4", value: 3 },
+      { type: "lte" as const, key: "key5", value: 4 },
+      { type: "neq" as const, key: "key6", value: "value6" },
+    ]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      validAtBlock: undefined,
+      withAnnotations: undefined,
+      withMetadata: undefined,
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`key = "value" && key2 > 1 && key3 >= 2 && key4 < 3 && key5 <= 4 && key6 != "value6"`,
-				{
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && key2 > 1 && key3 >= 2 && key4 < 3 && key5 <= 4 && key6 != "value6"`,
+        {
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 
-	it("should process multiple predicates - nested with or", async () => {
-		const predicates = [
-			{ type: "eq" as const, key: "key", value: "value" },
-			{
-				type: "or" as const,
-				predicates: [
-					{ type: "eq" as const, key: "key2", value: "value2" },
-					{ type: "eq" as const, key: "key3", value: "value3" },
-				],
-			},
-		]
-		await processQuery(client, {
-			predicates,
-			limit: undefined,
-			cursor: undefined,
-			ownedBy: undefined,
-			validAtBlock: undefined,
-			withAnnotations: undefined,
-			withMetadata: undefined,
-		})
+  it("should process multiple predicates - nested with or", async () => {
+    const predicates = [
+      { type: "eq" as const, key: "key", value: "value" },
+      {
+        type: "or" as const,
+        predicates: [
+          { type: "eq" as const, key: "key2", value: "value2" },
+          { type: "eq" as const, key: "key3", value: "value3" },
+        ],
+      },
+    ]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      validAtBlock: undefined,
+      withAnnotations: undefined,
+      withMetadata: undefined,
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`key = "value" && (key2 = "value2" || key3 = "value3")`,
-				{
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && (key2 = "value2" || key3 = "value3")`,
+        {
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 
-	it("should process multiple predicates - nested with and", async () => {
-		const predicates = [
-			{ type: "eq" as const, key: "key", value: "value" },
-			{
-				type: "and" as const,
-				predicates: [
-					{ type: "eq" as const, key: "key2", value: "value2" },
-					{ type: "eq" as const, key: "key3", value: "value3" },
-				],
-			},
-		]
-		await processQuery(client, {
-			predicates,
-			limit: undefined,
-			cursor: undefined,
-			ownedBy: undefined,
-			validAtBlock: undefined,
-			withAnnotations: undefined,
-			withMetadata: undefined,
-		})
+  it("should process multiple predicates - nested with and", async () => {
+    const predicates = [
+      { type: "eq" as const, key: "key", value: "value" },
+      {
+        type: "and" as const,
+        predicates: [
+          { type: "eq" as const, key: "key2", value: "value2" },
+          { type: "eq" as const, key: "key3", value: "value3" },
+        ],
+      },
+    ]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      validAtBlock: undefined,
+      withAnnotations: undefined,
+      withMetadata: undefined,
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`key = "value" && (key2 = "value2" && key3 = "value3")`,
-				{
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && (key2 = "value2" && key3 = "value3")`,
+        {
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 
-	it("should process multiple predicates - nested with and and or", async () => {
-		const predicates = [
-			{ type: "eq" as const, key: "key", value: "value" },
-			{
-				type: "and" as const,
-				predicates: [
-					{ type: "eq" as const, key: "key2", value: "value2" },
-					{
-						type: "or" as const,
-						predicates: [
-							{ type: "eq" as const, key: "key3", value: "value3" },
-							{ type: "eq" as const, key: "key4", value: "value4" },
-						],
-					},
-				],
-			},
-		]
-		await processQuery(client, {
-			predicates,
-			limit: undefined,
-			cursor: undefined,
-			ownedBy: undefined,
-			validAtBlock: undefined,
-			withAnnotations: undefined,
-			withMetadata: undefined,
-		})
+  it("should process multiple predicates - nested with and and or", async () => {
+    const predicates = [
+      { type: "eq" as const, key: "key", value: "value" },
+      {
+        type: "and" as const,
+        predicates: [
+          { type: "eq" as const, key: "key2", value: "value2" },
+          {
+            type: "or" as const,
+            predicates: [
+              { type: "eq" as const, key: "key3", value: "value3" },
+              { type: "eq" as const, key: "key4", value: "value4" },
+            ],
+          },
+        ],
+      },
+    ]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      validAtBlock: undefined,
+      withAnnotations: undefined,
+      withMetadata: undefined,
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`key = "value" && (key2 = "value2" && (key3 = "value3" || key4 = "value4"))`,
-				{
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && (key2 = "value2" && (key3 = "value3" || key4 = "value4"))`,
+        {
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 
-	it("should process simple predicates with ownedBy", async () => {
-		const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
-		await processQuery(client, {
-			predicates,
-			limit: undefined,
-			cursor: undefined,
-			ownedBy: "0x123",
-		})
+  it("should process simple predicates with ownedBy", async () => {
+    const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: "0x123",
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`key = "value" && $owner=0x123`,
-				{
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && $owner=0x123`,
+        {
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 
-	it("should process only ownedBy", async () => {
-		const predicates = [] as Predicate[]
-		await processQuery(client, {
-			predicates,
-			limit: undefined,
-			cursor: undefined,
-			validAtBlock: undefined,
-			withAnnotations: undefined,
-			withMetadata: undefined,
-			ownedBy: "0x123",
-		})
+  it("should process only ownedBy", async () => {
+    const predicates = [] as Predicate[]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      validAtBlock: undefined,
+      withAnnotations: undefined,
+      withMetadata: undefined,
+      ownedBy: "0x123",
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`$owner=0x123`,
-				{
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `$owner=0x123`,
+        {
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 
-	it("should process simple predicate with validAtBlock and paging", async () => {
-		const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
-		await processQuery(client, {
-			predicates,
-			limit: 10,
-			cursor: undefined,
-			validAtBlock: 123n,
-			ownedBy: "0x123",
-		})
+  it("should process simple predicate with validAtBlock and paging", async () => {
+    const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+    await processQuery(client, {
+      predicates,
+      limit: 10,
+      cursor: undefined,
+      validAtBlock: 123n,
+      ownedBy: "0x123",
+    })
 
-		expect(client.request).lastCalledWith({
-			method: "arkiv_query",
-			params: [
-				`key = "value" && $owner=0x123`,
-				{
-					atBlock: 123,
-					resultsPerPage: 10,
-					includeData: {
-						key: true,
-						annotations: false,
-						payload: false,
-						expiration: false,
-						owner: false,
-					},
-				},
-			],
-		})
-	})
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && $owner=0x123`,
+        {
+          atBlock: 123,
+          resultsPerPage: 10,
+          includeData: {
+            key: true,
+            annotations: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
 })

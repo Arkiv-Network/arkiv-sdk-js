@@ -4,15 +4,15 @@ import { NoEntityFoundError } from "../../query/errors"
 import { entityFromRpcResult } from "../../utils/entities"
 
 export async function getEntity(client: ArkivClient, key: Hex) {
-	const result = await client.request({
-		method: "arkiv_query",
-		params: [`$key = ${key}`],
-	})
-	console.debug("GetEntity result", result)
+  const result = await client.request({
+    method: "arkiv_query",
+    params: [`$key = ${key}`],
+  })
+  console.debug("GetEntity result", result)
 
-	if (!result.data) {
-		throw new NoEntityFoundError()
-	}
+  if (!result.data) {
+    throw new NoEntityFoundError()
+  }
 
-	return entityFromRpcResult(result.data[0])
+  return entityFromRpcResult(result.data[0])
 }

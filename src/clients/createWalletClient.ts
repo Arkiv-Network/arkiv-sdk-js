@@ -1,13 +1,13 @@
 import type {
-	Account,
-	Address,
-	Chain,
-	Client,
-	ParseAccount,
-	Prettify,
-	RpcSchema,
-	Transport,
-	WalletClientConfig,
+  Account,
+  Address,
+  Chain,
+  Client,
+  ParseAccount,
+  Prettify,
+  RpcSchema,
+  Transport,
+  WalletClientConfig,
 } from "viem"
 import { createClient, publicActions, walletActions } from "viem"
 import type { ArkivRpcSchema } from "../types/rpcSchema"
@@ -15,12 +15,12 @@ import { publicArkivActions } from "./decorators/arkivPublic"
 import { type WalletArkivActions, walletArkivActions } from "./decorators/arkivWallet"
 
 export type WalletArkivClient<
-	transport extends Transport = Transport,
-	chain extends Chain | undefined = Chain | undefined,
-	account extends Account | undefined = Account | undefined,
-	rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
+  transport extends Transport = Transport,
+  chain extends Chain | undefined = Chain | undefined,
+  account extends Account | undefined = Account | undefined,
+  rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
 > = Prettify<
-	Client<transport, chain, account, rpcSchema, WalletArkivActions<transport, chain, account>>
+  Client<transport, chain, account, rpcSchema, WalletArkivActions<transport, chain, account>>
 >
 
 /**
@@ -43,28 +43,28 @@ export type WalletArkivClient<
  * })
  */
 export function createWalletClient<
-	transport extends Transport,
-	chain extends Chain | undefined = undefined,
-	accountOrAddress extends Account | Address | undefined = undefined,
-	rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
+  transport extends Transport,
+  chain extends Chain | undefined = undefined,
+  accountOrAddress extends Account | Address | undefined = undefined,
+  rpcSchema extends RpcSchema | undefined = ArkivRpcSchema,
 >(
-	parameters: WalletClientConfig<transport, chain, accountOrAddress, rpcSchema>,
+  parameters: WalletClientConfig<transport, chain, accountOrAddress, rpcSchema>,
 ): WalletArkivClient<transport, chain, ParseAccount<accountOrAddress>, rpcSchema> {
-	const { key = "wallet", name = "Wallet Client" } = parameters
-	const client = createClient({
-		...parameters,
-		key,
-		name,
-	})
+  const { key = "wallet", name = "Wallet Client" } = parameters
+  const client = createClient({
+    ...parameters,
+    key,
+    name,
+  })
 
-	return client
-		.extend(walletActions)
-		.extend(publicActions)
-		.extend(walletArkivActions)
-		.extend(publicArkivActions) as unknown as WalletArkivClient<
-		transport,
-		chain,
-		ParseAccount<accountOrAddress>,
-		rpcSchema
-	>
+  return client
+    .extend(walletActions)
+    .extend(publicActions)
+    .extend(walletArkivActions)
+    .extend(publicArkivActions) as unknown as WalletArkivClient<
+    transport,
+    chain,
+    ParseAccount<accountOrAddress>,
+    rpcSchema
+  >
 }

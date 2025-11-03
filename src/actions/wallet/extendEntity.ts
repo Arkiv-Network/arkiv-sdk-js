@@ -9,8 +9,8 @@ import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions
  * - expiresIn: The expires in of the entity in seconds.
  */
 export type ExtendEntityParameters = {
-	entityKey: Hex
-	expiresIn: number
+  entityKey: Hex
+  expiresIn: number
 }
 
 /**
@@ -19,23 +19,23 @@ export type ExtendEntityParameters = {
  * - txHash: The transaction hash.
  */
 export type ExtendEntityReturnType = {
-	entityKey: Hex
-	txHash: string
+  entityKey: Hex
+  txHash: string
 }
 
 export async function extendEntity(
-	client: ArkivClient,
-	data: ExtendEntityParameters,
-	txParams?: TxParams,
+  client: ArkivClient,
+  data: ExtendEntityParameters,
+  txParams?: TxParams,
 ): Promise<ExtendEntityReturnType> {
-	console.debug("extendEntity", data)
-	const txData = opsToTxData({ extensions: [data] })
-	const receipt = await sendArkivTransaction(client, txData, txParams)
+  console.debug("extendEntity", data)
+  const txData = opsToTxData({ extensions: [data] })
+  const receipt = await sendArkivTransaction(client, txData, txParams)
 
-	console.debug("Receipt from extendEntity", receipt)
+  console.debug("Receipt from extendEntity", receipt)
 
-	return {
-		txHash: receipt.transactionHash,
-		entityKey: receipt.logs[0].topics[1] as Hex,
-	}
+  return {
+    txHash: receipt.transactionHash,
+    entityKey: receipt.logs[0].topics[1] as Hex,
+  }
 }

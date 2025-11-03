@@ -2,15 +2,15 @@ export type PredicateType = "eq" | "neq" | "gt" | "gte" | "lt" | "lte" | "not"
 export type PredicateContainerType = "or" | "and"
 
 export type Predicate =
-	| {
-			type: PredicateType
-			key: string
-			value: string | number
-	  }
-	| {
-			type: PredicateContainerType
-			predicates: Predicate[]
-	  }
+  | {
+      type: PredicateType
+      key: string
+      value: string | number
+    }
+  | {
+      type: PredicateContainerType
+      predicates: Predicate[]
+    }
 
 /**
  * Creates an OR predicate
@@ -24,7 +24,7 @@ export type Predicate =
  *
  */
 export function or(predicates: Predicate[]): Predicate {
-	return { type: "or", predicates }
+  return { type: "or", predicates }
 }
 
 /**
@@ -39,7 +39,7 @@ export function or(predicates: Predicate[]): Predicate {
  *
  */
 export function and(predicates: Predicate[]): Predicate {
-	return { type: "and", predicates }
+  return { type: "and", predicates }
 }
 
 /**
@@ -53,7 +53,7 @@ export function and(predicates: Predicate[]): Predicate {
  * // result = { type: "eq", key: "name", value: "John" }
  */
 export function eq(key: string, value: string | number): Predicate {
-	return { type: "eq", key, value }
+  return { type: "eq", key, value }
 }
 
 /**
@@ -67,7 +67,7 @@ export function eq(key: string, value: string | number): Predicate {
  * // result = { type: "neq", key: "name", value: "John" }
  */
 export function neq(key: string, value: string | number): Predicate {
-	return { type: "neq", key, value }
+  return { type: "neq", key, value }
 }
 
 /**
@@ -81,7 +81,7 @@ export function neq(key: string, value: string | number): Predicate {
  * // result = { type: "gt", key: "name", value: "John" }
  */
 export function gt(key: string, value: string | number): Predicate {
-	return { type: "gt", key, value }
+  return { type: "gt", key, value }
 }
 
 /**
@@ -95,7 +95,7 @@ export function gt(key: string, value: string | number): Predicate {
  * // result = { type: "gte", key: "name", value: "John" }
  */
 export function gte(key: string, value: string | number): Predicate {
-	return { type: "gte", key, value }
+  return { type: "gte", key, value }
 }
 
 /**
@@ -109,7 +109,7 @@ export function gte(key: string, value: string | number): Predicate {
  * // result = { type: "lt", key: "name", value: "John" }
  */
 export function lt(key: string, value: string | number): Predicate {
-	return { type: "lt", key, value }
+  return { type: "lt", key, value }
 }
 
 /**
@@ -123,7 +123,7 @@ export function lt(key: string, value: string | number): Predicate {
  * // result = { type: "lte", key: "name", value: "John" }
  */
 export function lte(key: string, value: string | number): Predicate {
-	return { type: "lte", key, value }
+  return { type: "lte", key, value }
 }
 
 /**
@@ -136,5 +136,5 @@ export function lte(key: string, value: string | number): Predicate {
  * // result = { type: "not", key: "name", value: "" }
  */
 export function not(key: string): Predicate {
-	return { type: "not", key, value: "" }
+  return { type: "not", key, value: "" }
 }

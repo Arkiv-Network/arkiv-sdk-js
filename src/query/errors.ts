@@ -1,23 +1,23 @@
 export class NoMoreResultsError extends Error {
-	constructor() {
-		super("No more results")
-	}
+  constructor() {
+    super("No more results")
+  }
 }
 
 export class NoCursorOrLimitError extends Error {
-	constructor() {
-		super("Cursor and limit must be defined to fetch next")
-	}
+  constructor() {
+    super("Cursor and limit must be defined to fetch next")
+  }
 }
 
 export class OffsetCannotBeLessThanZeroError extends Error {
-	constructor() {
-		super("Offset cannot be less than 0")
-	}
+  constructor() {
+    super("Offset cannot be less than 0")
+  }
 }
 
 export class NoEntityFoundError extends Error {
-	constructor() {
-		super("No entity found")
-	}
+  constructor() {
+    super("No entity found")
+  }
 }
