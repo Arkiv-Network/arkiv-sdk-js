@@ -1,4 +1,4 @@
-import { type Hex, toHex, toRlp } from "viem"
+import { type Hex, toBytes, toHex, toRlp } from "viem"
 import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnership"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
@@ -8,6 +8,7 @@ import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
 import type { TxParams } from "../types"
+import { compress } from "./compression"
 
 export function opsToTxData({
   creates,
@@ -63,7 +64,7 @@ export function opsToTxData({
     (ownershipChanges ?? []).map((item) => [item.entityKey, item.newOwner]),
   ]
 
-  console.debug("txData to send as RLP", payload)
+  console.debug("txData to send as RLP", payload, payload.length)
 
   return toRlp(payload)
 }
@@ -81,12 +82,15 @@ export async function sendArkivTransaction(client: ArkivClient, data: Hex, txPar
     ...txParams,
   })
 
+  console.debug("Compressing data", data)
+  const compressed = await compress(toBytes(data))
+  console.debug("Compressed data", compressed)
   const txHash = await walletClient.sendTransaction({
     account: client.account,
     chain: client.chain,
     to: ARKIV_ADDRESS,
     value: 0n,
-    data,
+    data: toHex(await compress(toBytes(data))),
     ...txParams,
   })
 
