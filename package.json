@@ -113,8 +113,7 @@
     "url": "https://github.com/Arkiv-Network/arkiv-sdk-js.git"
   },
   "dependencies": {
-    "@bokuweb/zstd-wasm": "^0.0.27",
-    "@oneidentity/zstd-js": "^1.0.3",
+    "brotli-wasm": "^3.0.1",
     "viem": "^2.38.2"
   }
 }

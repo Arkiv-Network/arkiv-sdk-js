@@ -1,21 +1,20 @@
-import { init, compress as zstdCompress, decompress as zstdDecompress } from "@bokuweb/zstd-wasm"
+import type { BrotliWasmType } from "brotli-wasm"
+import brotliPromise from "brotli-wasm"
 
-let initialized = false
+let brotli: BrotliWasmType | null = null
 export async function compress(data: Uint8Array): Promise<Uint8Array> {
-  if (!initialized) {
-    await init()
-    initialized = true
+  if (!brotli) {
+    brotli = await brotliPromise
   }
   console.debug(`Compressing data (size: ${data.length})`)
-  const compressed = await zstdCompress(data)
-  console.debug(`Compressed data (size: ${compressed.length})`)
-  return new Uint8Array(compressed)
+  const brotliCompressed = brotli.compress(data)
+  console.debug(`Brotli compressed data (size: ${brotliCompressed.length})`)
+  return brotliCompressed
 }
 
 export async function decompress(data: Uint8Array): Promise<Uint8Array> {
-  if (!initialized) {
-    await init()
-    initialized = true
+  if (!brotli) {
+    brotli = await brotliPromise
   }
-  return await zstdDecompress(data)
+  return brotli.decompress(data)
 }
