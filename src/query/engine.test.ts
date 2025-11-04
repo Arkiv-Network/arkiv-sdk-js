@@ -16,7 +16,7 @@ describe("processQuery tests", () => {
       cursor: undefined,
       ownedBy: undefined,
       validAtBlock: undefined,
-      withAnnotations: undefined,
+      withAttributes: undefined,
       withMetadata: undefined,
       withPayload: undefined,
     })
@@ -28,7 +28,8 @@ describe("processQuery tests", () => {
         {
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,
@@ -53,7 +54,7 @@ describe("processQuery tests", () => {
       cursor: undefined,
       ownedBy: undefined,
       validAtBlock: undefined,
-      withAnnotations: undefined,
+      withAttributes: undefined,
       withMetadata: undefined,
     })
 
@@ -64,7 +65,8 @@ describe("processQuery tests", () => {
         {
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,
@@ -91,7 +93,7 @@ describe("processQuery tests", () => {
       cursor: undefined,
       ownedBy: undefined,
       validAtBlock: undefined,
-      withAnnotations: undefined,
+      withAttributes: undefined,
       withMetadata: undefined,
     })
 
@@ -102,7 +104,8 @@ describe("processQuery tests", () => {
         {
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,
@@ -129,7 +132,7 @@ describe("processQuery tests", () => {
       cursor: undefined,
       ownedBy: undefined,
       validAtBlock: undefined,
-      withAnnotations: undefined,
+      withAttributes: undefined,
       withMetadata: undefined,
     })
 
@@ -140,7 +143,8 @@ describe("processQuery tests", () => {
         {
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,
@@ -173,7 +177,7 @@ describe("processQuery tests", () => {
       cursor: undefined,
       ownedBy: undefined,
       validAtBlock: undefined,
-      withAnnotations: undefined,
+      withAttributes: undefined,
       withMetadata: undefined,
     })
 
@@ -184,7 +188,8 @@ describe("processQuery tests", () => {
         {
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,
@@ -210,7 +215,8 @@ describe("processQuery tests", () => {
         {
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,
@@ -227,7 +233,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       validAtBlock: undefined,
-      withAnnotations: undefined,
+      withAttributes: undefined,
       withMetadata: undefined,
       ownedBy: "0x123",
     })
@@ -239,7 +245,8 @@ describe("processQuery tests", () => {
         {
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,
@@ -268,7 +275,8 @@ describe("processQuery tests", () => {
           resultsPerPage: 10,
           includeData: {
             key: true,
-            annotations: false,
+            attributes: false,
+            contentType: false,
             payload: false,
             expiration: false,
             owner: false,

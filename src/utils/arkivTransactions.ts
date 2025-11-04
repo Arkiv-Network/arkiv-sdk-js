@@ -23,11 +23,11 @@ export function opsToTxData({
   extensions?: ExtendEntityParameters[]
   ownershipChanges?: ChangeOwnershipParameters[]
 }) {
-  function formatAnnotation<T extends string | number | bigint | boolean>(annotation: {
+  function formatAttributes<T extends string | number | bigint | boolean>(attribute: {
     key: string
     value: T
   }): [Hex, Hex] {
-    return [toHex(annotation.key), toHex(annotation.value)]
+    return [toHex(attribute.key), toHex(attribute.value)]
   }
 
   const payload = [
@@ -36,12 +36,12 @@ export function opsToTxData({
       toHex(item.expiresIn / BLOCK_TIME),
       toHex(item.contentType),
       toHex(item.payload),
-      item.annotations
-        .filter((annotation) => typeof annotation.value === "string")
-        .map(formatAnnotation),
-      item.annotations
-        .filter((annotation) => typeof annotation.value === "number")
-        .map(formatAnnotation),
+      item.attributes
+        .filter((attribute) => typeof attribute.value === "string")
+        .map(formatAttributes),
+      item.attributes
+        .filter((attribute) => typeof attribute.value === "number")
+        .map(formatAttributes),
     ]),
     //updates
     (updates ?? []).map((item) => [
@@ -49,12 +49,12 @@ export function opsToTxData({
       toHex(item.contentType),
       toHex(item.expiresIn / BLOCK_TIME),
       toHex(item.payload),
-      item.annotations
-        .filter((annotation) => typeof annotation.value === "string")
-        .map(formatAnnotation),
-      item.annotations
-        .filter((annotation) => typeof annotation.value === "number")
-        .map(formatAnnotation),
+      item.attributes
+        .filter((attribute) => typeof attribute.value === "string")
+        .map(formatAttributes),
+      item.attributes
+        .filter((attribute) => typeof attribute.value === "number")
+        .map(formatAttributes),
     ]),
     //deletes
     (deletes ?? []).map((item) => item.entityKey),
@@ -82,15 +82,13 @@ export async function sendArkivTransaction(client: ArkivClient, data: Hex, txPar
     ...txParams,
   })
 
-  console.debug("Compressing data", data)
   const compressed = await compress(toBytes(data))
-  console.debug("Compressed data", compressed)
   const txHash = await walletClient.sendTransaction({
     account: client.account,
     chain: client.chain,
     to: ARKIV_ADDRESS,
     value: 0n,
-    data: toHex(await compress(toBytes(data))),
+    data: toHex(compressed),
     ...txParams,
   })
 

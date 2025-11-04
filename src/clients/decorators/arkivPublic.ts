@@ -35,8 +35,6 @@ export type PublicArkivActions<
    * Returns the entity with the given key.
    *
    * - Docs: https://docs.golemdb.io/ts-sdk/actions/public/getEntity
-   * - JSON-RPC Methods: [`golembase_getStorageValue`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_getstoragevalue)
-   * - JSON-RPC Methods: [`golembase_getEntityMetaData`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_getEntityMetaData)
    *
    * @param args - {entityKey}
    * @returns The entity with the given key. {@link Entity}

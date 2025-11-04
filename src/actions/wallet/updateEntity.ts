@@ -1,19 +1,20 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
-import type { Annotation, MimeType, TxParams } from "../../types"
+import type { Attribute, MimeType, TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
 
 /**
  * Parameters for the updateEntity function.
  * - entityKey: The key of the entity to update.
  * - payload: The payload of the entity.
- * - annotations: The annotations of the entity.
+ * - attributes: The attributes of the entity.
+ * - contentType: The content type of the entity.
  * - expiresIn: The expires in of the entity in seconds.
  */
 export type UpdateEntityParameters = {
   entityKey: Hex
   payload: Uint8Array
-  annotations: Annotation[]
+  attributes: Attribute[]
   contentType: MimeType
   expiresIn: number
 }

@@ -47,7 +47,7 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -68,7 +68,7 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -97,7 +97,7 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -118,7 +118,7 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -142,7 +142,7 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -165,7 +165,7 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: owner,
         validBeforeBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -185,7 +185,7 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -205,19 +205,19 @@ describe("QueryBuilder", () => {
         cursor: "0xABC123",
         ownedBy: undefined,
         validAtBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: undefined,
       })
     })
 
-    test("withAnnotations() sets withAnnotations to true by default", async () => {
+    test("withAttributes() sets withAttributes to true by default", async () => {
       mockProcessQuery.mockResolvedValue({
         data: [],
       })
 
       const builder = new QueryBuilder(mockClient)
-      await builder.withAnnotations().fetch()
+      await builder.withAttributes().fetch()
 
       expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
         predicates: [],
@@ -225,19 +225,19 @@ describe("QueryBuilder", () => {
         offset: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: true,
+        withAttributes: true,
         withMetadata: undefined,
         withPayload: undefined,
       })
     })
 
-    test("withAnnotations(false) sets withAnnotations to false", async () => {
+    test("withAttributes(false) sets withAttributes to false", async () => {
       mockProcessQuery.mockResolvedValue({
         data: [],
       })
 
       const builder = new QueryBuilder(mockClient)
-      await builder.withAnnotations(false).fetch()
+      await builder.withAttributes(false).fetch()
 
       expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
         predicates: [],
@@ -245,7 +245,7 @@ describe("QueryBuilder", () => {
         cursor: undefined,
         ownedBy: undefined,
         validBeforeBlock: undefined,
-        withAnnotations: false,
+        withAttributes: false,
         withMetadata: undefined,
         withPayload: undefined,
       })
@@ -265,7 +265,7 @@ describe("QueryBuilder", () => {
         cursor: undefined,
         ownedBy: undefined,
         validAtBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: true,
         withPayload: undefined,
       })
@@ -285,7 +285,7 @@ describe("QueryBuilder", () => {
         cursor: undefined,
         ownedBy: undefined,
         validAtBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: false,
         withPayload: undefined,
       })
@@ -305,7 +305,7 @@ describe("QueryBuilder", () => {
         cursor: undefined,
         ownedBy: undefined,
         validAtBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: true,
       })
@@ -325,7 +325,7 @@ describe("QueryBuilder", () => {
         cursor: undefined,
         ownedBy: undefined,
         validAtBlock: undefined,
-        withAnnotations: undefined,
+        withAttributes: undefined,
         withMetadata: undefined,
         withPayload: false,
       })
@@ -344,7 +344,7 @@ describe("QueryBuilder", () => {
         .ownedBy(owner)
         .limit(10)
         .cursor("0xABC123")
-        .withAnnotations(true)
+        .withAttributes(true)
         .withMetadata(true)
         .withPayload(true)
         .fetch()
@@ -355,7 +355,7 @@ describe("QueryBuilder", () => {
         cursor: "0xABC123",
         ownedBy: owner,
         validAtBlock: undefined,
-        withAnnotations: true,
+        withAttributes: true,
         withMetadata: true,
         withPayload: true,
       })
@@ -372,6 +372,7 @@ describe("QueryBuilder", () => {
       }
       const mockEntity1 = new Entity(
         "0xabc" as const,
+        "application/json" as const,
         "0x123" as const,
         1000n,
         new Uint8Array(),
@@ -379,6 +380,7 @@ describe("QueryBuilder", () => {
       )
       const mockEntity2 = new Entity(
         "0xdef" as const,
+        "application/json" as const,
         "0x456" as const,
         2000n,
         new Uint8Array(),
@@ -434,7 +436,7 @@ describe("QueryBuilder", () => {
         cursor: undefined,
         ownedBy: undefined,
         validAtBlock: undefined,
-        withAnnotations: false,
+        withAttributes: false,
         withMetadata: false,
         withPayload: false,
       })
@@ -475,7 +477,7 @@ describe("QueryBuilder", () => {
         cursor: "0xABC123",
         ownedBy: owner,
         validAtBlock: 123n,
-        withAnnotations: false,
+        withAttributes: false,
         withMetadata: false,
         withPayload: false,
       })

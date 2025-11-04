@@ -211,7 +211,7 @@ describe("Arkiv Integration Tests for public client", () => {
           }),
         ),
         contentType: "application/json",
-        annotations: [{ key: "testKey", value: "testValue" }],
+        attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: ExpirationTime.fromBlocks(1000),
       })
       console.log("result from createEntity", { entityKey, txHash })
@@ -225,14 +225,14 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(entity.payload).toEqual(
         toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
       )
-      expect(entity.annotations.length).toEqual(1)
+      expect(entity.attributes.length).toEqual(1)
 
       // update entity
       const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await client.updateEntity({
         entityKey,
         payload: jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } }),
         contentType: "application/json",
-        annotations: [],
+        attributes: [],
         expiresIn: 1000,
       })
       console.log("result from updateEntity", { updatedEntityKey, updatedTxHash })
@@ -244,7 +244,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(updatedEntity.payload).toEqual(
         toBytes(JSON.stringify({ entity: { entityType: "test2", entityId: "test2" } })),
       )
-      expect(updatedEntity.annotations.length).toEqual(0)
+      expect(updatedEntity.attributes.length).toEqual(0)
 
       // extend entity
       const { entityKey: extendedEntityKey, txHash: extendedTxHash } =
@@ -277,28 +277,28 @@ describe("Arkiv Integration Tests for public client", () => {
       const { entityKey: entityKey1, txHash: txHash1 } = await client.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
-        annotations: [{ key: "testKey", value: "testValue" }],
+        attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
       const { entityKey: entityKey2, txHash: txHash2 } = await client.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
-        annotations: [{ key: "testKey", value: "testValue" }],
+        attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
       const { entityKey: entityKey3, txHash: txHash3 } = await client.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
-        annotations: [{ key: "testKey", value: "testValue" }],
+        attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
       const { entityKey: entityKey4, txHash: txHash4 } = await client.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
-        annotations: [{ key: "testKey", value: "testValue" }],
+        attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
@@ -308,7 +308,7 @@ describe("Arkiv Integration Tests for public client", () => {
           {
             payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
             contentType: "application/json",
-            annotations: [{ key: "testKey", value: "testValue" }],
+            attributes: [{ key: "testKey", value: "testValue" }],
             expiresIn: 1000,
           },
         ],
@@ -317,7 +317,7 @@ describe("Arkiv Integration Tests for public client", () => {
             entityKey: entityKey1,
             payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
             contentType: "application/json",
-            annotations: [{ key: "testKey", value: "testValue" }],
+            attributes: [{ key: "testKey", value: "testValue" }],
             expiresIn: 1000,
           },
         ],
@@ -357,7 +357,7 @@ describe("Arkiv Integration Tests for public client", () => {
         await client.createEntity({
           payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
           contentType: "application/json",
-          annotations: [{ key: "testKey", value }],
+          attributes: [{ key: "testKey", value }],
           expiresIn: 1000,
         })
       }
@@ -403,7 +403,7 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 60000 },
   )
   test.each(["http", "webSocket"] as const)(
-    "Query with various projections using withAnnotations, withMetadata, withPayload",
+    "Query with various projections using withAttributes, withMetadata, withPayload",
     async (transport) => {
       const client = transport === "http" ? walletClient : walletClientWS
       // create entity
@@ -415,7 +415,7 @@ describe("Arkiv Integration Tests for public client", () => {
           },
         }),
         contentType: "application/json",
-        annotations: [{ key: "testKey", value: "testValue" }],
+        attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: ExpirationTime.fromBlocks(1000),
       })
 
@@ -425,14 +425,14 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
       expect(queryResult.entities[0].owner).toBeUndefined()
       expect(queryResult.entities[0].payload).toHaveLength(0)
-      expect(queryResult.entities[0].annotations).toHaveLength(0)
+      expect(queryResult.entities[0].attributes).toHaveLength(0)
       expect(queryResult.entities[0].expiresAtBlock).toBeUndefined()
 
       // query with payload only
       queryResult = await client
         .buildQuery()
         .where(eq("testKey", "testValue"))
-        .withAnnotations(false)
+        .withAttributes(false)
         .withMetadata(false)
         .withPayload(true)
         .fetch()
@@ -444,7 +444,7 @@ describe("Arkiv Integration Tests for public client", () => {
       queryResult = await client
         .buildQuery()
         .where(eq("testKey", "testValue"))
-        .withAnnotations(false)
+        .withAttributes(false)
         .withMetadata(true)
         .withPayload(false)
         .fetch()
@@ -457,12 +457,12 @@ describe("Arkiv Integration Tests for public client", () => {
       queryResult = await client
         .buildQuery()
         .where(eq("testKey", "testValue"))
-        .withAnnotations(true)
+        .withAttributes(true)
         .withMetadata(false)
         .withPayload(false)
         .fetch()
       expect(queryResult).toBeDefined()
-      expect(queryResult.entities[0].annotations.length).toBeGreaterThanOrEqual(1)
+      expect(queryResult.entities[0].attributes.length).toBeGreaterThanOrEqual(1)
     },
     { timeout: 20000 },
   )
@@ -476,7 +476,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const { entityKey } = await walletClient.createEntity({
         payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
         contentType: "application/json",
-        annotations: [{ key: "testKey", value: "testValue" }],
+        attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: ExpirationTime.fromBlocks(1000),
       })
 

@@ -6,9 +6,9 @@ export async function compress(data: Uint8Array): Promise<Uint8Array> {
     await init()
     initialized = true
   }
-  console.debug("Compressing data", data)
+  console.debug(`Compressing data (size: ${data.length})`)
   const compressed = await zstdCompress(data)
-  console.debug("Compressed data", compressed)
+  console.debug(`Compressed data (size: ${compressed.length})`)
   return new Uint8Array(compressed)
 }
 

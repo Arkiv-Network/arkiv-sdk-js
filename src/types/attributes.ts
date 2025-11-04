@@ -1,4 +1,4 @@
-export type Annotation = {
+export type Attribute = {
   key: string
   value: string | number
 }

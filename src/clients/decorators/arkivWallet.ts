@@ -50,8 +50,6 @@ export type WalletArkivActions<
      * Returns the entity with the given key.
      *
      * - Docs: https://docs.golemdb.io/ts-sdk/actions/public/getEntity
-     * - JSON-RPC Methods: [`golembase_getStorageValue`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_getstoragevalue)
-     * - JSON-RPC Methods: [`golembase_getEntityMetaData`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_getEntityMetaData)
      *
      * @param args - {entityKey}
      * @returns The entity with the given key. {@link Entity}
@@ -66,7 +64,7 @@ export type WalletArkivActions<
      * })
      * const { entityKey, txHash } = await client.createEntity({
      *   payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-     *   annotations: [{ key: "testKey", value: "testValue" }],
+     *   attributes: [{ key: "testKey", value: "testValue" }],
      *   expiresIn: 1000,
      * })
      * console.log("entityKey", entityKey)
@@ -200,13 +198,13 @@ export type WalletArkivActions<
      * const { entityKey, txHash } = await client.mutateEntities({
      *   creates: [{
      *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-     *     annotations: [{ key: "testKey", value: "testValue" }],
+     *     attriubutes: [{ key: "testKey", value: "testValue" }],
      *     expiresIn: 1000,
      *   }],
      *   updates: [{
      *     entityKey: "0x123",
      *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-     *     annotations: [{ key: "testKey", value: "testValue" }],
+     *     attributes: [{ key: "testKey", value: "testValue" }],
      *     expiresIn: 1000,
      *   }],
      *   deletes: [{

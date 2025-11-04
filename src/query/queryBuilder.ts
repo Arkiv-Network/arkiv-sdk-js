@@ -15,7 +15,7 @@ export class QueryBuilder {
   private _client: ArkivClient
   private _ownedBy: Hex | undefined
   private _validAtBlock: bigint | undefined
-  private _withAnnotations: boolean | undefined
+  private _withAttributes: boolean | undefined
   private _withMetadata: boolean | undefined
   private _withPayload: boolean | undefined
   private _limit: number | undefined
@@ -42,16 +42,16 @@ export class QueryBuilder {
   }
 
   /**
-   * Sets the withAnnotations flag which will return the annotations for the entities if true
-   * @param withAnnotations - The boolean value to set
+   * Sets the withAttributes flag which will return the attributes for the entities if true
+   * @param withAttributes - The boolean value to set
    * @returns The QueryBuilder instance
    *
    * @example
    * const builder = new QueryBuilder(client)
-   * builder.withAnnotations(true)
+   * builder.withAttributes(true)
    */
-  withAnnotations(withAnnotations: boolean = true) {
-    this._withAnnotations = withAnnotations
+  withAttributes(withAttributes: boolean = true) {
+    this._withAttributes = withAttributes
     return this
   }
 
@@ -168,7 +168,7 @@ export class QueryBuilder {
       cursor: this._cursor,
       ownedBy: this._ownedBy,
       validAtBlock: this._validAtBlock,
-      withAnnotations: this._withAnnotations,
+      withAttributes: this._withAttributes,
       withMetadata: this._withMetadata,
       withPayload: this._withPayload,
     })
@@ -199,7 +199,7 @@ export class QueryBuilder {
       cursor: this._cursor,
       ownedBy: this._ownedBy,
       validAtBlock: this._validAtBlock,
-      withAnnotations: false,
+      withAttributes: false,
       withMetadata: false,
       withPayload: false,
     })

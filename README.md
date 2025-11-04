@@ -38,7 +38,7 @@ const query = client.buildQuery();
 const result = await query
   .where(eq('testKey', 'testValue'))
   .ownedBy('0x1234567890123456789012345678901234567890')
-  .withAnnotations(true)
+  .withAttributes(true)
   .withPayload(true)
   .limit(10)
   .fetch();
@@ -79,7 +79,7 @@ const { entityKey, txHash } = await client.createEntity({
     },
   })),
   contentType: 'application/json',
-  annotations: [
+  attributes: [
     { key: 'category', value: 'documentation' },
     { key: 'version', value: '1.0' },
   ],

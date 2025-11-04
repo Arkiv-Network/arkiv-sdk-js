@@ -10,13 +10,13 @@ export async function entityFromRpcResult(rpcEntity: RpcEntity) {
     rpcEntity.expiresAt,
     toBytes(rpcEntity.value),
     [
-      ...(rpcEntity.stringAnnotations ?? []).map(({ key, value }) => ({
+      ...(rpcEntity.stringAttributes ?? []).map(({ key, value }) => ({
         key,
         value,
       })),
-      ...(rpcEntity.numericAnnotations ?? []).map(({ key, value }) => ({
+      ...(rpcEntity.numericAttributes ?? []).map(({ key, value }) => ({
         key,
-        value: value,
+        value: Number(value),
       })),
     ],
   )

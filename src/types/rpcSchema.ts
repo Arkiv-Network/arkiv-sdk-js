@@ -7,8 +7,8 @@ export type RpcEntity = {
   value: string
   expiresAt: bigint
   owner: Hex
-  stringAnnotations?: [{ key: string; value: string }]
-  numericAnnotations?: [{ key: string; value: number }]
+  stringAttributes?: [{ key: string; value: string }]
+  numericAttributes?: [{ key: string; value: number }]
 }
 
 export type RpcQueryOptions = {
@@ -20,8 +20,9 @@ export type RpcQueryOptions = {
 
 export type RpcIncludeData = {
   key: boolean
-  annotations: boolean
+  attributes: boolean
   payload: boolean
+  contentType: boolean
   expiration: boolean
   owner: boolean
 }
@@ -39,16 +40,6 @@ export type ArkivRpcSchema = [
       data: [RpcEntity]
       blockNumber: bigint
       cursor: string
-    }
-  },
-  {
-    Method: "golembase_getEntityMetaData"
-    Parameters?: [entityId: Hex]
-    ReturnType: {
-      expiresAtBlock: number
-      owner: Hex
-      numericAnnotations: [{ key: string; value: number }]
-      stringAnnotations: [{ key: string; value: string }]
     }
   },
   {

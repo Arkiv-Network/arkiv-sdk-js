@@ -46,7 +46,7 @@ export async function processQuery(
     cursor: string | undefined
     ownedBy: Hex | undefined
     validAtBlock?: bigint | undefined
-    withAnnotations?: boolean | undefined
+    withAttributes?: boolean | undefined
     withMetadata?: boolean | undefined
     withPayload?: boolean | undefined
   },
@@ -57,13 +57,13 @@ export async function processQuery(
     cursor,
     ownedBy,
     validAtBlock,
-    withAnnotations,
+    withAttributes,
     withMetadata,
     withPayload,
   } = queryParams
 
   console.debug(
-    `Processing query with params: predicates: ${predicates}, cursor: ${cursor}, limit: ${limit}, ownedBy: ${ownedBy}, validAtBlock: ${validAtBlock}, withAnnotations: ${withAnnotations}, withMetadata: ${withMetadata}, withPayload: ${withPayload}`,
+    `Processing query with params: predicates: ${predicates}, cursor: ${cursor}, limit: ${limit}, ownedBy: ${ownedBy}, validAtBlock: ${validAtBlock}, withAttributes: ${withAttributes}, withMetadata: ${withMetadata}, withPayload: ${withPayload}`,
   )
 
   let query = processPredicates(predicates)
@@ -80,8 +80,9 @@ export async function processQuery(
   const queryOptions: RpcQueryOptions = {
     includeData: {
       key: true,
-      annotations: withAnnotations ?? false,
+      attributes: withAttributes ?? false,
       payload: withPayload ?? false,
+      contentType: withMetadata ?? false,
       expiration: withMetadata ?? false,
       owner: withMetadata ?? false,
     },

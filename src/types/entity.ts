@@ -1,13 +1,13 @@
 import { bytesToString, type Hex } from "viem"
 import type { MimeType } from "../types"
-import type { Annotation } from "./annotation"
+import type { Attribute } from "./attributes"
 
 export class Entity {
   key: Hex
   owner: Hex
   expiresAtBlock: bigint
   payload: Uint8Array
-  annotations: Annotation[]
+  attributes: Attribute[]
   contentType: MimeType
 
   constructor(
@@ -16,13 +16,13 @@ export class Entity {
     owner: Hex,
     expiresAtBlock: bigint,
     payload: Uint8Array,
-    annotations: Annotation[],
+    attributes: Attribute[],
   ) {
     this.key = key
     this.owner = owner
     this.expiresAtBlock = expiresAtBlock
     this.payload = payload
-    this.annotations = annotations
+    this.attributes = attributes
     this.contentType = contentType
   }
 
