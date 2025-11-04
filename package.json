@@ -3,41 +3,34 @@
   "version": "0.1.1-dev.0",
   "description": "TypeScript-only client library for Arkiv blockchain interactions",
   "type": "module",
-  "main": "./dist/_cjs/index.js",
-  "module": "./dist/_esm/index.js",
-  "types": "./dist/_types/index.d.ts",
-  "typings": "./dist/_types/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.cts",
   "sideEffects": false,
   "exports": {
     ".": {
-      "source": "./src/index.ts",
-      "types": "./dist/_types/index.d.ts",
-      "import": "./dist/_esm/index.js",
-      "default": "./dist/_cjs/index.js"
-    },
-    "./chains": {
-      "source": "./src/chains/index.ts",
-      "types": "./dist/_types/chains/index.d.ts",
-      "import": "./dist/_esm/chains/index.js",
-      "default": "./dist/_cjs/chains/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./accounts": {
-      "source": "./src/accounts/index.ts",
-      "types": "./dist/_types/accounts/index.d.ts",
-      "import": "./dist/_esm/accounts/index.js",
-      "default": "./dist/_cjs/accounts/index.js"
+      "import": "./dist/accounts/index.js",
+      "require": "./dist/accounts/index.cjs"
     },
-    "./utils": {
-      "source": "./src/utils/index.ts",
-      "types": "./dist/_types/utils/index.d.ts",
-      "import": "./dist/_esm/utils/index.js",
-      "default": "./dist/_cjs/utils/index.js"
+    "./chains": {
+      "import": "./dist/chains/index.js",
+      "require": "./dist/chains/index.cjs"
     },
     "./query": {
-      "source": "./src/query/index.ts",
-      "types": "./dist/_types/query/index.d.ts",
-      "import": "./dist/_esm/query/index.js",
-      "default": "./dist/_cjs/query/index.js"
+      "import": "./dist/query/index.js",
+      "require": "./dist/query/index.cjs"
+    },
+    "./types": {
+      "import": "./dist/types/index.js",
+      "require": "./dist/types/index.cjs"
+    },
+    "./utils": {
+      "import": "./dist/utils/index.js",
+      "require": "./dist/utils/index.cjs"
     },
     "./package.json": "./package.json"
   },
@@ -58,20 +51,10 @@
     }
   },
   "files": [
-    "dist/**/*.js",
-    "dist/**/*.js.map",
-    "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map",
-    "src/**/*.ts",
-    "!src/**/*.test.ts",
-    "!src/**/*.spec.ts"
+    "dist"
   ],
   "scripts": {
-    "build": "rimraf dist && bun run build:cjs && bun run build:esm && bun run build:types",
-    "build:cjs": "tsc --project tsconfig.cjs.json",
-    "build:esm": "tsc --project tsconfig.esm.json",
-    "build:types": "tsc --project tsconfig.types.json",
-    "postbuild": "rimraf *.tsbuildinfo",
+    "build": "tsdown",
     "type-check": "tsc --noEmit",
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
@@ -86,7 +69,8 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
     "@types/bun": "latest",
-    "rimraf": "^6.0.1"
+    "rimraf": "^6.0.1",
+    "tsdown": "^0.16.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
