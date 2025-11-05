@@ -1,23 +1,23 @@
 {
-	"name": "arkivjs-integration-test",
-	"module": "src/index.ts",
-	"type": "module",
-	"scripts": {
-		"test": "bun test",
-		"test:watch": "bun test --watch",
-		"test:golemdb": "bun test src/golemdb.test.ts",
-		"reinstall": "rimraf bun.lockb && bun install --force",
-		"refresh": "cd .. && bun run package && cd test && bun install --force"
-	},
-	"dependencies": {
-		"arkiv": "file:../arkiv-network-sdk-latest.tgz"
-	},
-	"devDependencies": {
-		"@types/bun": "latest",
-		"testcontainers": "^11.6.0",
-		"rimraf": "^6.0.1"
-	},
-	"peerDependencies": {
-		"typescript": "^5.0.0"
-	}
+  "name": "arkivjs-integration-test",
+  "type": "module",
+  "main": "src/smoke-tests/index.ts",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "testcontainers": "^11.6.0",
+    "rimraf": "^6.0.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "test": "bun test",
+    "test:component": "TESTCONTAINERS_RYUK_DISABLED=true bun test src/arkiv.test.ts",
+    "test:smoke": "bun src/smoke-tests/index.ts && node src/smoke-tests/index.cjs && node src/smoke-tests/index.mjs && node src/smoke-tests/index.js && bunx tsc --project tsconfig.smoke-test.json && node dist/index.js",
+    "reinstall": "rimraf bun.lockb && bun install --force",
+    "refresh": "cd .. && bun run package && cd test && bun install --force"
+  },
+  "dependencies": {
+    "@arkiv-network/sdk": "file:../arkiv-network-sdk-latest.tgz"
+  }
 }

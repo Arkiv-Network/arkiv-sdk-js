@@ -5,7 +5,7 @@
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src/smoke-tests",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,6 +15,6 @@
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["**/*.ts"],
+  "include": ["src/smoke-tests/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

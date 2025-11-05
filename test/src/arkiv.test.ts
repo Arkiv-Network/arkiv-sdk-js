@@ -1,9 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import type { Hex, PublicArkivClient, WalletArkivClient } from "arkiv"
-import { createPublicClient, createWalletClient, http, toBytes, webSocket } from "arkiv"
-import { privateKeyToAccount } from "arkiv/accounts"
-import { eq } from "arkiv/query"
-import { ExpirationTime, jsonToPayload } from "arkiv/utils"
+import type { Hex, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  toBytes,
+  webSocket,
+} from "@arkiv-network/sdk"
+import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
+import { eq } from "@arkiv-network/sdk/query"
+import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils"
 
