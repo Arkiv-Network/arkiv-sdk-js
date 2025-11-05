@@ -1,24 +1,25 @@
 // src/utils/compression.ts
+
 import type { BrotliWasmType } from "brotli-wasm"
 
 let brotli: BrotliWasmType | null = null
-let brotliPromise: Promise<BrotliWasmType> | null = null
 
 async function getBrotli(): Promise<BrotliWasmType | null> {
   if (brotli) return brotli
 
-  if (!brotliPromise) {
-    try {
-      const module = await import("brotli-wasm")
-      brotliPromise = Promise.resolve(module.default)
-      brotli = await brotliPromise
-    } catch (error) {
-      console.error("Error importing brotli-wasm", error)
-      brotli = require("brotli-wasm")
-    }
+  console.debug("Importing brotli-wasm")
+  try {
+    console.debug("Importing brotli-wasm as module")
+    const { default: brotliPromise } = await import("brotli-wasm")
+    brotli = await brotliPromise
+    console.debug("Imported brotli-wasm as module", brotli)
+  } catch (error) {
+    console.error("Error importing brotli-wasm", error)
+    console.debug("Importing brotli-wasm as require")
+    brotli = require("brotli-wasm")
+    console.debug("Imported brotli-wasm as require", brotli)
   }
 
-  brotli = await brotliPromise
   return brotli
 }
 
