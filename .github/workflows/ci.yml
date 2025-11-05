@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [main, master, v1-dev]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main, master, v1-dev]
+    branches: [main, master, develop]
 
 jobs:
   lint:
@@ -156,7 +156,7 @@ jobs:
           fi
 
       - name: Run publish to dev
-        if: github.ref == 'refs/heads/v1-dev'
+        if: github.ref == 'refs/heads/develop'
         run: |
           echo "=== Publishing package ==="
           # Capture both stdout and stderr
