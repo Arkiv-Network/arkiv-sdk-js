@@ -1,6 +1,6 @@
 {
   "name": "@arkiv-network/sdk",
-  "version": "0.1.2-dev.0",
+  "version": "0.1.2-dev.1",
   "description": "TypeScript-only client library for Arkiv blockchain interactions",
   "type": "module",
   "target": "esnext",
