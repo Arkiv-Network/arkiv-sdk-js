@@ -15,7 +15,3 @@ test/
 .env
 .env.*
 
-# Include build outputs (override .gitignore)
-!_cjs/
-!_esm/
-!_types/

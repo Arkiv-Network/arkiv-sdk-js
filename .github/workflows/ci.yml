@@ -42,7 +42,7 @@ jobs:
         run: bun install
 
       - name: Run unit tests
-        run: bun test src/**/*
+        run: bun run test:unit
 
   smoke-tests:
     runs-on: ubuntu-latest

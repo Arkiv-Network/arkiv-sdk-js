@@ -23,7 +23,7 @@ import { eq } from '@arkiv-network/sdk/query';
 
 // Create a public client
 const client = createPublicClient({
-  chain: kaolin,
+  chain: kaolin, // Kaolin is the name of Arkiv official testnet
   transport: http(),
 });
 
@@ -72,12 +72,12 @@ const client = createWalletClient({
 
 // Create an entity
 const { entityKey, txHash } = await client.createEntity({
-  payload: toBytes(JSON.stringify({
+  payload: jsonToPayload{
     entity: {
       entityType: 'document',
       entityId: 'doc-123',
     },
-  })),
+  },
   contentType: 'application/json',
   attributes: [
     { key: 'category', value: 'documentation' },
@@ -98,15 +98,14 @@ console.log('Entity:', entity);
 
 This package supports multiple module formats for maximum compatibility:
 
-- **CommonJS** (`dist/_cjs/`) - For Node.js `require()`
-- **ES Modules** (`dist/_esm/`) - For modern `import` statements
-- **TypeScript Source** (`src/`) - For Bun/Deno TypeScript-native runtimes
-- **Type Declarations** (`dist/_types/`) - Full TypeScript support
+- **ES Modules** (`dist/*.js`) - For modern `import` statements
+- **CommonJS** (`dist/*.cjs`) - For Node.js `require()`
+- **Type Declarations** (`dist/*.d.ts` and `dist/*.d.cts`) - Full TypeScript support
+
+The build uses [tsdown](https://github.com/unjs/tsdown) to generate both ESM and CommonJS formats with proper type declarations.
 
 ### Runtime Support
 
-**Bun/Deno (TypeScript native):**
-- Runs TypeScript directly from source - no transpilation needed
 
 **Node.js (ESM):**
 ```javascript
@@ -116,6 +115,11 @@ import { createPublicClient } from '@arkiv-network/sdk';  // Uses compiled ESM
 **Node.js (CommonJS):**
 ```javascript
 const { createPublicClient } = require('@arkiv-network/sdk');  // Uses compiled CJS
+```
+
+**Bun (TypeScript native):**
+```javascript
+import { createPublicClient } from '@arkiv-network/sdk'; // Uses *.ts directly
 ```
 
 All formats provide full type safety and IntelliSense support when using TypeScript.
@@ -128,11 +132,15 @@ To install dependencies:
 bun install
 ```
 
-To build type declarations:
+To build all outputs (ESM, CommonJS, and type declarations):
 
 ```bash
 bun run build
 ```
+
+For more information about building this SDK refer to:
+[BUILD.md](./BUILD.md)
+
 
 To run type checking:
 
@@ -145,3 +153,7 @@ To lint:
 ```bash
 bun run lint
 ```
+
+For more information about refer to:
+[CONTRIBUTING.md](./CONTRIBUTING.md)
+

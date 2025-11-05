@@ -10,28 +10,40 @@
   "sideEffects": false,
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
     },
     "./accounts": {
+      "bun": "./src/accounts/index.ts",
       "import": "./dist/accounts/index.js",
-      "require": "./dist/accounts/index.cjs"
+      "require": "./dist/accounts/index.cjs",
+      "default": "./dist/accounts/index.js"
     },
     "./chains": {
+      "bun": "./src/chains/index.ts",
       "import": "./dist/chains/index.js",
-      "require": "./dist/chains/index.cjs"
+      "require": "./dist/chains/index.cjs",
+      "default": "./dist/chains/index.js"
     },
     "./query": {
+      "bun": "./src/query/index.ts",
       "import": "./dist/query/index.js",
-      "require": "./dist/query/index.cjs"
+      "require": "./dist/query/index.cjs",
+      "default": "./dist/query/index.js"
     },
     "./types": {
+      "bun": "./src/types/index.ts",
       "import": "./dist/types/index.js",
-      "require": "./dist/types/index.cjs"
+      "require": "./dist/types/index.cjs",
+      "default": "./dist/types/index.js"
     },
     "./utils": {
+      "bun": "./src/utils/index.ts",
       "import": "./dist/utils/index.js",
-      "require": "./dist/utils/index.cjs"
+      "require": "./dist/utils/index.cjs",
+      "default": "./dist/utils/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -52,13 +64,15 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "scripts": {
     "build": "tsdown",
     "type-check": "tsc --noEmit",
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
+    "test:unit": "bun test src/**/*",
     "package": "rimraf arkiv-network-sdk-*.tgz && bun run build && bun pm pack --no-cache",
     "package:test": "bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
     "prepublishOnly": "bun run build && bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
