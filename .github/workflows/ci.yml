@@ -145,16 +145,18 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "github-actions[bot]@golem.network"
 
+      - name: Version package prerelease
+        if: github.ref == 'refs/heads/develop'
+        run: bun run version:prerelease
+
+      - name: Version package release
+        if: github.ref == 'refs/heads/main'
+        run: bun run version:release
+
       - name: Prepare package for publish
         run: |
           echo "=== Preparing package for publish ==="
           bun prepublishOnly
-          if ! bun run prepublishOnly 2>&1; then
-            echo "=== PREPUBLISH FAILED ==="
-            echo "Exit code: $?"
-            echo "=== Full output (stdout + stderr) ==="
-            exit 1
-          fi
 
       - name: Run publish to dev
         if: github.ref == 'refs/heads/develop'
@@ -180,6 +182,7 @@ jobs:
             echo "=== Full output (stdout + stderr) ==="
             exit 1
           fi
+
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:

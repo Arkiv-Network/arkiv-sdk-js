@@ -1,6 +1,6 @@
 {
   "name": "@arkiv-network/sdk",
-  "version": "0.2.1-dev.0",
+  "version": "0.3.0",
   "description": "TypeScript client library for Arkiv's blockchains interactions",
   "type": "module",
   "target": "esnext",
@@ -76,10 +76,12 @@
     "package": "rimraf arkiv-network-sdk-*.tgz && bun run build && bun pm pack --no-cache",
     "package:test": "bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
     "prepublishOnly": "bun run build && bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
+    "version:prerelease": "npm version prerelease --preid=dev",
+    "version:release": "npm version --allow-same-version $(node -p \"require('./package.json').version.replace(/-.*$/, '')\")",
     "publish-main": "npm publish ./arkiv-network-sdk-latest.tgz --access public",
     "publish-main:dry": "npm publish ./arkiv-network-sdk-latest.tgz --access public --dry-run",
-    "publish-dev": "npm version prerelease --preid=dev && npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev",
-    "publish-dev:dry": "npm version prerelease --preid=dev && npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev --dry-run"
+    "publish-dev": "npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev",
+    "publish-dev:dry": "npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev --dry-run"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
