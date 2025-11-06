@@ -196,10 +196,11 @@ describe("Arkiv Integration Tests for public client", () => {
   test.each(["http", "webSocket"] as const)(
     "should handle basic CRUD operations using %s",
     async (transport) => {
-      const client = transport === "http" ? walletClient : walletClientWS
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
 
       // subscribe to entity events
-      const unsubscribe = await client.subscribeEntityEvents(
+      const unsubscribe = await readClient.subscribeEntityEvents(
         {
           onError: (error) => console.error("subscribeEntityEvents error", error),
         },
@@ -207,7 +208,7 @@ describe("Arkiv Integration Tests for public client", () => {
       )
 
       // create entity
-      const { entityKey, txHash } = await walletClient.createEntity({
+      const { entityKey, txHash } = await writeClient.createEntity({
         payload: toBytes(
           JSON.stringify({
             entity: {
@@ -221,11 +222,11 @@ describe("Arkiv Integration Tests for public client", () => {
         expiresIn: ExpirationTime.fromBlocks(1000),
       })
       console.log("result from createEntity", { entityKey, txHash })
-      const entityCount = await client.getEntityCount()
+      const entityCount = await readClient.getEntityCount()
       expect(entityCount).toBeGreaterThanOrEqual(1)
 
       // get entity
-      const entity = await client.getEntity(entityKey)
+      const entity = await readClient.getEntity(entityKey)
       console.log("entity from getEntity", entity)
       expect(entity).toBeDefined()
       expect(entity.payload).toEqual(
@@ -234,17 +235,19 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(entity.attributes.length).toEqual(1)
 
       // update entity
-      const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await client.updateEntity({
-        entityKey,
-        payload: jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } }),
-        contentType: "application/json",
-        attributes: [],
-        expiresIn: 1000,
-      })
+      const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await writeClient.updateEntity(
+        {
+          entityKey,
+          payload: jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } }),
+          contentType: "application/json",
+          attributes: [],
+          expiresIn: 1000,
+        },
+      )
       console.log("result from updateEntity", { updatedEntityKey, updatedTxHash })
 
       // get entity
-      const updatedEntity = await client.getEntity(updatedEntityKey)
+      const updatedEntity = await readClient.getEntity(updatedEntityKey)
       console.log("entity from getEntity", updatedEntity)
       expect(updatedEntity).toBeDefined()
       expect(updatedEntity.payload).toEqual(
@@ -254,7 +257,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // extend entity
       const { entityKey: extendedEntityKey, txHash: extendedTxHash } =
-        await walletClient.extendEntity({
+        await writeClient.extendEntity({
           entityKey: updatedEntityKey,
           expiresIn: 1000,
         })
@@ -263,9 +266,11 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(extendedTxHash).toBeDefined()
 
       // delete entity
-      const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await client.deleteEntity({
-        entityKey: updatedEntityKey,
-      })
+      const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await writeClient.deleteEntity(
+        {
+          entityKey: updatedEntityKey,
+        },
+      )
       console.log("result from deleteEntity", { deletedEntityKey, deletedTxHash })
 
       // unsubscribe from entity events
@@ -356,11 +361,12 @@ describe("Arkiv Integration Tests for public client", () => {
   test.each(["http", "webSocket"] as const)(
     "should handle query with pagination using",
     async (transport) => {
-      const client = transport === "http" ? walletClient : walletClientWS
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
       const value = transport === "http" ? "testValuePaging" : "testValuePagingWS"
       // create 10 entities
       for (let i = 0; i < 10; i++) {
-        await client.createEntity({
+        await writeClient.createEntity({
           payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
           contentType: "application/json",
           attributes: [{ key: "testKey", value }],
@@ -369,7 +375,7 @@ describe("Arkiv Integration Tests for public client", () => {
       }
 
       // query with pagination - irregular number of entities (6,4)
-      const query = client.buildQuery()
+      const query = readClient.buildQuery()
       const queryResult = await query
         .where(eq("testKey", value))
         .limit(6)
@@ -388,7 +394,7 @@ describe("Arkiv Integration Tests for public client", () => {
       await expect(queryResult.next()).rejects.toThrow()
 
       // query with pagination - irregular number of entities (5,5)
-      const query2 = client.buildQuery()
+      const query2 = readClient.buildQuery()
       const queryResult2 = await query2
         .where(eq("testKey", value))
         .limit(5)
@@ -411,9 +417,10 @@ describe("Arkiv Integration Tests for public client", () => {
   test.each(["http", "webSocket"] as const)(
     "Query with various projections using withAttributes, withMetadata, withPayload",
     async (transport) => {
-      const client = transport === "http" ? walletClient : walletClientWS
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
       // create entity
-      await walletClient.createEntity({
+      await writeClient.createEntity({
         payload: jsonToPayload({
           entity: {
             entityType: "test",
@@ -426,7 +433,7 @@ describe("Arkiv Integration Tests for public client", () => {
       })
 
       // query with no data fetched - just key (it is always fetched)
-      let queryResult = await client.buildQuery().where(eq("testKey", "testValue")).fetch()
+      let queryResult = await readClient.buildQuery().where(eq("testKey", "testValue")).fetch()
       expect(queryResult).toBeDefined()
       expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
       expect(queryResult.entities[0].owner).toBeUndefined()
@@ -435,7 +442,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult.entities[0].expiresAtBlock).toBeUndefined()
 
       // query with payload only
-      queryResult = await client
+      queryResult = await readClient
         .buildQuery()
         .where(eq("testKey", "testValue"))
         .withAttributes(false)
@@ -447,7 +454,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult.entities[0].payload.length).toBeGreaterThan(0)
 
       // query with metadata only
-      queryResult = await client
+      queryResult = await readClient
         .buildQuery()
         .where(eq("testKey", "testValue"))
         .withAttributes(false)
@@ -460,7 +467,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult.entities[0].expiresAtBlock).toBeDefined()
 
       // query with annotations only
-      queryResult = await client
+      queryResult = await readClient
         .buildQuery()
         .where(eq("testKey", "testValue"))
         .withAttributes(true)
@@ -476,10 +483,11 @@ describe("Arkiv Integration Tests for public client", () => {
   test.each(["http", "webSocket"] as const)(
     "should handle ownershipChange using %s",
     async (transport) => {
-      const client = transport === "http" ? walletClient : walletClientWS
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
       const newOwner = "0x6186b0dba9652262942d5a465d49686eb560834c" as Hex
       // create entity
-      const { entityKey } = await walletClient.createEntity({
+      const { entityKey } = await writeClient.createEntity({
         payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
@@ -487,16 +495,17 @@ describe("Arkiv Integration Tests for public client", () => {
       })
 
       // change ownership
-      const { entityKey: changedEntityKey, txHash: changedTxHash } = await client.changeOwnership({
-        entityKey: entityKey,
-        newOwner: newOwner,
-      })
+      const { entityKey: changedEntityKey, txHash: changedTxHash } =
+        await writeClient.changeOwnership({
+          entityKey: entityKey,
+          newOwner: newOwner,
+        })
       console.log("result from changeOwnership", { changedEntityKey, changedTxHash })
       expect(changedEntityKey).toBeDefined()
       expect(changedTxHash).toBeDefined()
 
       // get entity
-      const entity = await client.getEntity(changedEntityKey)
+      const entity = await readClient.getEntity(changedEntityKey)
       console.log("entity from getEntity", entity)
       expect(entity).toBeDefined()
       expect(entity.owner).toEqual(newOwner)

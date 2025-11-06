@@ -11,7 +11,6 @@ import type {
 } from "viem"
 import { createClient, publicActions, walletActions } from "viem"
 import type { ArkivRpcSchema } from "../types/rpcSchema"
-import { publicArkivActions } from "./decorators/arkivPublic"
 import { type WalletArkivActions, walletArkivActions } from "./decorators/arkivWallet"
 
 export type WalletArkivClient<
@@ -58,10 +57,9 @@ export function createWalletClient<
   })
 
   return client
-    .extend(walletActions)
     .extend(publicActions)
-    .extend(walletArkivActions)
-    .extend(publicArkivActions) as unknown as WalletArkivClient<
+    .extend(walletActions)
+    .extend(walletArkivActions) as unknown as WalletArkivClient<
     transport,
     chain,
     ParseAccount<accountOrAddress>,

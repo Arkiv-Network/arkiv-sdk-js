@@ -56,7 +56,7 @@ export function createPublicClient<
     name,
   })
 
-  return client.extend(publicArkivActions).extend(publicActions) as unknown as PublicArkivClient<
+  return client.extend(publicActions).extend(publicArkivActions) as unknown as PublicArkivClient<
     transport,
     chain,
     ParseAccount<accountOrAddress>,

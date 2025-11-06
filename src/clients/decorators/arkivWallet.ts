@@ -1,4 +1,4 @@
-import type { Account, Chain, Client, Transport, WalletActions } from "viem"
+import type { Account, Chain, Client, PublicActions, Transport, WalletActions } from "viem"
 import type {
   ChangeOwnershipParameters,
   ChangeOwnershipReturnType,
@@ -30,15 +30,15 @@ import type {
 } from "../../actions/wallet/updateEntity"
 import { updateEntity } from "../../actions/wallet/updateEntity"
 import type { Entity, TxParams } from "../../types"
-import type { PublicArkivActions } from "./arkivPublic"
 
 export type WalletArkivActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
-> = PublicArkivActions<transport, chain, account> &
+> = Pick<PublicActions<transport, chain, account>, "waitForTransactionReceipt"> &
   Pick<
     WalletActions<chain, account>,
+    | "addChain"
     | "sendTransaction"
     | "sendTransactionSync"
     | "sendRawTransaction"
