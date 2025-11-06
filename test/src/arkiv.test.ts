@@ -282,31 +282,47 @@ describe("Arkiv Integration Tests for public client", () => {
   test.each(["http", "webSocket"] as const)(
     "should handle mutateEntities using %s",
     async (transport) => {
-      const client = transport === "http" ? walletClient : walletClientWS
+      const newOwner = "0x6186b0dba9652262942d5a465d49686eb560834c" as Hex
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+      // subscribe to entity events
+      const unsubscribe = await readClient.subscribeEntityEvents(
+        {
+          onError: (error) => console.error("subscribeEntityEvents error", error),
+        },
+        10,
+      )
 
       // need to create a few entities first
-      const { entityKey: entityKey1, txHash: txHash1 } = await client.createEntity({
+      const { entityKey: entityKey1, txHash: txHash1 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
-      const { entityKey: entityKey2, txHash: txHash2 } = await client.createEntity({
+      const { entityKey: entityKey2, txHash: txHash2 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
-      const { entityKey: entityKey3, txHash: txHash3 } = await client.createEntity({
+      const { entityKey: entityKey3, txHash: txHash3 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
-      const { entityKey: entityKey4, txHash: txHash4 } = await client.createEntity({
+      const { entityKey: entityKey4, txHash: txHash4 } = await writeClient.createEntity({
+        payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
+        contentType: "application/json",
+        attributes: [{ key: "testKey", value: "testValue" }],
+        expiresIn: 1000,
+      })
+
+      const { entityKey: entityKey5, txHash: txHash5 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
@@ -314,7 +330,7 @@ describe("Arkiv Integration Tests for public client", () => {
       })
 
       // mutate entities using various operations
-      const result = await client.mutateEntities({
+      const result = await writeClient.mutateEntities({
         creates: [
           {
             payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
@@ -346,14 +362,29 @@ describe("Arkiv Integration Tests for public client", () => {
             expiresIn: 1000,
           },
         ],
+        ownershipChanges: [
+          {
+            entityKey: entityKey5,
+            newOwner: newOwner,
+          },
+        ],
       })
       console.log("result from mutateEntities", result)
       expect(result).toBeDefined()
       expect(result.txHash).toBeDefined()
       expect(result.createdEntities).toBeDefined()
+      expect(result.createdEntities.length).toEqual(1)
       expect(result.updatedEntities).toBeDefined()
+      expect(result.updatedEntities.length).toEqual(1)
       expect(result.deletedEntities).toBeDefined()
+      expect(result.deletedEntities.length).toEqual(2)
       expect(result.extendedEntities).toBeDefined()
+      expect(result.extendedEntities.length).toEqual(1)
+      expect(result.ownershipChanges).toBeDefined()
+      expect(result.ownershipChanges.length).toEqual(1)
+
+      // unsubscribe from entity events
+      unsubscribe()
     },
     { timeout: 60000 },
   )

@@ -6,6 +6,7 @@ import type {
   OnEntityDeletedEvent,
   OnEntityExpiredEvent,
   OnEntityExpiresInExtendedEvent,
+  OnEntityOwnerChangedEvent,
   OnEntityUpdatedEvent,
 } from "../../types/events"
 
@@ -15,6 +16,7 @@ export const arkivABI = parseAbi([
   "event ArkivEntityExpired(uint256 indexed entityKey, address indexed ownerAddress)",
   "event ArkivEntityDeleted(uint256 indexed entityKey, address indexed ownerAddress)",
   "event ArkivEntityBTLExtended(uint256 indexed entityKey, address indexed ownerAddress, uint256 oldExpirationBlock, uint256 newExpirationBlock, uint256 cost)",
+  "event ArkivEntityOwnerChanged(uint256 indexed entityKey, address indexed oldOwnerAddress, address indexed newOwnerAddress)",
 ])
 
 export async function subscribeEntityEvents(
@@ -26,6 +28,7 @@ export async function subscribeEntityEvents(
     onEntityDeleted,
     onEntityExpired,
     onEntityExpiresInExtended,
+    onEntityOwnerChanged,
   }: {
     onError: ((error: Error) => void) | undefined
     onEntityCreated?: ((event: OnEntityCreatedEvent) => void) | undefined
@@ -33,6 +36,7 @@ export async function subscribeEntityEvents(
     onEntityDeleted?: ((event: OnEntityDeletedEvent) => void) | undefined
     onEntityExpired?: ((event: OnEntityExpiredEvent) => void) | undefined
     onEntityExpiresInExtended?: ((event: OnEntityExpiresInExtendedEvent) => void) | undefined
+    onEntityOwnerChanged?: ((event: OnEntityOwnerChangedEvent) => void) | undefined
   },
   pollingInterval?: number,
   fromBlock?: bigint,
@@ -87,6 +91,13 @@ export async function subscribeEntityEvents(
             onEntityExpired?.({
               entityKey: toHex(event.args.entityKey, { size: 32 }),
               owner: event.args.ownerAddress,
+            })
+            break
+          case "ArkivEntityOwnerChanged":
+            onEntityOwnerChanged?.({
+              entityKey: toHex(event.args.entityKey, { size: 32 }),
+              oldOwner: event.args.oldOwnerAddress,
+              newOwner: event.args.newOwnerAddress,
             })
             break
           default:

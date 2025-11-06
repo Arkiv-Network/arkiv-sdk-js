@@ -32,3 +32,9 @@ export type OnEntityExpiresInExtendedEvent = {
   newExpirationBlock: number
   cost: bigint
 }
+
+export type OnEntityOwnerChangedEvent = {
+  entityKey: Hex
+  oldOwner: Hex
+  newOwner: Hex
+}
