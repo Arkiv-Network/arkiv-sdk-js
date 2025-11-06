@@ -1,7 +1,7 @@
 {
   "name": "@arkiv-network/sdk",
-  "version": "0.1.3-dev.2",
-  "description": "TypeScript-only client library for Arkiv blockchain interactions",
+  "version": "0.2.0",
+  "description": "TypeScript client library for Arkiv's blockchains interactions",
   "type": "module",
   "target": "esnext",
   "main": "./dist/index.cjs",
@@ -111,6 +111,7 @@
     "type": "git",
     "url": "https://github.com/Arkiv-Network/arkiv-sdk-js.git"
   },
+  "homepage": "https://arkiv.network",
   "dependencies": {
     "brotli-wasm": "^3.0.1",
     "viem": "^2.38.2"

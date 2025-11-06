@@ -1,6 +1,6 @@
 # arkivjs
 
-A TypeScript client library for GolemDB/Arkiv blockchain interactions.
+A TypeScript client library for Arkiv's blockchains interactions.
 
 ## Installation
 
