@@ -4,7 +4,7 @@ import { Entity } from "../types/entity"
 import * as entitiesUtils from "../utils/entities"
 import * as engine from "./engine"
 import { and, eq, gt, gte, neq, or } from "./predicate"
-import { QueryBuilder } from "./queryBuilder"
+import { asc, QueryBuilder } from "./queryBuilder"
 
 describe("QueryBuilder", () => {
   let mockClient: ArkivClient
@@ -177,13 +177,34 @@ describe("QueryBuilder", () => {
       })
     })
 
-    test("orderBy() sets orderBy", async () => {
+    test("orderBy() sets orderBy ascending", async () => {
       mockProcessQuery.mockResolvedValue({
         data: [],
       })
 
       const builder = new QueryBuilder(mockClient)
-      await builder.orderBy("name", "string", true).fetch()
+      await builder.orderBy("name", "string", "asc").fetch()
+
+      expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
+        predicates: [],
+        limit: undefined,
+        offset: undefined,
+        ownedBy: undefined,
+        orderBy: [{ name: "name", type: "string", desc: false }],
+        validAtBlock: undefined,
+        withAttributes: undefined,
+        withMetadata: undefined,
+        withPayload: undefined,
+      })
+    })
+
+    test("orderBy() sets orderBy descending", async () => {
+      mockProcessQuery.mockResolvedValue({
+        data: [],
+      })
+
+      const builder = new QueryBuilder(mockClient)
+      await builder.orderBy("name", "string", "desc").fetch()
 
       expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
         predicates: [],
@@ -198,6 +219,26 @@ describe("QueryBuilder", () => {
       })
     })
 
+    test("orderBy() with helper function", async () => {
+      mockProcessQuery.mockResolvedValue({
+        data: [],
+      })
+
+      const builder = new QueryBuilder(mockClient)
+      await builder.orderBy(asc("name", "string")).fetch()
+
+      expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
+        predicates: [],
+        limit: undefined,
+        offset: undefined,
+        ownedBy: undefined,
+        orderBy: [{ name: "name", type: "string", desc: false }],
+        validAtBlock: undefined,
+        withAttributes: undefined,
+        withMetadata: undefined,
+        withPayload: undefined,
+      })
+    })
     test("limit() sets limit", async () => {
       mockProcessQuery.mockResolvedValue({
         data: [],

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import type { Attribute, Hex, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
+import type { Hex, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
 import {
   createPublicClient,
   createWalletClient,
@@ -8,7 +8,7 @@ import {
   webSocket,
 } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { eq } from "@arkiv-network/sdk/query"
+import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils"
@@ -578,8 +578,8 @@ describe("Arkiv Integration Tests for public client", () => {
         const result = await readClient
           .buildQuery()
           .where([eq("group", "orderby-test"), eq("transport", transport)])
-          .orderBy("score", "number", orderDesc)
-          .orderBy("entityId", "string", orderDesc)
+          .orderBy(orderDesc ? desc("score", "number") : asc("score", "number"))
+          .orderBy(orderDesc ? desc("entityId", "string") : asc("entityId", "string"))
           .withAttributes(true)
           .fetch()
 

@@ -34,7 +34,7 @@ export type PublicArkivActions<
   /**
    * Returns the entity with the given key.
    *
-   * - Docs: https://docs.golemdb.io/ts-sdk/actions/public/getEntity
+   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
    *
    * @param args - {entityKey}
    * @returns The entity with the given key. {@link Entity}
@@ -59,7 +59,7 @@ export type PublicArkivActions<
    * Returns a QueryBuilder instance for building and executing queries.
    * The QueryBuilder object follows the Builder pattern, allowing you to chain methods to build a query and then execute it.
    *
-   * - Docs: https://docs.golemdb.io/ts-sdk/actions/public/query
+   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/query
    *
    * @returns A QueryBuilder instance for building and executing queries. {@link QueryBuilder}
    *

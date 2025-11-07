@@ -1,6 +1,7 @@
 # arkivjs
 
 A TypeScript client library for Arkiv's blockchains interactions.
+The Arkiv SDK base strongly on Viem (Viem)[https://github.com/wevm/viem] library - it can be treated as Viem replacement extended of Arkiv's chains specific features.
 
 ## Installation
 

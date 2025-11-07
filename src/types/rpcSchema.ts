@@ -36,11 +36,6 @@ export type RpcIncludeData = {
 
 export type ArkivRpcSchema = [
   {
-    Method: "golembase_getStorageValue"
-    Parameters?: [entityId: Hex]
-    ReturnType: string
-  },
-  {
     Method: "arkiv_query"
     Parameters?: [query: string, queryOptions?: RpcQueryOptions]
     ReturnType: {

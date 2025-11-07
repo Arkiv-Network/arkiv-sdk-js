@@ -267,7 +267,7 @@ describe("processQuery tests", () => {
     const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
     await processQuery(client, {
       predicates,
-      orderBy: [{ name: "key", type: "string", descending: true }],
+      orderBy: [{ name: "key", type: "string", desc: true }],
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
@@ -278,7 +278,7 @@ describe("processQuery tests", () => {
       params: [
         `key = "value"`,
         {
-          orderBy: [{ name: "key", type: "string", descending: true }],
+          orderBy: [{ name: "key", type: "string", desc: true }],
           includeData: {
             key: true,
             attributes: false,
@@ -299,7 +299,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
-      orderBy: [{ name: "key", type: "string", descending: true }],
+      orderBy: [{ name: "key", type: "string", desc: true }],
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -310,7 +310,7 @@ describe("processQuery tests", () => {
       params: [
         "",
         {
-          orderBy: [{ name: "key", type: "string", descending: true }],
+          orderBy: [{ name: "key", type: "string", desc: true }],
           includeData: {
             key: true,
             attributes: false,

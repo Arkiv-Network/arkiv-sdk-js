@@ -25,9 +25,9 @@ export type WalletArkivClient<
 /**
  * Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
  *
- * - Docs: https://docs.golemdb.io/ts-sdk/clients/public
+ * - Docs: https://docs.arkiv.network/ts-sdk/clients/public
  *
- * A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.golemdb.io/json-rpc/), and [Kaolin JSON-RPC API](https://kaolin.holesky.golemdb.io/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
+ * A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Kaolin JSON-RPC API](https://kaolin.holesky.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
  *
  * @param config - {@link PublicClientConfig}
  * @returns A Arkiv Public Client. {@link PublicArkivClient}
