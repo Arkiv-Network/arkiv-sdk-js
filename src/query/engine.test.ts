@@ -15,6 +15,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -53,6 +54,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -92,6 +94,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -131,6 +134,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -176,6 +180,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -203,6 +208,7 @@ describe("processQuery tests", () => {
     const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
     await processQuery(client, {
       predicates,
+      orderBy: undefined,
       limit: undefined,
       cursor: undefined,
       ownedBy: "0x123",
@@ -232,6 +238,7 @@ describe("processQuery tests", () => {
       predicates,
       limit: undefined,
       cursor: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -256,12 +263,74 @@ describe("processQuery tests", () => {
     })
   })
 
+  it("should process simple predicates with orderBy", async () => {
+    const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+    await processQuery(client, {
+      predicates,
+      orderBy: [{ name: "key", type: "string", descending: true }],
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value"`,
+        {
+          orderBy: [{ name: "key", type: "string", descending: true }],
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
+
+  it("should process only orderBy", async () => {
+    const predicates = [] as Predicate[]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      orderBy: [{ name: "key", type: "string", descending: true }],
+      validAtBlock: undefined,
+      withAttributes: undefined,
+      withMetadata: undefined,
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        "",
+        {
+          orderBy: [{ name: "key", type: "string", descending: true }],
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+          },
+        },
+      ],
+    })
+  })
+
   it("should process simple predicate with validAtBlock and paging", async () => {
     const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
     await processQuery(client, {
       predicates,
       limit: 10,
       cursor: undefined,
+      orderBy: undefined,
       validAtBlock: 123n,
       ownedBy: "0x123",
     })

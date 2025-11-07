@@ -11,9 +11,16 @@ export type RpcEntity = {
   numericAttributes?: [{ key: string; value: number }]
 }
 
+export type RpcOrderByAttribute = {
+  name: string
+  type: "string" | "numeric"
+  desc: boolean
+}
+
 export type RpcQueryOptions = {
   atBlock?: number
   includeData?: RpcIncludeData
+  orderBy?: RpcOrderByAttribute[]
   resultsPerPage?: number
   cursor?: string
 }

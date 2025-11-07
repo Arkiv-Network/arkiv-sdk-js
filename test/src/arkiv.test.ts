@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import type { Hex, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
+import type { Attribute, Hex, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
 import {
   createPublicClient,
   createWalletClient,
@@ -540,6 +540,71 @@ describe("Arkiv Integration Tests for public client", () => {
       console.log("entity from getEntity", entity)
       expect(entity).toBeDefined()
       expect(entity.owner).toEqual(newOwner)
+    },
+    { timeout: 20000 },
+  )
+
+  test.each(["http", "webSocket"] as const)(
+    "should order entities by attribute using orderBy() with %s transport",
+    async (transport) => {
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+
+      // Create three entities with different numeric values for 'score'
+      const entities = [
+        { entityType: "person", entityId: "A", score: 42 },
+        { entityType: "person", entityId: "B", score: 99 },
+        { entityType: "person", entityId: "C", score: 42 },
+      ]
+
+      await writeClient.mutateEntities({
+        creates: [
+          ...entities.map((ent) => ({
+            payload: jsonToPayload(ent),
+            contentType: "application/json" as const,
+            attributes: [
+              { key: "score", value: ent.score },
+              { key: "entityId", value: ent.entityId },
+              { key: "group", value: "orderby-test" },
+              { key: "transport", value: transport },
+            ],
+            expiresIn: ExpirationTime.fromBlocks(1000),
+          })),
+        ],
+      })
+
+      // Helper to read all with group=orderby-test
+      const getEntities = async (orderDesc: boolean) => {
+        const result = await readClient
+          .buildQuery()
+          .where([eq("group", "orderby-test"), eq("transport", transport)])
+          .orderBy("score", "number", orderDesc)
+          .orderBy("entityId", "string", orderDesc)
+          .withAttributes(true)
+          .fetch()
+
+        return result.entities.map((ent) => {
+          console.log("ent", ent)
+          const scoreAttr = ent.attributes?.find((attr) => attr.key === "entityId") ?? {
+            value: undefined,
+          }
+          return scoreAttr.value
+        })
+      }
+
+      // Ascending order
+      console.log("Ascending order")
+      const ascScores = await getEntities(false)
+      console.log("ascScores", ascScores)
+      // Should be sorted: A, C, B
+      expect(ascScores).toEqual(["A", "C", "B"])
+
+      console.log("Descending order")
+      // Descending order
+      const descScores = await getEntities(true)
+      console.log("descScores", descScores)
+      // Should be sorted: B, C, A
+      expect(descScores).toEqual(["B", "C", "A"])
     },
     { timeout: 20000 },
   )

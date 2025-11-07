@@ -1,5 +1,6 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
+import type { RpcOrderByAttribute } from "../types/rpcSchema"
 import { entityFromRpcResult } from "../utils/entities"
 import { processQuery } from "./engine"
 import type { Predicate } from "./predicate"
@@ -14,6 +15,7 @@ import { QueryResult } from "./queryResult"
 export class QueryBuilder {
   private _client: ArkivClient
   private _ownedBy: Hex | undefined
+  private _orderBy: RpcOrderByAttribute[] | undefined
   private _validAtBlock: bigint | undefined
   private _withAttributes: boolean | undefined
   private _withMetadata: boolean | undefined
@@ -38,6 +40,35 @@ export class QueryBuilder {
    */
   ownedBy(ownedBy: Hex) {
     this._ownedBy = ownedBy
+    return this
+  }
+
+  /**
+   * Sets the orderBy for the query.
+   * It can be called multiple times to order by multiple attributes.
+   * The order of the attributes is important. The first attribute is the primary order by attribute.
+   * @param attributeName - The name of the attribute to order by
+   * @param attributeType - The type of the attribute to order by (string or number)
+   * @param descending - The boolean value to set the order by descending
+   * @returns The QueryBuilder instance
+   *
+   * @example
+   * const builder = new QueryBuilder(client)
+   * builder.orderBy("name", "string", true)
+   */
+  orderBy(
+    attributeName: string,
+    attributeType: "string" | "number",
+    descending: boolean | undefined = undefined,
+  ) {
+    if (!this._orderBy) {
+      this._orderBy = []
+    }
+    this._orderBy.push({
+      name: attributeName,
+      type: attributeType === "number" ? "numeric" : attributeType,
+      desc: !!descending,
+    } as RpcOrderByAttribute)
     return this
   }
 
@@ -167,6 +198,7 @@ export class QueryBuilder {
       limit: this._limit,
       cursor: this._cursor,
       ownedBy: this._ownedBy,
+      orderBy: this._orderBy,
       validAtBlock: this._validAtBlock,
       withAttributes: this._withAttributes,
       withMetadata: this._withMetadata,
@@ -198,6 +230,7 @@ export class QueryBuilder {
       limit: this._limit,
       cursor: this._cursor,
       ownedBy: this._ownedBy,
+      orderBy: undefined,
       validAtBlock: this._validAtBlock,
       withAttributes: false,
       withMetadata: false,
