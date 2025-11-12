@@ -1,4 +1,7 @@
 import type { ArkivClient } from "../../clients/baseClient"
+import { getLogger } from "../../utils/logger"
+
+const logger = getLogger("actions:public:get-block-timing")
 
 export type GetBlockTimingReturnType = {
   currentBlock: bigint
@@ -11,7 +14,7 @@ export async function getBlockTiming(client: ArkivClient) {
     method: "arkiv_getBlockTiming",
     params: [],
   })
-  console.debug("Block timing", blockTiming)
+  logger("Block timing %o", blockTiming)
   return {
     currentBlock: blockTiming.current_block,
     currentBlockTime: blockTiming.current_block_time,

@@ -1,6 +1,9 @@
 // src/utils/compression.ts
 
 import type { BrotliWasmType } from "brotli-wasm"
+import { getLogger } from "./logger"
+
+const logger = getLogger("utils:compression")
 
 // Detect if we're in Node.js environment
 const isNode = typeof process !== "undefined" && process.versions?.node != null
@@ -39,7 +42,7 @@ async function getBrotli(): Promise<BrotliWasmType | null> {
 }
 
 export async function compress(data: Uint8Array): Promise<Uint8Array> {
-  console.debug(`Compressing data (size: ${data.length})`)
+  logger("Compressing data size %d", data.length)
 
   // Try Node.js zlib first (if available)
   if (isNode) {
@@ -50,7 +53,7 @@ export async function compress(data: Uint8Array): Promise<Uint8Array> {
         const buffer = Buffer.from(data)
         const compressed = zlibModule.brotliCompressSync(buffer)
         const result = new Uint8Array(compressed)
-        console.debug(`Brotli compressed with zlib (size: ${result.length})`)
+        logger("Brotli compressed with zlib size %d", result.length)
         return result
       } catch (error) {
         console.warn("zlib compression failed, falling back to brotli-wasm", error)
@@ -66,7 +69,7 @@ export async function compress(data: Uint8Array): Promise<Uint8Array> {
   }
 
   const brotliCompressed = brotliInstance.compress(data)
-  console.debug(`Brotli compressed with wasm (size: ${brotliCompressed.length})`)
+  logger("Brotli compressed with wasm size %d", brotliCompressed.length)
   return brotliCompressed
 }
 
@@ -80,7 +83,7 @@ export async function decompress(data: Uint8Array): Promise<Uint8Array> {
         const buffer = Buffer.from(data)
         const decompressed = zlibModule.brotliDecompressSync(buffer)
         const result = new Uint8Array(decompressed)
-        console.debug(`Brotli decompressed with zlib (size: ${result.length})`)
+        logger("Brotli decompressed with zlib size %d", result.length)
         return result
       } catch (error) {
         console.warn("zlib decompression failed, falling back to brotli-wasm", error)

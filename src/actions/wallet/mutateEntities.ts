@@ -2,7 +2,11 @@ import type { Hash, Hex, TransactionReceipt } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { getLogger } from "../../utils/logger"
 import type { ChangeOwnershipParameters } from "./changeOwnership"
+
+const logger = getLogger("actions:wallet:mutate-entities")
+
 import type { CreateEntityParameters } from "./createEntity"
 import type { DeleteEntityParameters } from "./deleteEntity"
 import type { ExtendEntityParameters } from "./extendEntity"
@@ -94,7 +98,7 @@ export async function mutateEntities(
 
   const receipt = await sendArkivTransaction(client, txData, txParams)
 
-  console.debug("Receipt from mutateEntities", receipt)
+  logger("Receipt from mutateEntities %o", receipt)
 
   const { createdEntities, updatedEntities, deletedEntities, extendedEntities, ownershipChanges } =
     parseReceipt(receipt, data)

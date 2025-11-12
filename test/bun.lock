@@ -19,7 +19,7 @@
   "packages": {
     "@adraffy/ens-normalize": ["@adraffy/ens-normalize@1.11.1", "", {}, "sha512-nhCBV3quEgesuf7c7KYfperqSS14T8bYuvJ8PcLJp6znkZpFc0AuW4qBtr8eKVyPPe/8RSr7sglCWPU5eaxwKQ=="],
 
-    "@arkiv-network/sdk": ["@arkiv-network/sdk@../arkiv-network-sdk-latest.tgz", { "dependencies": { "brotli-wasm": "^3.0.1", "viem": "^2.38.2" }, "peerDependencies": { "typescript": "^5.0.0" } }],
+    "@arkiv-network/sdk": ["@arkiv-network/sdk@../arkiv-network-sdk-latest.tgz", { "dependencies": { "brotli-wasm": "^3.0.1", "debug": "^4.3.7", "viem": "^2.38.2" }, "peerDependencies": { "typescript": "^5.0.0" } }],
 
     "@balena/dockerignore": ["@balena/dockerignore@1.0.2", "", {}, "sha512-wMue2Sy4GAVTk6Ic4tJVcnfdau+gx2EnG7S+uAEe+TWJFqE4YoWN4/H8MSLj4eYJKxGg26lZwboEniNiNwZQ6Q=="],
 

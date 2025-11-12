@@ -11,7 +11,7 @@ import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
 import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
-import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils"
+import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils.js"
 
 describe("Arkiv Integration Tests for public client", () => {
   let arkivNode: StartedTestContainer

@@ -9,6 +9,9 @@ import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
 import type { TxParams } from "../types"
 import { compress } from "./compression"
+import { getLogger } from "./logger"
+
+const logger = getLogger("utils:arkiv-transactions")
 
 export function opsToTxData({
   creates,
@@ -64,7 +67,7 @@ export function opsToTxData({
     (ownershipChanges ?? []).map((item) => [item.entityKey, item.newOwner]),
   ]
 
-  console.debug("txData to send as RLP", payload, payload.length)
+  logger("txData to send as RLP %o length %d", payload, payload.length)
 
   return toRlp(payload)
 }
@@ -73,7 +76,7 @@ export async function sendArkivTransaction(client: ArkivClient, data: Hex, txPar
   if (!client.account) throw new Error("Account required")
   const walletClient = client as WalletArkivClient
 
-  console.debug("Sending transaction", {
+  logger("Sending transaction %o", {
     account: client.account,
     chain: client.chain,
     to: ARKIV_ADDRESS,
@@ -94,7 +97,7 @@ export async function sendArkivTransaction(client: ArkivClient, data: Hex, txPar
 
   const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash })
 
-  console.debug("Tx receipt", receipt)
+  logger("Tx receipt %o", receipt)
 
   return receipt
 }
