@@ -496,8 +496,10 @@ describe("Arkiv Integration Tests for public client", () => {
         .withMetadata(true)
         .withPayload(false)
         .fetch()
+
       expect(queryResult).toBeDefined()
       expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
+      console.log("queryResult.entities[0]", queryResult.entities[0])
       expect(queryResult.entities[0].owner).toBeDefined()
       expect(queryResult.entities[0].expiresAtBlock).toBeDefined()
       expect(queryResult.entities[0].createdAtBlock).toBeDefined()

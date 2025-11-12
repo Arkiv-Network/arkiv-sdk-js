@@ -32,13 +32,13 @@ const client = createPublicClient({
 const chainId = await client.getChainId();
 
 // Get entity by key
-const entity = await client.getEntity('0x123...');
+const entity = await client.getEntity('0x89f9469ee5dcf34a08dfd89a1768c34eefc588f299a07663d2b236b3d6b83df9');
 
 // Build and execute a query using QueryBuilder
 const query = client.buildQuery();
 const result = await query
   .where(eq('testKey', 'testValue'))
-  .ownedBy('0x1234567890123456789012345678901234567890')
+  .ownedBy('0x6186B0DbA9652262942d5A465d49686eb560834C')
   .withAttributes(true)
   .withPayload(true)
   .limit(10)
@@ -47,19 +47,19 @@ const result = await query
 console.log('Found entities:', result.entities);
 
 // Pagination - fetch next page
-if (result.hasNext()) {
+if (result.hasNextPage()) {
   await result.next();
   console.log('Next page:', result.entities);
 }
 
 // Or use raw query string
-const rawQueryResult = await client.query('testKey = testValue && $owner = 0x123...');
+const rawQueryResult = await client.query('testKey = "testValue" && $owner = "0x6186B0DbA9652262942d5A465d49686eb560834C"');
 ```
 
 ### Wallet Client with Create Entity
 
 ```typescript
-import { createWalletClient, http, toBytes } from '@arkiv-network/sdk';
+import { createPublicClient, createWalletClient, http } from '@arkiv-network/sdk';
 import { kaolin } from '@arkiv-network/sdk/chains';
 import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
 import { ExpirationTime, jsonToPayload } from '@arkiv-network/sdk/utils';
@@ -73,12 +73,12 @@ const client = createWalletClient({
 
 // Create an entity
 const { entityKey, txHash } = await client.createEntity({
-  payload: jsonToPayload{
+  payload: jsonToPayload({
     entity: {
       entityType: 'document',
       entityId: 'doc-123',
     },
-  },
+  }),
   contentType: 'application/json',
   attributes: [
     { key: 'category', value: 'documentation' },
@@ -91,7 +91,11 @@ console.log('Created entity:', entityKey);
 console.log('Transaction hash:', txHash);
 
 // Get the created entity
-const entity = await client.getEntity(entityKey);
+const publicClient = createPublicClient({
+  chain: kaolin,
+  transport: http()
+});
+const entity = await publicClient.getEntity(entityKey);
 console.log('Entity:', entity);
 ```
 
