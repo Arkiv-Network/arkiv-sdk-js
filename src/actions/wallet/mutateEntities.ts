@@ -1,4 +1,4 @@
-import type { Hex, TransactionReceipt } from "viem"
+import type { Hash, Hex, TransactionReceipt } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
@@ -68,7 +68,7 @@ function parseReceipt(receipt: TransactionReceipt, params: MutateEntitiesParamet
  * - ownershipChanges: The keys of the ownership changes.
  */
 export type MutateEntitiesReturnType = {
-  txHash: string
+  txHash: Hash
   createdEntities: Hex[]
   updatedEntities: Hex[]
   deletedEntities: Hex[]
@@ -99,7 +99,7 @@ export async function mutateEntities(
   const { createdEntities, updatedEntities, deletedEntities, extendedEntities, ownershipChanges } =
     parseReceipt(receipt, data)
   return {
-    txHash: receipt.transactionHash,
+    txHash: receipt.transactionHash as Hash,
     createdEntities,
     updatedEntities,
     deletedEntities,

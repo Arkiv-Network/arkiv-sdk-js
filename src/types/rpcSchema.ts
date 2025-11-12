@@ -5,7 +5,11 @@ export type RpcEntity = {
   key: Hex
   contentType: MimeType
   value: string
-  expiresAt: bigint
+  expiresAt: string
+  createdAtBlock: string
+  lastModifiedAtBlock: string
+  transactionIndexInBlock: string
+  operationIndexInTransaction: string
   owner: Hex
   stringAttributes?: [{ key: string; value: string }]
   numericAttributes?: [{ key: string; value: number }]
@@ -32,6 +36,10 @@ export type RpcIncludeData = {
   contentType: boolean
   expiration: boolean
   owner: boolean
+  createdAtBlock: boolean
+  lastModifiedAtBlock: boolean
+  transactionIndexInBlock: boolean
+  operationIndexInTransaction: boolean
 }
 
 export type ArkivRpcSchema = [

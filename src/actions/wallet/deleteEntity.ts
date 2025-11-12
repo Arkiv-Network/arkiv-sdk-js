@@ -1,4 +1,4 @@
-import type { Hex } from "viem"
+import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
@@ -18,7 +18,7 @@ export type DeleteEntityParameters = {
  */
 export type DeleteEntityReturnType = {
   entityKey: Hex
-  txHash: string
+  txHash: Hash
 }
 
 export async function deleteEntity(
@@ -33,7 +33,7 @@ export async function deleteEntity(
   console.debug("Receipt from deleteEntity", receipt)
 
   return {
-    txHash: receipt.transactionHash,
+    txHash: receipt.transactionHash as Hash,
     entityKey: data.entityKey,
   }
 }

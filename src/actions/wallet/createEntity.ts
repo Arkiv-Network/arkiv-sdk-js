@@ -1,4 +1,4 @@
-import type { Hex } from "viem"
+import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { Attribute, MimeType, TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
@@ -24,7 +24,7 @@ export type CreateEntityParameters = {
  */
 export type CreateEntityReturnType = {
   entityKey: Hex
-  txHash: string
+  txHash: Hash
 }
 
 export async function createEntity(
@@ -39,7 +39,7 @@ export async function createEntity(
   console.debug("Receipt from createEntity", receipt)
 
   return {
-    txHash: receipt.transactionHash,
+    txHash: receipt.transactionHash as Hash,
     entityKey: receipt.logs[0].topics[1] as Hex,
   }
 }

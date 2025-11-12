@@ -183,7 +183,7 @@ export type WalletArkivActions<
      * Mutates the entities with the given keys.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/mutateEntities
-     * - JSON-RPC Methods: [`golembase_mutateEntities`](https://docs.arkiv.network/dev/json-rpc-api/#golembase_mutateEntities)
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param args - {data}
      * @returns The entity with the given key. {@link Entity}

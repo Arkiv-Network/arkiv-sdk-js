@@ -1,6 +1,6 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
-import type { RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
+import type { RpcIncludeData, RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
 import type { Predicate } from "./predicate"
 
 function processPredicates(predicates: Predicate[]): string {
@@ -87,7 +87,11 @@ export async function processQuery(
       contentType: withMetadata ?? false,
       expiration: withMetadata ?? false,
       owner: withMetadata ?? false,
-    },
+      createdAtBlock: withMetadata ?? false,
+      lastModifiedAtBlock: withMetadata ?? false,
+      transactionIndexInBlock: withMetadata ?? false,
+      operationIndexInTransaction: withMetadata ?? false,
+    } as RpcIncludeData,
   }
 
   if (validAtBlock !== undefined) {
