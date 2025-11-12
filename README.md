@@ -162,3 +162,13 @@ bun run lint
 For more information about refer to:
 [CONTRIBUTING.md](./CONTRIBUTING.md)
 
+## Verbose Logging
+
+The SDK uses [debug](https://www.npmjs.com/package/debug) under the hood. Set the `DEBUG` environment variable to view verbose logs:
+
+```bash
+DEBUG=arkiv:* bun run your-script
+```
+
+Adjust the namespace (for example, `arkiv:rpc` or `arkiv:query`) to target specific log sources. Unset `DEBUG` to silence debug output.
+
