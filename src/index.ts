@@ -1,21 +1,12 @@
-// Export all public APIs
+// Re-export all viem stuff
+export * from "viem"
 
-export type {
-  Account,
-  Address,
-  Chain,
-  Hex,
-  PublicClientConfig,
-  RpcSchema,
-  Transport,
-} from "viem"
-// Re-export commonly used viem types for convenience
-export { http, toBytes, toHex, toRlp, webSocket } from "viem"
+// export main arkiv stuff
 export type { ArkivClient } from "./clients/baseClient"
 export type { PublicArkivClient } from "./clients/createPublicClient"
 export { createPublicClient } from "./clients/createPublicClient"
 export type { WalletArkivClient } from "./clients/createWalletClient"
 export { createWalletClient } from "./clients/createWalletClient"
-export type { Attribute } from "./types/attributes"
-export type { Entity } from "./types/entity"
-export type { ArkivRpcSchema } from "./types/rpcSchema"
+
+// re-export arkiv types in main index file
+export * from "./types"

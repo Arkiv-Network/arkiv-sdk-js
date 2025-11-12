@@ -1,7 +1,10 @@
-import type { Hex } from "viem"
+import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { Attribute, MimeType, TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { getLogger } from "../../utils/logger"
+
+const logger = getLogger("actions:wallet:create-entity")
 
 /**
  * Parameters for the createEntity function.
@@ -24,7 +27,7 @@ export type CreateEntityParameters = {
  */
 export type CreateEntityReturnType = {
   entityKey: Hex
-  txHash: string
+  txHash: Hash
 }
 
 export async function createEntity(
@@ -32,14 +35,14 @@ export async function createEntity(
   data: CreateEntityParameters,
   txParams?: TxParams,
 ): Promise<CreateEntityReturnType> {
-  console.debug("createEntity", data)
+  logger("createEntity %o", data)
   const txData = opsToTxData({ creates: [data] })
   const receipt = await sendArkivTransaction(client, txData, txParams)
 
-  console.debug("Receipt from createEntity", receipt)
+  logger("Receipt from createEntity %o", receipt)
 
   return {
-    txHash: receipt.transactionHash,
+    txHash: receipt.transactionHash as Hash,
     entityKey: receipt.logs[0].topics[1] as Hex,
   }
 }

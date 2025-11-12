@@ -1,6 +1,6 @@
 {
   "name": "@arkiv-network/sdk",
-  "version": "0.3.1",
+  "version": "0.4.0-dev.1",
   "description": "TypeScript client library for Arkiv's blockchains interactions",
   "type": "module",
   "target": "esnext",
@@ -84,6 +84,7 @@
     "publish-dev:dry": "npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev --dry-run"
   },
   "devDependencies": {
+    "@types/debug": "^4.1.12",
     "@biomejs/biome": "2.2.4",
     "@types/bun": "latest",
     "rimraf": "^6.0.1",
@@ -116,6 +117,7 @@
   "homepage": "https://arkiv.network",
   "dependencies": {
     "brotli-wasm": "^3.0.1",
-    "viem": "^2.38.2"
+    "viem": "^2.38.2",
+    "debug": "^4.3.7"
   }
 }

@@ -1,10 +1,50 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
+import type { RpcOrderByAttribute } from "../types/rpcSchema"
 import { entityFromRpcResult } from "../utils/entities"
 import { processQuery } from "./engine"
 import type { Predicate } from "./predicate"
 import { QueryResult } from "./queryResult"
 
+type OrderByAttribute = {
+  name: string
+  type: "string" | "number"
+  order: "asc" | "desc"
+}
+
+/**
+ * Helper function to create an ascending order by attribute
+ * @param attributeName - The name of the attribute to order by
+ * @param attributeType - The type of the attribute to order by (string or number)
+ * @returns The OrderByAttribute instance
+ *
+ * @example
+ * const ascAttribute = asc("name", "string")
+ */
+export function asc(attributeName: string, attributeType: "string" | "number"): OrderByAttribute {
+  return {
+    name: attributeName,
+    type: attributeType,
+    order: "asc",
+  }
+}
+
+/**
+ * Helper function to create a descending order by attribute
+ * @param attributeName - The name of the attribute to order by
+ * @param attributeType - The type of the attribute to order by (string or number)
+ * @returns The OrderByAttribute instance
+ *
+ * @example
+ * const descAttribute = desc("name", "string")
+ */
+export function desc(attributeName: string, attributeType: "string" | "number"): OrderByAttribute {
+  return {
+    name: attributeName,
+    type: attributeType,
+    order: "desc",
+  }
+}
 /**
  * QueryBuilder is a helper class to build queries to the Arkiv DBChains.
  * It can be used to fetch entities from the Arkiv DBChains. It follows the Builder pattern allowing chaining of methods.
@@ -14,6 +54,7 @@ import { QueryResult } from "./queryResult"
 export class QueryBuilder {
   private _client: ArkivClient
   private _ownedBy: Hex | undefined
+  private _orderBy: RpcOrderByAttribute[] | undefined
   private _validAtBlock: bigint | undefined
   private _withAttributes: boolean | undefined
   private _withMetadata: boolean | undefined
@@ -38,6 +79,66 @@ export class QueryBuilder {
    */
   ownedBy(ownedBy: Hex) {
     this._ownedBy = ownedBy
+    return this
+  }
+
+  /**
+   * Sets the orderBy for the query.
+   * It can be called multiple times to order by multiple attributes.
+   * The order of the attributes is important. The first attribute is the primary order by attribute.
+   * @param attributeName - The name of the attribute to order by
+   * @param attributeType - The type of the attribute to order by (string or number)
+   * @param order - The order to set the order by (asc or desc)
+   * @returns The QueryBuilder instance
+   *
+   * @example
+   * const builder = new QueryBuilder(client)
+   * builder.orderBy("name", "string", "desc")
+   */
+  orderBy(attributeName: string, attributeType: "string" | "number", order?: "asc" | "desc"): this
+  /**
+   * Sets the orderBy for the query.
+   * This method takes the OrderByAttribute object as an argument and is mainly
+   * used to use the helper functions asc() and desc() to create the OrderByAttribute instances.
+   * @param orderByAttribute - The OrderByAttribute instance to set
+   * @returns The QueryBuilder instance
+   *
+   * @example
+   * const builder = new QueryBuilder(client)
+   * builder.orderBy(asc("name", "string"))
+   * builder.orderBy(desc("name", "string"))
+   */
+  orderBy(orderByAttribute: OrderByAttribute): this
+  orderBy(
+    attributeNameOrOrderByAttribute: string | OrderByAttribute,
+    attributeType?: "string" | "number",
+    order: "asc" | "desc" = "asc",
+  ) {
+    if (!this._orderBy) {
+      this._orderBy = []
+    }
+
+    const pushOrderByAttribute = ({ name, type, order }: OrderByAttribute) => {
+      this._orderBy?.push({
+        name,
+        type: type === "number" ? "numeric" : type,
+        desc: order === "desc",
+      })
+    }
+
+    if (typeof attributeNameOrOrderByAttribute === "string") {
+      if (!attributeType) {
+        throw new Error("attributeType is required when using positional orderBy arguments")
+      }
+      pushOrderByAttribute({
+        name: attributeNameOrOrderByAttribute,
+        type: attributeType,
+        order,
+      })
+    } else {
+      pushOrderByAttribute(attributeNameOrOrderByAttribute)
+    }
+
     return this
   }
 
@@ -167,6 +268,7 @@ export class QueryBuilder {
       limit: this._limit,
       cursor: this._cursor,
       ownedBy: this._ownedBy,
+      orderBy: this._orderBy,
       validAtBlock: this._validAtBlock,
       withAttributes: this._withAttributes,
       withMetadata: this._withMetadata,
@@ -198,6 +300,7 @@ export class QueryBuilder {
       limit: this._limit,
       cursor: this._cursor,
       ownedBy: this._ownedBy,
+      orderBy: undefined,
       validAtBlock: this._validAtBlock,
       withAttributes: false,
       withMetadata: false,

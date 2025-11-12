@@ -1,6 +1,7 @@
 # arkivjs
 
 A TypeScript client library for Arkiv's blockchains interactions.
+The Arkiv SDK base strongly on Viem (Viem)[https://github.com/wevm/viem] library - it can be treated as Viem replacement extended of Arkiv's chains specific features.
 
 ## Installation
 
@@ -18,12 +19,12 @@ yarn add @arkiv-network/sdk
 
 ```typescript
 import { createPublicClient, http } from '@arkiv-network/sdk';
-import { kaolin } from '@arkiv-network/sdk/chains';
+import { mendoza } from '@arkiv-network/sdk/chains';
 import { eq } from '@arkiv-network/sdk/query';
 
 // Create a public client
 const client = createPublicClient({
-  chain: kaolin, // Kaolin is the name of Arkiv official testnet
+  chain: mendoza, // mendoza is the Arkiv testnet for the purposes of hackathons organized in Buenos Aires during devconnect 2025
   transport: http(),
 });
 
@@ -31,13 +32,13 @@ const client = createPublicClient({
 const chainId = await client.getChainId();
 
 // Get entity by key
-const entity = await client.getEntity('0x123...');
+const entity = await client.getEntity('0x89f9469ee5dcf34a08dfd89a1768c34eefc588f299a07663d2b236b3d6b83df9');
 
 // Build and execute a query using QueryBuilder
 const query = client.buildQuery();
 const result = await query
   .where(eq('testKey', 'testValue'))
-  .ownedBy('0x1234567890123456789012345678901234567890')
+  .ownedBy('0x6186B0DbA9652262942d5A465d49686eb560834C')
   .withAttributes(true)
   .withPayload(true)
   .limit(10)
@@ -46,38 +47,38 @@ const result = await query
 console.log('Found entities:', result.entities);
 
 // Pagination - fetch next page
-if (result.hasNext()) {
+if (result.hasNextPage()) {
   await result.next();
   console.log('Next page:', result.entities);
 }
 
 // Or use raw query string
-const rawQueryResult = await client.query('testKey = testValue && $owner = 0x123...');
+const rawQueryResult = await client.query('testKey = "testValue" && $owner = "0x6186B0DbA9652262942d5A465d49686eb560834C"');
 ```
 
 ### Wallet Client with Create Entity
 
 ```typescript
-import { createWalletClient, http, toBytes } from '@arkiv-network/sdk';
-import { kaolin } from '@arkiv-network/sdk/chains';
+import { createPublicClient, createWalletClient, http } from '@arkiv-network/sdk';
+import { mendoza } from '@arkiv-network/sdk/chains';
 import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
 import { ExpirationTime, jsonToPayload } from '@arkiv-network/sdk/utils';
 
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: kaolin,
+  chain: mendoza,
   transport: http(),
   account: privateKeyToAccount('0x...'), // Your private key
 });
 
 // Create an entity
 const { entityKey, txHash } = await client.createEntity({
-  payload: jsonToPayload{
+  payload: jsonToPayload({
     entity: {
       entityType: 'document',
       entityId: 'doc-123',
     },
-  },
+  }),
   contentType: 'application/json',
   attributes: [
     { key: 'category', value: 'documentation' },
@@ -90,7 +91,11 @@ console.log('Created entity:', entityKey);
 console.log('Transaction hash:', txHash);
 
 // Get the created entity
-const entity = await client.getEntity(entityKey);
+const publicClient = createPublicClient({
+  chain: mendoza,
+  transport: http()
+});
+const entity = await publicClient.getEntity(entityKey);
 console.log('Entity:', entity);
 ```
 
@@ -102,7 +107,7 @@ This package supports multiple module formats for maximum compatibility:
 - **CommonJS** (`dist/*.cjs`) - For Node.js `require()`
 - **Type Declarations** (`dist/*.d.ts` and `dist/*.d.cts`) - Full TypeScript support
 
-The build uses [tsdown](https://github.com/unjs/tsdown) to generate both ESM and CommonJS formats with proper type declarations.
+The build uses [tsdown](https://github.com/rolldown/tsdown) to generate both ESM and CommonJS formats with proper type declarations.
 
 ### Runtime Support
 
@@ -156,4 +161,14 @@ bun run lint
 
 For more information about refer to:
 [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+## Verbose Logging
+
+The SDK uses [debug](https://www.npmjs.com/package/debug) under the hood. Set the `DEBUG` environment variable to view verbose logs:
+
+```bash
+DEBUG=arkiv:* bun run your-script
+```
+
+Adjust the namespace (for example, `arkiv:rpc` or `arkiv:query`) to target specific log sources. Unset `DEBUG` to silence debug output.
 

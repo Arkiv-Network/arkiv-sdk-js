@@ -1,7 +1,10 @@
-import type { Hex } from "viem"
+import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
 import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { getLogger } from "../../utils/logger"
+
+const logger = getLogger("actions:wallet:delete-entity")
 
 /**
  * Parameters for the deleteEntity function.
@@ -18,7 +21,7 @@ export type DeleteEntityParameters = {
  */
 export type DeleteEntityReturnType = {
   entityKey: Hex
-  txHash: string
+  txHash: Hash
 }
 
 export async function deleteEntity(
@@ -26,14 +29,14 @@ export async function deleteEntity(
   data: DeleteEntityParameters,
   txParams?: TxParams,
 ): Promise<DeleteEntityReturnType> {
-  console.debug("deleteEntity", data)
+  logger("deleteEntity %o", data)
   const txData = opsToTxData({ deletes: [data] })
   const receipt = await sendArkivTransaction(client, txData, txParams)
 
-  console.debug("Receipt from deleteEntity", receipt)
+  logger("Receipt from deleteEntity %o", receipt)
 
   return {
-    txHash: receipt.transactionHash,
+    txHash: receipt.transactionHash as Hash,
     entityKey: data.entityKey,
   }
 }

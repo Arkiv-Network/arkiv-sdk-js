@@ -1,6 +1,9 @@
 import type { Entity } from "../types/entity"
+import { getLogger } from "../utils/logger"
 import { NoCursorOrLimitError, NoMoreResultsError } from "./errors"
 import type { QueryBuilder } from "./queryBuilder"
+
+const logger = getLogger("query:result")
 
 export class QueryResult {
   entities: Entity[]
@@ -52,7 +55,7 @@ export class QueryResult {
     this._cursor = result.cursor
 
     // TODO check current block height and if it is not too old
-    console.debug("Current block height for next page: ", this._validAtBlock)
+    logger("Current block height for next page %s", this._validAtBlock?.toString() ?? "unknown")
   }
 
   hasNextPage() {

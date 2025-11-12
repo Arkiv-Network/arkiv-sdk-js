@@ -4,7 +4,7 @@ import { Entity } from "../types/entity"
 import * as entitiesUtils from "../utils/entities"
 import * as engine from "./engine"
 import { and, eq, gt, gte, neq, or } from "./predicate"
-import { QueryBuilder } from "./queryBuilder"
+import { asc, QueryBuilder } from "./queryBuilder"
 
 describe("QueryBuilder", () => {
   let mockClient: ArkivClient
@@ -46,6 +46,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         offset: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -67,6 +68,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         offset: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -96,6 +98,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         offset: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -117,6 +120,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         offset: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -141,6 +145,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         offset: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -164,6 +169,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         offset: undefined,
         ownedBy: owner,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -171,6 +177,68 @@ describe("QueryBuilder", () => {
       })
     })
 
+    test("orderBy() sets orderBy ascending", async () => {
+      mockProcessQuery.mockResolvedValue({
+        data: [],
+      })
+
+      const builder = new QueryBuilder(mockClient)
+      await builder.orderBy("name", "string", "asc").fetch()
+
+      expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
+        predicates: [],
+        limit: undefined,
+        offset: undefined,
+        ownedBy: undefined,
+        orderBy: [{ name: "name", type: "string", desc: false }],
+        validAtBlock: undefined,
+        withAttributes: undefined,
+        withMetadata: undefined,
+        withPayload: undefined,
+      })
+    })
+
+    test("orderBy() sets orderBy descending", async () => {
+      mockProcessQuery.mockResolvedValue({
+        data: [],
+      })
+
+      const builder = new QueryBuilder(mockClient)
+      await builder.orderBy("name", "string", "desc").fetch()
+
+      expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
+        predicates: [],
+        limit: undefined,
+        offset: undefined,
+        ownedBy: undefined,
+        orderBy: [{ name: "name", type: "string", desc: true }],
+        validAtBlock: undefined,
+        withAttributes: undefined,
+        withMetadata: undefined,
+        withPayload: undefined,
+      })
+    })
+
+    test("orderBy() with helper function", async () => {
+      mockProcessQuery.mockResolvedValue({
+        data: [],
+      })
+
+      const builder = new QueryBuilder(mockClient)
+      await builder.orderBy(asc("name", "string")).fetch()
+
+      expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
+        predicates: [],
+        limit: undefined,
+        offset: undefined,
+        ownedBy: undefined,
+        orderBy: [{ name: "name", type: "string", desc: false }],
+        validAtBlock: undefined,
+        withAttributes: undefined,
+        withMetadata: undefined,
+        withPayload: undefined,
+      })
+    })
     test("limit() sets limit", async () => {
       mockProcessQuery.mockResolvedValue({
         data: [],
@@ -184,6 +252,7 @@ describe("QueryBuilder", () => {
         limit: 10,
         offset: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -204,6 +273,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         cursor: "0xABC123",
         ownedBy: undefined,
+        orderBy: undefined,
         validAtBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -224,6 +294,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         offset: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: true,
         withMetadata: undefined,
@@ -244,6 +315,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         cursor: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validBeforeBlock: undefined,
         withAttributes: false,
         withMetadata: undefined,
@@ -264,6 +336,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         cursor: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validAtBlock: undefined,
         withAttributes: undefined,
         withMetadata: true,
@@ -284,6 +357,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         cursor: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validAtBlock: undefined,
         withAttributes: undefined,
         withMetadata: false,
@@ -304,6 +378,7 @@ describe("QueryBuilder", () => {
         limit: undefined,
         cursor: undefined,
         ownedBy: undefined,
+        orderBy: undefined,
         validAtBlock: undefined,
         withAttributes: undefined,
         withMetadata: undefined,
@@ -375,6 +450,10 @@ describe("QueryBuilder", () => {
         "application/json" as const,
         "0x123" as const,
         1000n,
+        1000n,
+        1000n,
+        1000n,
+        1000n,
         new Uint8Array(),
         [],
       )
@@ -382,6 +461,10 @@ describe("QueryBuilder", () => {
         "0xdef" as const,
         "application/json" as const,
         "0x456" as const,
+        2000n,
+        2000n,
+        2000n,
+        2000n,
         2000n,
         new Uint8Array(),
         [],

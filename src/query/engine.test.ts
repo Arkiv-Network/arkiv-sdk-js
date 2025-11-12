@@ -15,6 +15,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -33,6 +34,10 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
           },
         },
       ],
@@ -53,6 +58,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -70,6 +76,10 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
           },
         },
       ],
@@ -92,6 +102,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -109,6 +120,10 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
           },
         },
       ],
@@ -131,6 +146,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -148,6 +164,10 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
           },
         },
       ],
@@ -176,6 +196,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -193,6 +214,10 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
           },
         },
       ],
@@ -203,6 +228,7 @@ describe("processQuery tests", () => {
     const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
     await processQuery(client, {
       predicates,
+      orderBy: undefined,
       limit: undefined,
       cursor: undefined,
       ownedBy: "0x123",
@@ -220,6 +246,10 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
           },
         },
       ],
@@ -232,6 +262,7 @@ describe("processQuery tests", () => {
       predicates,
       limit: undefined,
       cursor: undefined,
+      orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
       withMetadata: undefined,
@@ -250,6 +281,79 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
+          },
+        },
+      ],
+    })
+  })
+
+  it("should process simple predicates with orderBy", async () => {
+    const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+    await processQuery(client, {
+      predicates,
+      orderBy: [{ name: "key", type: "string", desc: true }],
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value"`,
+        {
+          orderBy: [{ name: "key", type: "string", desc: true }],
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
+          },
+        },
+      ],
+    })
+  })
+
+  it("should process only orderBy", async () => {
+    const predicates = [] as Predicate[]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      orderBy: [{ name: "key", type: "string", desc: true }],
+      validAtBlock: undefined,
+      withAttributes: undefined,
+      withMetadata: undefined,
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        "",
+        {
+          orderBy: [{ name: "key", type: "string", desc: true }],
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
           },
         },
       ],
@@ -262,6 +366,7 @@ describe("processQuery tests", () => {
       predicates,
       limit: 10,
       cursor: undefined,
+      orderBy: undefined,
       validAtBlock: 123n,
       ownedBy: "0x123",
     })
@@ -280,6 +385,45 @@ describe("processQuery tests", () => {
             payload: false,
             expiration: false,
             owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
+          },
+        },
+      ],
+    })
+  })
+
+  it("should includeData all metadata if withMetadata is true", async () => {
+    const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+    await processQuery(client, {
+      predicates,
+      limit: 10,
+      cursor: undefined,
+      orderBy: undefined,
+      validAtBlock: undefined,
+      ownedBy: "0x123",
+      withMetadata: true,
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && $owner=0x123`,
+        {
+          resultsPerPage: 10,
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: true,
+            payload: false,
+            expiration: true,
+            owner: true,
+            createdAtBlock: true,
+            lastModifiedAtBlock: true,
+            transactionIndexInBlock: true,
+            operationIndexInTransaction: true,
           },
         },
       ],

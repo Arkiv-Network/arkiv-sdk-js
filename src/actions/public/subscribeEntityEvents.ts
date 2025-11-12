@@ -9,6 +9,9 @@ import type {
   OnEntityOwnerChangedEvent,
   OnEntityUpdatedEvent,
 } from "../../types/events"
+import { getLogger } from "../../utils/logger"
+
+const logger = getLogger("actions:public:subscribe-entity-events")
 
 export const arkivABI = parseAbi([
   "event ArkivEntityCreated(uint256 indexed entityKey, address indexed ownerAddress, uint256 expirationBlock, uint256 cost)",
@@ -46,14 +49,14 @@ export async function subscribeEntityEvents(
     fromBlock: fromBlock ?? 0n,
     events: arkivABI,
     onLogs: (logs) => {
-      console.debug("logs from subscribeEntityEvents", logs)
+      logger("logs from subscribeEntityEvents %o", logs)
       for (const log of logs) {
         const event = decodeEventLog({
           abi: arkivABI,
-          topics: log.topics,
+          topics: log.topics as [string, string, string] | [string, string, string, string],
           data: log.data,
         })
-        console.debug("event from subscribeEntityEvents", event)
+        logger("event from subscribeEntityEvents %o", event)
         switch (event.eventName) {
           case "ArkivEntityCreated":
             onEntityCreated?.({

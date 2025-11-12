@@ -5,15 +5,26 @@ export type RpcEntity = {
   key: Hex
   contentType: MimeType
   value: string
-  expiresAt: bigint
+  expiresAt: string
+  createdAtBlock: string
+  lastModifiedAtBlock: string
+  transactionIndexInBlock: string
+  operationIndexInTransaction: string
   owner: Hex
   stringAttributes?: [{ key: string; value: string }]
   numericAttributes?: [{ key: string; value: number }]
 }
 
+export type RpcOrderByAttribute = {
+  name: string
+  type: "string" | "numeric"
+  desc: boolean
+}
+
 export type RpcQueryOptions = {
   atBlock?: number
   includeData?: RpcIncludeData
+  orderBy?: RpcOrderByAttribute[]
   resultsPerPage?: number
   cursor?: string
 }
@@ -25,14 +36,13 @@ export type RpcIncludeData = {
   contentType: boolean
   expiration: boolean
   owner: boolean
+  createdAtBlock: boolean
+  lastModifiedAtBlock: boolean
+  transactionIndexInBlock: boolean
+  operationIndexInTransaction: boolean
 }
 
 export type ArkivRpcSchema = [
-  {
-    Method: "golembase_getStorageValue"
-    Parameters?: [entityId: Hex]
-    ReturnType: string
-  },
   {
     Method: "arkiv_query"
     Parameters?: [query: string, queryOptions?: RpcQueryOptions]

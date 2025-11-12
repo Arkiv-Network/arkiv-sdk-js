@@ -49,7 +49,8 @@ export type WalletArkivActions<
     /**
      * Returns the entity with the given key.
      *
-     * - Docs: https://docs.golemdb.io/ts-sdk/actions/public/getEntity
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param args - {entityKey}
      * @returns The entity with the given key. {@link Entity}
@@ -82,8 +83,8 @@ export type WalletArkivActions<
     /**
      * Updates the entity with the given key.
      *
-     * - Docs: https://docs.golemdb.io/ts-sdk/actions/wallet/updateEntity
-     * - JSON-RPC Methods: [`golembase_updateEntity`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_updateEntity)
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/updateEntity
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param args - {entityKey, data}
      * @returns The entity with the given key. {@link Entity}
@@ -105,8 +106,8 @@ export type WalletArkivActions<
     /**
      * Deletes the entity with the given key.
      *
-     * - Docs: https://docs.golemdb.io/ts-sdk/actions/wallet/deleteEntity
-     * - JSON-RPC Methods: [`golembase_deleteEntity`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_deleteEntity)
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/deleteEntity
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param args - {entityKey}
      * @returns The entity with the given key. {@link Entity}
@@ -135,8 +136,8 @@ export type WalletArkivActions<
     /**
      * Extends the entity with the given key.
      *
-     * - Docs: https://docs.golemdb.io/ts-sdk/actions/wallet/extendEntity
-     * - JSON-RPC Methods: [`golembase_extendEntity`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_extendEntity)
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/extendEntity
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param args - {entityKey, data}
      * @returns The entity with the given key. {@link Entity}
@@ -167,8 +168,8 @@ export type WalletArkivActions<
     /**
      * Changes the ownership of the entity with the given address.
      *
-     * - Docs: https://docs.golemdb.io/ts-sdk/actions/wallet/changeOwnership
-     * - JSON-RPC Methods: [`golembase_ownershipChange`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_ownershipChange)
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/changeOwnership
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param args - {entityKey, newOwner}
      * @returns The entity with the given address. {@link Entity}
@@ -181,8 +182,8 @@ export type WalletArkivActions<
     /**
      * Mutates the entities with the given keys.
      *
-     * - Docs: https://docs.golemdb.io/ts-sdk/actions/wallet/mutateEntities
-     * - JSON-RPC Methods: [`golembase_mutateEntities`](https://docs.golemdb.io/dev/json-rpc-api/#golembase_mutateEntities)
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/mutateEntities
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param args - {data}
      * @returns The entity with the given key. {@link Entity}

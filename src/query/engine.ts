@@ -1,7 +1,10 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
-import type { RpcQueryOptions } from "../types/rpcSchema"
+import type { RpcIncludeData, RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
+import { getLogger } from "../utils/logger"
 import type { Predicate } from "./predicate"
+
+const logger = getLogger("query:engine")
 
 function processPredicates(predicates: Predicate[]): string {
   const processValue = (value: string | number) => {
@@ -45,6 +48,7 @@ export async function processQuery(
     limit: number | undefined
     cursor: string | undefined
     ownedBy: Hex | undefined
+    orderBy: RpcOrderByAttribute[] | undefined
     validAtBlock?: bigint | undefined
     withAttributes?: boolean | undefined
     withMetadata?: boolean | undefined
@@ -56,15 +60,24 @@ export async function processQuery(
     limit,
     cursor,
     ownedBy,
+    orderBy,
     validAtBlock,
     withAttributes,
     withMetadata,
     withPayload,
   } = queryParams
 
-  console.debug(
-    `Processing query with params: predicates: ${predicates}, cursor: ${cursor}, limit: ${limit}, ownedBy: ${ownedBy}, validAtBlock: ${validAtBlock}, withAttributes: ${withAttributes}, withMetadata: ${withMetadata}, withPayload: ${withPayload}`,
-  )
+  logger("Processing query with params %o", {
+    predicates,
+    cursor,
+    limit,
+    ownedBy,
+    orderBy,
+    validAtBlock,
+    withAttributes,
+    withMetadata,
+    withPayload,
+  })
 
   let query = processPredicates(predicates)
   if (ownedBy) {
@@ -85,7 +98,11 @@ export async function processQuery(
       contentType: withMetadata ?? false,
       expiration: withMetadata ?? false,
       owner: withMetadata ?? false,
-    },
+      createdAtBlock: withMetadata ?? false,
+      lastModifiedAtBlock: withMetadata ?? false,
+      transactionIndexInBlock: withMetadata ?? false,
+      operationIndexInTransaction: withMetadata ?? false,
+    } as RpcIncludeData,
   }
 
   if (validAtBlock !== undefined) {
@@ -97,16 +114,23 @@ export async function processQuery(
   if (cursor !== undefined) {
     queryOptions.cursor = cursor
   }
+  if (orderBy !== undefined) {
+    queryOptions.orderBy = orderBy
+  }
 
-  console.debug(
-    `Built query to send: ${query}, queryOptions: ${JSON.stringify({ includeData: queryOptions.includeData, atBlock: queryOptions.atBlock?.toString(), resultsPerPage: queryOptions.resultsPerPage, cursor: queryOptions.cursor })}`,
-  )
+  logger("Built query to send %s %o", query, {
+    includeData: queryOptions.includeData,
+    atBlock: queryOptions.atBlock?.toString(),
+    orderBy: queryOptions.orderBy,
+    resultsPerPage: queryOptions.resultsPerPage,
+    cursor: queryOptions.cursor,
+  })
 
   const result = await client.request({
     method: "arkiv_query",
     params: [query, queryOptions],
   })
-  console.debug("Raw result from query: ", result)
+  logger("Raw result from query %o", result)
 
   return result
 }
