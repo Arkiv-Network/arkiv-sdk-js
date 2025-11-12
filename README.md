@@ -107,7 +107,7 @@ This package supports multiple module formats for maximum compatibility:
 - **CommonJS** (`dist/*.cjs`) - For Node.js `require()`
 - **Type Declarations** (`dist/*.d.ts` and `dist/*.d.cts`) - Full TypeScript support
 
-The build uses [tsdown](https://github.com/unjs/tsdown) to generate both ESM and CommonJS formats with proper type declarations.
+The build uses [tsdown](https://github.com/rolldown/tsdown) to generate both ESM and CommonJS formats with proper type declarations.
 
 ### Runtime Support
 
