@@ -19,12 +19,12 @@ yarn add @arkiv-network/sdk
 
 ```typescript
 import { createPublicClient, http } from '@arkiv-network/sdk';
-import { kaolin } from '@arkiv-network/sdk/chains';
+import { mendoza } from '@arkiv-network/sdk/chains';
 import { eq } from '@arkiv-network/sdk/query';
 
 // Create a public client
 const client = createPublicClient({
-  chain: kaolin, // Kaolin is the name of Arkiv official testnet
+  chain: mendoza, // mendoza is the Arkiv testnet for the purposes of hackathons organized in Buenos Aires during devconnect 2025
   transport: http(),
 });
 
@@ -60,13 +60,13 @@ const rawQueryResult = await client.query('testKey = "testValue" && $owner = "0x
 
 ```typescript
 import { createPublicClient, createWalletClient, http } from '@arkiv-network/sdk';
-import { kaolin } from '@arkiv-network/sdk/chains';
+import { mendoza } from '@arkiv-network/sdk/chains';
 import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
 import { ExpirationTime, jsonToPayload } from '@arkiv-network/sdk/utils';
 
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: kaolin,
+  chain: mendoza,
   transport: http(),
   account: privateKeyToAccount('0x...'), // Your private key
 });
@@ -92,7 +92,7 @@ console.log('Transaction hash:', txHash);
 
 // Get the created entity
 const publicClient = createPublicClient({
-  chain: kaolin,
+  chain: mendoza,
   transport: http()
 });
 const entity = await publicClient.getEntity(entityKey);
