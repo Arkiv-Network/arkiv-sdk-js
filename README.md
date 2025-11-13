@@ -83,7 +83,7 @@ npm install @arkiv-network/sdk
 This command will update your `package.json` with a section like:
 ```json
 "dependencies": {
-  "@arkiv-network/sdk": "^0.4.1"
+  "@arkiv-network/sdk": "^0.4.2"
 }
 ```
 It will also create a `node_modules` directory with all dependencies installed.
@@ -93,6 +93,10 @@ It will also create a `node_modules` directory with all dependencies installed.
 To query data from Arkiv, use the following sample code in `index.ts`:
 
 ```typescript
+import { createPublicClient, http } from "@arkiv-network/sdk"
+import { mendoza } from "@arkiv-network/sdk/chains"
+import { eq } from "@arkiv-network/sdk/query"
+
 const publicClient = createPublicClient({
   chain: mendoza, // "mendoza" is Arkiv's testnet, used during hackathons at DevConnect 2025 in Buenos Aires
   transport: http(),
