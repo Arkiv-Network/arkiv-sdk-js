@@ -225,7 +225,7 @@ Now you can run it in the same way as in the previous example:
 - **Classic Node.js (using transpilation to JavaScript):**
   ```bash
   npx tsc --outDir dist
-  node dist/write_exmaple.js
+  node dist/write_example.js
   ```
 
 **Note:**  
