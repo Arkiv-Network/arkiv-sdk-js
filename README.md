@@ -83,7 +83,7 @@ npm install @arkiv-network/sdk
 This command will update your `package.json` with a section like:
 ```json
 "dependencies": {
-  "@arkiv-network/sdk": "^0.4.2"
+  "@arkiv-network/sdk": "^0.4.4"
 }
 ```
 It will also create a `node_modules` directory with all dependencies installed.
@@ -170,10 +170,16 @@ Now let's add storage (write) functionality.
 Create a file named `write_example.ts` with the following content:
 
 ```typescript
-import { createWalletClient } from '@arkiv-network/sdk';
-import { ExpirationTime, jsonToPayload } from '@arkiv-network/sdk/utils';
-import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
+import { createPublicClient, createWalletClient, http } from "@arkiv-network/sdk"
+import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
+import { mendoza } from "@arkiv-network/sdk/chains"
+import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 
+// Create a public client
+const publicClient = createPublicClient({
+  chain: mendoza, // mendoza is the Arkiv testnet for the purposes of hackathons organized in Buenos Aires during devconnect 2025
+  transport: http(),
+})
 // Create a wallet client with an account
 const client = createWalletClient({
   chain: mendoza,
