@@ -22,7 +22,23 @@ export async function getEntity(client: ArkivClient, key: Hex) {
 
   const result = await client.request({
     method: "arkiv_query",
-    params: [`$key = ${hexKey}`],
+    params: [
+      `$key = ${hexKey}`,
+      {
+        includeData: {
+          key: true,
+          attributes: true,
+          payload: true,
+          contentType: true,
+          expiration: true,
+          owner: true,
+          createdAtBlock: true,
+          lastModifiedAtBlock: true,
+          transactionIndexInBlock: true,
+          operationIndexInTransaction: true,
+        },
+      },
+    ],
   })
 
   if (!result.data) {
