@@ -8,6 +8,8 @@ The Arkiv SDK base strongly on Viem (Viem)[https://github.com/wevm/viem] library
 ```bash
 npm install @arkiv-network/sdk
 # or
+pnpm install @arkiv-network/sdk
+# or
 bun add @arkiv-network/sdk
 # or
 yarn add @arkiv-network/sdk
@@ -15,29 +17,99 @@ yarn add @arkiv-network/sdk
 
 ## Usage
 
-### Public Client with Query
+Below is a tutorial to help you create simple scripts that use Arkiv to query and write data.
+
+### Prerequisites
+
+For this tutorial, we recommend using Node.js version 22.10.0 or newer (see [nodejs.org](https://nodejs.org)).  
+Alternatively, you can use [`bun`](https://bun.sh/), a JavaScript/TypeScript runtime and package manager that natively supports TypeScript without transpilation.
+
+### Project Setup
+
+Create a new directory and navigate into it:
+```bash
+mkdir arkiv-sample
+cd arkiv-sample
+```
+
+Create an empty `index.ts` file:
+```bash
+touch index.ts
+```
+
+Initialize a new JavaScript/TypeScript project:
+```bash
+npm init
+```
+You can accept all the default options by pressing `Enter` at each prompt.
+After this step, a `package.json` file will be created with content similar to:
+
+```json
+{
+  "name": "arkiv-sample",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
+```
+
+Modify the `"main"` entry to `"index.ts"` and set `"type"` to `"module"` so your `package.json` looks like this:
+
+```json
+{
+  "name": "arkiv-sample",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
+```
+
+Install `@arkiv-network/sdk` using your preferred package manager:
+```bash
+npm install @arkiv-network/sdk
+```
+This command will update your `package.json` with a section like:
+```json
+"dependencies": {
+  "@arkiv-network/sdk": "^0.4.1"
+}
+```
+It will also create a `node_modules` directory with all dependencies installed.
+
+### Public Client Example (Query Data)
+
+To query data from Arkiv, use the following sample code in `index.ts`:
 
 ```typescript
-import { createPublicClient, http } from '@arkiv-network/sdk';
-import { mendoza } from '@arkiv-network/sdk/chains';
-import { eq } from '@arkiv-network/sdk/query';
-
-// Create a public client
-const client = createPublicClient({
-  chain: mendoza, // mendoza is the Arkiv testnet for the purposes of hackathons organized in Buenos Aires during devconnect 2025
+const publicClient = createPublicClient({
+  chain: mendoza, // "mendoza" is Arkiv's testnet, used during hackathons at DevConnect 2025 in Buenos Aires
   transport: http(),
 });
 
 // Get chain ID
-const chainId = await client.getChainId();
+const chainId = await publicClient.getChainId();
+console.log('Chain ID:', chainId);
 
 // Get entity by key
-const entity = await client.getEntity('0x89f9469ee5dcf34a08dfd89a1768c34eefc588f299a07663d2b236b3d6b83df9');
+const entity = await publicClient.getEntity('0xcadb830a3414251d65e5c92cd28ecb648d9e73d85f2203eff631839d5421f9d7');
+console.log('Entity:', entity);
 
 // Build and execute a query using QueryBuilder
-const query = client.buildQuery();
+const query = publicClient.buildQuery();
 const result = await query
-  .where(eq('testKey', 'testValue'))
+  .where(eq('category', 'documentation'))
   .ownedBy('0x6186B0DbA9652262942d5A465d49686eb560834C')
   .withAttributes(true)
   .withPayload(true)
@@ -51,24 +123,62 @@ if (result.hasNextPage()) {
   await result.next();
   console.log('Next page:', result.entities);
 }
-
-// Or use raw query string
-const rawQueryResult = await client.query('testKey = "testValue" && $owner = "0x6186B0DbA9652262942d5A465d49686eb560834C"');
 ```
 
-### Wallet Client with Create Entity
+### Running the Example
+
+You have several options to run your TypeScript sample:
+
+- **With Node.js (using experimental TypeScript support):**
+  ```bash
+  node --experimental-strip-types index.ts
+  ```
+
+- **With Bun (native TypeScript support):**
+  ```bash
+  bun index.ts
+  ```
+
+- **Classic Node.js (using transpilation to JavaScript):**
+
+  1. Install TypeScript if you haven't already:
+     ```bash
+     npm install typescript
+     ```
+  2. Initialize a TypeScript config with default settings:
+     ```bash
+     npx tsc --init
+     ```
+     This will create a `tsconfig.json` file. You do not need to change its contents.
+  3. Transpile your `.ts` files into `.js`:
+     ```bash
+     npx tsc --outDir dist
+     ```
+     This creates a `dist` directory containing `index.js` (the transpiled code), along with corresponding type declaration and source map files.
+  4. Run the transpiled script:
+     ```bash
+     node dist/index.js
+     ```
+
+### Wallet Client Example (Create Entity)
+
+Now, let's add storage functionality.  
+First, import the required modules at the top of your `index.ts`:
 
 ```typescript
-import { createPublicClient, createWalletClient, http } from '@arkiv-network/sdk';
-import { mendoza } from '@arkiv-network/sdk/chains';
-import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
+import { createWalletClient } from '@arkiv-network/sdk';
 import { ExpirationTime, jsonToPayload } from '@arkiv-network/sdk/utils';
+import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
+```
 
+Then, add the following example below your query code to create an entity:
+
+```typescript
 // Create a wallet client with an account
 const client = createWalletClient({
   chain: mendoza,
   transport: http(),
-  account: privateKeyToAccount('0x...'), // Your private key
+  account: privateKeyToAccount('0x...'), // Replace with your private key
 });
 
 // Create an entity
@@ -77,6 +187,7 @@ const { entityKey, txHash } = await client.createEntity({
     entity: {
       entityType: 'document',
       entityId: 'doc-123',
+      entityContent: "Hello from DevConnect Hackathon 2025! Arkiv Mendoza chain wishes you all the best!"
     },
   }),
   contentType: 'application/json',
@@ -90,14 +201,23 @@ const { entityKey, txHash } = await client.createEntity({
 console.log('Created entity:', entityKey);
 console.log('Transaction hash:', txHash);
 
-// Get the created entity
-const publicClient = createPublicClient({
-  chain: mendoza,
-  transport: http()
-});
-const entity = await publicClient.getEntity(entityKey);
-console.log('Entity:', entity);
+const newEntity = await publicClient.getEntity(entityKey);
+console.log('Entity:', newEntity);
 ```
+
+**Note:**  
+You must provide your own private key with a minimum balance on the Arkiv L3 network.  
+You can generate a private key using any tool, for example: https://vanity-eth.tk/  
+Once you have a key, you can paste it into the example above and fund its address using the Arkiv Mendoza testnet faucet at:  
+https://mendoza.hoodi.arkiv.network/faucet/
+
+For quick testing, you may use this example key:
+```
+0x3d05798f7d11bb1c10b83fed8d3b4d76570c31cd66c8e0a8d8d991434c6d7a5e
+```
+However, funds may not always be available for this key.
+
+The full example code can be found in the `sample` directory of this repository.
 
 ## Package Distribution
 

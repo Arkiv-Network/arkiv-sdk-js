@@ -8,7 +8,7 @@ import {
   webSocket,
 } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { asc, desc, eq } from "@arkiv-network/sdk/query"
+import { asc, desc, eq, NoEntityFoundError } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils.js"
@@ -129,7 +129,17 @@ describe("Arkiv Integration Tests for public client", () => {
       // The result could be null, undefined, or an actual entity
       // depending on whether the key exists and what the RPC returns
       expect(entity).toBeDefined()
-      // TODO expect some value
+      expect(entity.payload).toBeDefined()
+      expect(entity.attributes).toBeDefined()
+      expect(entity.expiresAtBlock).toBeDefined()
+      expect(entity.createdAtBlock).toBeDefined()
+      expect(entity.lastModifiedAtBlock).toBeDefined()
+      expect(entity.transactionIndexInBlock).toBeDefined()
+      expect(entity.operationIndexInTransaction).toBeDefined()
+      expect(entity.contentType).toBeDefined()
+      expect(entity.owner).toBeDefined()
+      expect(entity.key).toBeDefined()
+      expect(entity.key).toBe(testKey)
     },
   )
 
@@ -145,6 +155,7 @@ describe("Arkiv Integration Tests for public client", () => {
       } catch (error) {
         console.log("getEntity error for non-existent key:", error)
         expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(NoEntityFoundError)
       }
     },
   )
