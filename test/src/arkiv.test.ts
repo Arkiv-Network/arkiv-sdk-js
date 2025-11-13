@@ -8,7 +8,7 @@ import {
   webSocket,
 } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { asc, desc, eq } from "@arkiv-network/sdk/query"
+import { asc, desc, eq, NoEntityFoundError } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils.js"
@@ -155,6 +155,7 @@ describe("Arkiv Integration Tests for public client", () => {
       } catch (error) {
         console.log("getEntity error for non-existent key:", error)
         expect(error).toBeDefined()
+        expect(error).toBeInstanceOf(NoEntityFoundError)
       }
     },
   )
