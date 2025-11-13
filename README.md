@@ -32,9 +32,9 @@ mkdir arkiv-sample
 cd arkiv-sample
 ```
 
-Create an empty `index.ts` file:
+Create an empty `read_example.ts` file:
 ```bash
-touch index.ts
+touch read_example.ts
 ```
 
 Initialize a new JavaScript/TypeScript project:
@@ -59,7 +59,7 @@ After this step, a `package.json` file will be created with content similar to:
 }
 ```
 
-Modify the `"main"` entry to `"index.ts"` and set `"type"` to `"module"` so your `package.json` looks like this:
+Modify the `"main"` entry to `"read_example.ts"` and set `"type"` to `"module"` so your `package.json` looks like this:
 
 ```json
 {
@@ -69,7 +69,7 @@ Modify the `"main"` entry to `"index.ts"` and set `"type"` to `"module"` so your
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "index.ts",
+  "main": "read_example.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   }
@@ -90,7 +90,7 @@ It will also create a `node_modules` directory with all dependencies installed.
 
 ### Public Client Example (Query Data)
 
-To query data from Arkiv, use the following sample code in `index.ts`:
+You can now use Arkiv's public client to query data. Paste the following in `read_example.ts`:
 
 ```typescript
 import { createPublicClient, http } from "@arkiv-network/sdk"
@@ -135,12 +135,12 @@ You have several options to run your TypeScript sample:
 
 - **With Node.js (using experimental TypeScript support):**
   ```bash
-  node --experimental-strip-types index.ts
+  node --experimental-strip-types read_example.ts
   ```
 
 - **With Bun (native TypeScript support):**
   ```bash
-  bun index.ts
+  bun read_example.ts
   ```
 
 - **Classic Node.js (using transpilation to JavaScript):**
@@ -158,26 +158,22 @@ You have several options to run your TypeScript sample:
      ```bash
      npx tsc --outDir dist
      ```
-     This creates a `dist` directory containing `index.js` (the transpiled code), along with corresponding type declaration and source map files.
+     This creates a `dist` directory containing `read_example.js` (the transpiled code), along with corresponding type declaration and source map files.
   4. Run the transpiled script:
      ```bash
-     node dist/index.js
+     node dist/read_example.js
      ```
 
 ### Wallet Client Example (Create Entity)
 
-Now, let's add storage functionality.  
-First, import the required modules at the top of your `index.ts`:
+Now let's add storage (write) functionality.  
+Create a file named `write_example.ts` with the following content:
 
 ```typescript
 import { createWalletClient } from '@arkiv-network/sdk';
 import { ExpirationTime, jsonToPayload } from '@arkiv-network/sdk/utils';
 import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
-```
 
-Then, add the following example below your query code to create an entity:
-
-```typescript
 // Create a wallet client with an account
 const client = createWalletClient({
   chain: mendoza,
@@ -209,6 +205,23 @@ const newEntity = await publicClient.getEntity(entityKey);
 console.log('Entity:', newEntity);
 ```
 
+Now you can run it in the same way as in the previous example:
+- **With Node.js (using experimental TypeScript support):**
+  ```bash
+  node --experimental-strip-types write_example.ts
+  ```
+
+- **With Bun (native TypeScript support):**
+  ```bash
+  bun write_example.ts
+  ```
+
+- **Classic Node.js (using transpilation to JavaScript):**
+  ```bash
+  npx tsc --outDir dist
+  node dist/write_exmaple.js
+  ```
+
 **Note:**  
 You must provide your own private key with a minimum balance on the Arkiv L3 network.  
 You can generate a private key using any tool, for example: https://vanity-eth.tk/  
@@ -221,7 +234,7 @@ For quick testing, you may use this example key:
 ```
 However, funds may not always be available for this key.
 
-The full example code can be found in the `sample` directory of this repository.
+Sample code can also be found in the [`sample`](./sample) directory of this repository.
 
 ## Package Distribution
 
