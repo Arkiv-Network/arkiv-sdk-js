@@ -47,7 +47,7 @@ export type ArkivRpcSchema = [
     Method: "arkiv_query"
     Parameters?: [query: string, queryOptions?: RpcQueryOptions]
     ReturnType: {
-      data: [RpcEntity]
+      data: RpcEntity[]
       blockNumber: bigint
       cursor: string
     }

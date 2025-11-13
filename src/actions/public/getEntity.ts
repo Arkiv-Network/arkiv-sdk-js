@@ -41,9 +41,9 @@ export async function getEntity(client: ArkivClient, key: Hex) {
     ],
   })
 
-  if (!result.data) {
+  if (!result.data.length) {
     throw new NoEntityFoundError()
   }
 
-  return entityFromRpcResult(result.data[0])
+  return await entityFromRpcResult(result.data[0])
 }
