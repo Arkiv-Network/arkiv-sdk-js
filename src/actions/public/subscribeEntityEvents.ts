@@ -46,7 +46,7 @@ export async function subscribeEntityEvents(
 ): Promise<() => void> {
   const unsubscribe = (client as PublicArkivClient).watchEvent({
     pollingInterval: pollingInterval ?? 1000,
-    fromBlock: fromBlock ?? 0n,
+    fromBlock: fromBlock,
     events: arkivABI,
     onLogs: (logs) => {
       logger("logs from subscribeEntityEvents %o", logs)
