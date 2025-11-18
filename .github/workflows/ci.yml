@@ -189,3 +189,23 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
           tags: true
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
+          echo "Latest tag: $latest_tag"
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+
+      - name: Create github release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## NPM Release
+            https://www.npmjs.com/package/@arkiv-network/sdk/v/${{ steps.get_latest_tag.outputs.latest_tag }}
+          draft: ${{ github.ref == 'refs/heads/develop' }}
+          prerelease: false
+          files: |
+            arkiv-network-sdk-latest.tgz
+            CHANGELOG.md
