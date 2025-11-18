@@ -10,3 +10,7 @@ export { createWalletClient } from "./clients/createWalletClient"
 
 // re-export arkiv types in main index file
 export * from "./types"
+
+// re-export chosen utils
+export { chainFromName } from "./utils/chains"
+export { jsonToPayload, stringToPayload } from "./utils/payload"

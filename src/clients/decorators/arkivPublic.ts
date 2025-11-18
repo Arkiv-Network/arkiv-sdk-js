@@ -136,6 +136,26 @@ export type PublicArkivActions<
     blockDuration: number
   }>
 
+  /**
+   * Subscribes to entity events.
+   * @param events to watch - {onError, onEntityCreated, onEntityUpdated, onEntityDeleted, onEntityExpiresInExtended}
+   * @param pollingInterval - The polling interval in milliseconds. {@link number}
+   * @param fromBlock - The block number to start from. {@link bigint}
+   * @returns A function to unsubscribe from the events. {() => void}
+   *
+   * @example
+   * import { createPublicClient, http } from 'arkiv'
+   * import { kaolin } from 'arkiv/chains'
+   *
+   * const client = createPublicClient({
+   *   chain: kaolin,
+   *   transport: http(),
+   * })
+   * const unsubscribe = await client.subscribeEntityEvents({
+   *   onError: (error) => console.error("subscribeEntityEvents error", error),
+   * })
+   * unsubscribe() // unsubscribe from the events
+   */
   subscribeEntityEvents: (
     {
       onError,
