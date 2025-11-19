@@ -1,0 +1,25 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "src/index.ts",
+    "src/chains/index.ts",
+    "src/query/index.ts",
+    "src/types/index.ts",
+    "src/utils/index.ts"
+  ],
+  "entryFileName": "index",
+  "readme": "none",
+  "name": "@arkiv-network/sdk",
+  "includeVersion": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "theme": "default",
+  "outputs": [
+    {
+      "name": "markdown",
+      "path": "./docs"
+    }
+  ]
+}

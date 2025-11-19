@@ -183,6 +183,10 @@ jobs:
             exit 1
           fi
 
+      - name: Generate documentation
+        if: github.ref == 'refs/heads/main'
+        run: bun run docs
+
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:

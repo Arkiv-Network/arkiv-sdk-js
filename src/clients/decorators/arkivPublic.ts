@@ -36,7 +36,7 @@ export type PublicArkivActions<
    *
    * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
    *
-   * @param args - {entityKey}
+   * @param key - The entity key (hex string)
    * @returns The entity with the given key. {@link Entity}
    *
    * @example
@@ -79,7 +79,8 @@ export type PublicArkivActions<
 
   /**
    * Returns a QueryResult instance for fetching the results of a raw query.
-   * @returns A QueryResult instance for fetching the results of a raw query. {@link QueryResult}
+   * @param query - The raw query string
+   * @returns An array of entities matching the query. {@link Entity}
    *
    * @example
    * import { createPublicClient, http } from 'arkiv'
@@ -96,7 +97,7 @@ export type PublicArkivActions<
 
   /**
    * Returns the number of entities in the DBChain.
-   * @returns The number of entities in the DBChain. {@link number}
+   * @returns The number of entities in the DBChain
    *
    * @example
    * import { createPublicClient, http } from 'arkiv'
@@ -138,10 +139,10 @@ export type PublicArkivActions<
 
   /**
    * Subscribes to entity events.
-   * @param events to watch - {onError, onEntityCreated, onEntityUpdated, onEntityDeleted, onEntityExpiresInExtended}
-   * @param pollingInterval - The polling interval in milliseconds. {@link number}
-   * @param fromBlock - The block number to start from. {@link bigint}
-   * @returns A function to unsubscribe from the events. {() => void}
+   * Takes an object with event handlers: {onError, onEntityCreated, onEntityUpdated, onEntityDeleted, onEntityExpiresInExtended}
+   * @param pollingInterval - The polling interval in milliseconds
+   * @param fromBlock - The block number to start from
+   * @returns A function to unsubscribe from the events
    *
    * @example
    * import { createPublicClient, http } from 'arkiv'

@@ -32,7 +32,7 @@ async function getBrotli(): Promise<BrotliWasmType | null> {
 
   try {
     const brotliModule = await import("brotli-wasm")
-    brotli = brotliModule.default || brotliModule
+    brotli = (brotliModule.default ? await brotliModule.default : brotliModule) as BrotliWasmType
   } catch (error) {
     console.error("Error importing brotli-wasm", error)
     return null

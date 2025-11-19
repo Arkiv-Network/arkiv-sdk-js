@@ -6,7 +6,7 @@ import { processQuery } from "./engine"
 import type { Predicate } from "./predicate"
 import { QueryResult } from "./queryResult"
 
-type OrderByAttribute = {
+export type OrderByAttribute = {
   name: string
   type: "string" | "number"
   order: "asc" | "desc"
@@ -16,7 +16,7 @@ type OrderByAttribute = {
  * Helper function to create an ascending order by attribute
  * @param attributeName - The name of the attribute to order by
  * @param attributeType - The type of the attribute to order by (string or number)
- * @returns The OrderByAttribute instance
+ * @returns Input for orderBy method
  *
  * @example
  * const ascAttribute = asc("name", "string")
@@ -33,7 +33,7 @@ export function asc(attributeName: string, attributeType: "string" | "number"): 
  * Helper function to create a descending order by attribute
  * @param attributeName - The name of the attribute to order by
  * @param attributeType - The type of the attribute to order by (string or number)
- * @returns The OrderByAttribute instance
+ * @returns Input for orderBy method
  *
  * @example
  * const descAttribute = desc("name", "string")
@@ -86,14 +86,17 @@ export class QueryBuilder {
    * Sets the orderBy for the query.
    * It can be called multiple times to order by multiple attributes.
    * The order of the attributes is important. The first attribute is the primary order by attribute.
+   * You can use the helper functions asc() and desc() as input for this method.
    * @param attributeName - The name of the attribute to order by
    * @param attributeType - The type of the attribute to order by (string or number)
    * @param order - The order to set the order by (asc or desc)
    * @returns The QueryBuilder instance
    *
    * @example
-   * const builder = new QueryBuilder(client)
+   * const builder = client.buildQuery()
    * builder.orderBy("name", "string", "desc")
+   * builder.orderBy(asc("name", "string"))
+   * builder.orderBy(desc("name", "string"))
    */
   orderBy(attributeName: string, attributeType: "string" | "number", order?: "asc" | "desc"): this
   /**
