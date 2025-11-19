@@ -1,3 +1,7 @@
+/**
+ * @module main
+ */
+
 // Re-export all viem stuff
 export * from "viem"
 
