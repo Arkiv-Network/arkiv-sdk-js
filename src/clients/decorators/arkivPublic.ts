@@ -2,7 +2,7 @@ import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem
 import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
-import { query } from "../../actions/public/query"
+import { type QueryOptions, query } from "../../actions/public/query"
 import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
 import { QueryBuilder } from "../../query/queryBuilder"
 import type { Entity } from "../../types/entity"
@@ -79,7 +79,9 @@ export type PublicArkivActions<
 
   /**
    * Returns a QueryResult instance for fetching the results of a raw query.
+   * If no query options are provided, all payload is included, but no metadata (like owner, expiredAt, etc.) and attributes.
    * @param query - The raw query string
+   * @param queryOptions - The optional query options - {@link QueryOptions}
    * @returns An array of entities matching the query. {@link Entity}
    *
    * @example
@@ -91,9 +93,21 @@ export type PublicArkivActions<
    *   transport: http(),
    * })
    * const queryResult = client.query('key = value && $owner = 0x123')
-   *
+   * // queryResult = [{ key: "0x123", value: "0x123" }]
+   * const queryResultWithOptions = client.query('key = value && $owner = 0x123', {
+   *   includeData: {
+   *     attributes: false,
+   *     payload: true,
+   *     metadata: true,
+   *   },
+   *   orderBy: [{ name: "key", type: "string", desc: "asc" }],
+   *   resultsPerPage: 10,
+   *   cursor: undefined,
+   *   atBlock: undefined,
+   * })
+   * // queryResultWithOptions = [{ key: "0x123", value: "0x123" }]
    */
-  query: (query: string) => Promise<Entity[]>
+  query: (query: string, queryOptions?: QueryOptions) => Promise<Entity[]>
 
   /**
    * Returns the number of entities in the DBChain.
@@ -184,7 +198,7 @@ export function publicArkivActions<
 >(client: Client<transport, chain, account>) {
   return {
     getEntity: (key: Hex) => getEntity(client, key),
-    query: (rawQuery: string) => query(client, rawQuery),
+    query: (rawQuery: string, queryOptions?: QueryOptions) => query(client, rawQuery, queryOptions),
     buildQuery: () => new QueryBuilder(client),
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),

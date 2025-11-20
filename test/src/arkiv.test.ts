@@ -193,6 +193,19 @@ describe("Arkiv Integration Tests for public client", () => {
     )
     expect(rawQuery).toBeDefined()
     expect(rawQuery.length).toBeGreaterThanOrEqual(1)
+    // key is always included
+    expect(rawQuery[0].key).toBeDefined()
+    // payload is included by default in a raw query
+    expect(rawQuery[0].payload).toBeDefined()
+    // attributes are not included by default
+    expect(rawQuery[0].attributes).toBeArray()
+    // metadata are not included by default
+    expect(rawQuery[0].contentType).toBeUndefined()
+    expect(rawQuery[0].expiresAtBlock).toBeUndefined()
+    expect(rawQuery[0].createdAtBlock).toBeUndefined()
+    expect(rawQuery[0].lastModifiedAtBlock).toBeUndefined()
+    expect(rawQuery[0].transactionIndexInBlock).toBeUndefined()
+    expect(rawQuery[0].operationIndexInTransaction).toBeUndefined()
 
     // query at specific block
     const queryAtBlock = await client
@@ -202,7 +215,79 @@ describe("Arkiv Integration Tests for public client", () => {
       .fetch()
     expect(queryAtBlock).toBeDefined()
     expect(queryAtBlock.entities.length).toBeGreaterThanOrEqual(0)
+
+    // raw query at specific block
+    const rawQueryAtBlock = await client.query(
+      `key = "value" && $owner = ${privateKeyToAccount(privateKey).address}`,
+      {
+        atBlock: 1n,
+      },
+    )
+    expect(rawQueryAtBlock).toBeDefined()
+    expect(rawQueryAtBlock.length).toBeGreaterThanOrEqual(0)
   })
+
+  test.each(["http", "webSocket"] as const)(
+    "should handle query using %s fetching only requested data",
+    async (transport) => {
+      const client = transport === "http" ? publicClient : publicClientWS
+      // First, let's try to store some data if the container supports it
+      const result = await execCommand(arkivNode, [
+        "golembase",
+        "entity",
+        "create",
+        "--data",
+        "Hello world",
+        "--string",
+        "key:value",
+        "--btl",
+        "1000",
+      ])
+      // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
+      const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
+      expect(testKey).toBeDefined()
+
+      // build query
+      const query = client.buildQuery()
+      const entities = await query
+        .where(eq("key", "value"))
+        .ownedBy(privateKeyToAccount(privateKey).address)
+        .withMetadata()
+        .fetch()
+      expect(entities).toBeDefined()
+      expect(entities.entities.length).toBeGreaterThanOrEqual(1)
+      expect(entities.entities[0].payload).toBeUndefined()
+      expect(entities.entities[0].attributes).toBeArray()
+      expect(entities.entities[0].contentType).toBeDefined()
+      expect(entities.entities[0].expiresAtBlock).toBeDefined()
+      expect(entities.entities[0].createdAtBlock).toBeDefined()
+      expect(entities.entities[0].lastModifiedAtBlock).toBeDefined()
+      expect(entities.entities[0].transactionIndexInBlock).toBeDefined()
+      expect(entities.entities[0].operationIndexInTransaction).toBeDefined()
+
+      // raw query
+      const rawQuery = await client.query(
+        `key = "value" && $owner = ${privateKeyToAccount(privateKey).address}`,
+        {
+          includeData: {
+            attributes: false,
+            payload: true,
+            metadata: false,
+          },
+        },
+      )
+      expect(rawQuery).toBeDefined()
+      expect(rawQuery.length).toBeGreaterThanOrEqual(1)
+      expect(rawQuery[0].payload).toBeDefined()
+      expect(rawQuery[0].attributes).toBeArray()
+      expect(rawQuery[0].contentType).toBeUndefined()
+      expect(rawQuery[0].expiresAtBlock).toBeUndefined()
+      expect(rawQuery[0].createdAtBlock).toBeUndefined()
+      expect(rawQuery[0].lastModifiedAtBlock).toBeUndefined()
+      expect(rawQuery[0].transactionIndexInBlock).toBeUndefined()
+      expect(rawQuery[0].operationIndexInTransaction).toBeUndefined()
+    },
+  )
 
   test.each(["http", "webSocket"] as const)(
     "should handle basic CRUD operations using %s",
