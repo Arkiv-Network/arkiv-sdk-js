@@ -10,12 +10,6 @@ export class NoCursorOrLimitError extends Error {
   }
 }
 
-export class OffsetCannotBeLessThanZeroError extends Error {
-  constructor() {
-    super("Offset cannot be less than 0")
-  }
-}
-
 export class NoEntityFoundError extends Error {
   constructor() {
     super("No entity found")

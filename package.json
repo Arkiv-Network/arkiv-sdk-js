@@ -73,6 +73,7 @@
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
     "test:unit": "bun test src/**/*",
+    "docs": "bunx typedoc --plugin typedoc-plugin-markdown",
     "package": "rimraf arkiv-network-sdk-*.tgz && bun run build && bun pm pack --no-cache",
     "package:test": "bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
     "prepublishOnly": "bun run build && bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
@@ -84,11 +85,12 @@
     "publish-dev:dry": "npm publish ./arkiv-network-sdk-latest.tgz --access public --tag dev --dry-run"
   },
   "devDependencies": {
-    "@types/debug": "^4.1.12",
     "@biomejs/biome": "2.2.4",
     "@types/bun": "latest",
+    "@types/debug": "^4.1.12",
     "rimraf": "^6.0.1",
-    "tsdown": "^0.16.0"
+    "tsdown": "^0.16.0",
+    "typedoc": "^0.28.14"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -117,7 +119,8 @@
   "homepage": "https://arkiv.network",
   "dependencies": {
     "brotli-wasm": "^3.0.1",
-    "viem": "^2.38.2",
-    "debug": "^4.3.7"
+    "debug": "^4.3.7",
+    "typedoc-plugin-markdown": "^4.9.0",
+    "viem": "^2.38.2"
   }
 }

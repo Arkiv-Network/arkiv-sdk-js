@@ -29,7 +29,7 @@ import type {
   UpdateEntityReturnType,
 } from "../../actions/wallet/updateEntity"
 import { updateEntity } from "../../actions/wallet/updateEntity"
-import type { Entity, TxParams } from "../../types"
+import type { TxParams } from "../../types"
 
 export type WalletArkivActions<
   transport extends Transport = Transport,
@@ -47,13 +47,14 @@ export type WalletArkivActions<
     | "signTransaction"
   > & {
     /**
-     * Returns the entity with the given key.
+     * Creates a new entity.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/createEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param args - {entityKey}
-     * @returns The entity with the given key. {@link Entity}
+     * @param data - The entity creation parameters
+     * @param txParams - Optional transaction parameters
+     * @returns The created entity with transaction hash
      *
      * @example
      * import { createPublicClient, http } from 'arkiv'
@@ -86,8 +87,9 @@ export type WalletArkivActions<
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/updateEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param args - {entityKey, data}
-     * @returns The entity with the given key. {@link Entity}
+     * @param data - The entity update parameters
+     * @param txParams - Optional transaction parameters
+     * @returns The updated entity with transaction hash
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
@@ -109,8 +111,9 @@ export type WalletArkivActions<
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/deleteEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param args - {entityKey}
-     * @returns The entity with the given key. {@link Entity}
+     * @param data - The entity deletion parameters
+     * @param txParams - Optional transaction parameters
+     * @returns The deleted entity with transaction hash
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
@@ -139,8 +142,9 @@ export type WalletArkivActions<
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/extendEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param args - {entityKey, data}
-     * @returns The entity with the given key. {@link Entity}
+     * @param data - The entity update parameters
+     * @param txParams - Optional transaction parameters
+     * @returns The updated entity with transaction hash
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
@@ -171,8 +175,9 @@ export type WalletArkivActions<
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/changeOwnership
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param args - {entityKey, newOwner}
-     * @returns The entity with the given address. {@link Entity}
+     * @param data - The ownership change parameters
+     * @param txParams - Optional transaction parameters
+     * @returns The entity with updated ownership and transaction hash
      */
     changeOwnership: (
       data: ChangeOwnershipParameters,
@@ -185,8 +190,9 @@ export type WalletArkivActions<
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/mutateEntities
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param args - {data}
-     * @returns The entity with the given key. {@link Entity}
+     * @param data - The mutation parameters (creates, updates, deletes, extensions)
+     * @param txParams - Optional transaction parameters
+     * @returns The mutation result with transaction hash
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
