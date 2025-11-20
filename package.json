@@ -87,7 +87,6 @@
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
     "@types/bun": "latest",
-    "@types/debug": "^4.1.12",
     "rimraf": "^6.0.1",
     "tsdown": "^0.16.0",
     "typedoc": "^0.28.14"
@@ -119,7 +118,6 @@
   "homepage": "https://arkiv.network",
   "dependencies": {
     "brotli-wasm": "^3.0.1",
-    "debug": "^4.3.7",
     "typedoc-plugin-markdown": "^4.9.0",
     "viem": "^2.38.2"
   }
