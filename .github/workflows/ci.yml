@@ -201,20 +201,30 @@ jobs:
       - name: Get latest tag
         id: get_latest_tag
         run: |
-          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
-          # Remove 'v' prefix if present
+          # Fetch tags from remote to ensure we have the latest
+          git fetch --tags
+          # Get the latest tag (with 'v' prefix)
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "")
+          if [ -z "$latest_tag" ]; then
+            # Fallback: get tag from package.json version
+            version=$(node -p "require('./package.json').version")
+            latest_tag="v$version"
+          fi
+          # Remove 'v' prefix for NPM URL
           version=${latest_tag#v}
           echo "Latest tag: $latest_tag"
           echo "Version: $version"
-          echo "latest_tag=$version" >> $GITHUB_OUTPUT
+          echo "tag_name=$latest_tag" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Create github release
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.get_latest_tag.outputs.tag_name }}
           body: |
             ## NPM Release
-            https://www.npmjs.com/package/@arkiv-network/sdk/v/${{ steps.get_latest_tag.outputs.latest_tag }}
+            https://www.npmjs.com/package/@arkiv-network/sdk/v/${{ steps.get_latest_tag.outputs.version }}
           draft: ${{ github.ref == 'refs/heads/develop' }}
           prerelease: false
           files: |
