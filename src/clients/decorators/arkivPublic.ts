@@ -2,7 +2,7 @@ import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem
 import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
-import { type QueryOptions, query } from "../../actions/public/query"
+import { type QueryOptions, type QueryReturnType, query } from "../../actions/public/query"
 import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
 import { QueryBuilder } from "../../query/queryBuilder"
 import type { Entity } from "../../types/entity"
@@ -82,7 +82,7 @@ export type PublicArkivActions<
    * If no query options are provided, all payload is included, but no metadata (like owner, expiredAt, etc.) and attributes.
    * @param query - The raw query string
    * @param queryOptions - The optional query options - {@link QueryOptions}
-   * @returns An array of entities matching the query. {@link Entity}
+   * @returns A QueryReturnType instance - {@link QueryReturnType}
    *
    * @example
    * import { createPublicClient, http } from 'arkiv'
@@ -93,7 +93,7 @@ export type PublicArkivActions<
    *   transport: http(),
    * })
    * const queryResult = client.query('key = value && $owner = 0x123')
-   * // queryResult = [{ key: "0x123", value: "0x123" }]
+   * // queryResult = { entities: [{ key: "0x123", value: "0x123" }], cursor: undefined, blockNumber: undefined }
    * const queryResultWithOptions = client.query('key = value && $owner = 0x123', {
    *   includeData: {
    *     attributes: false,
@@ -105,9 +105,9 @@ export type PublicArkivActions<
    *   cursor: undefined,
    *   atBlock: undefined,
    * })
-   * // queryResultWithOptions = [{ key: "0x123", value: "0x123" }]
+   * // queryResultWithOptions = { entities: [{ key: "0x123", value: "0x123" }], cursor: "...", blockNumber: 32223n }
    */
-  query: (query: string, queryOptions?: QueryOptions) => Promise<Entity[]>
+  query: (query: string, queryOptions?: QueryOptions) => Promise<QueryReturnType>
 
   /**
    * Returns the number of entities in the DBChain.

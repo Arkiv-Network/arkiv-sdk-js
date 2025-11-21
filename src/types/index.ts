@@ -3,6 +3,7 @@ export type {
   QueryOptions,
   QueryOptionsIncludeData,
   QueryOptionsOrderBy,
+  QueryReturnType,
 } from "../actions/public/query"
 export type {
   ChangeOwnershipParameters,

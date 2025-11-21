@@ -1,4 +1,5 @@
 import type { ArkivClient } from "../../clients/baseClient"
+import type { Entity } from "../../types/entity"
 import type { RpcQueryOptions } from "../../types/rpcSchema"
 import { entityFromRpcResult } from "../../utils/entities"
 
@@ -19,6 +20,12 @@ export type QueryOptions = {
   orderBy?: QueryOptionsOrderBy[]
   resultsPerPage?: number | undefined
   cursor?: string | undefined
+}
+
+export type QueryReturnType = {
+  entities: Entity[]
+  cursor: string | undefined
+  blockNumber: bigint | undefined
 }
 
 export async function query(client: ArkivClient, query: string, queryOptions?: QueryOptions) {
@@ -56,5 +63,9 @@ export async function query(client: ArkivClient, query: string, queryOptions?: Q
 
   const entities = await Promise.all(result.data.map((entity) => entityFromRpcResult(entity)))
 
-  return entities
+  return {
+    entities,
+    cursor: result.cursor,
+    blockNumber: BigInt(result.blockNumber),
+  }
 }

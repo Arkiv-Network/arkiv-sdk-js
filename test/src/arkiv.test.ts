@@ -193,20 +193,24 @@ describe("Arkiv Integration Tests for public client", () => {
       `key = "value" && $owner = ${privateKeyToAccount(privateKey).address}`,
     )
     expect(rawQuery).toBeDefined()
-    expect(rawQuery.length).toBeGreaterThanOrEqual(1)
+    expect(rawQuery.entities.length).toBeGreaterThanOrEqual(1)
     // key is always included
-    expect(rawQuery[0].key).toBeDefined()
+    expect(rawQuery.entities[0].key).toBeDefined()
     // payload is included by default in a raw query
-    expect(rawQuery[0].payload).toBeDefined()
+    expect(rawQuery.entities[0].payload).toBeDefined()
     // attributes are not included by default
-    expect(rawQuery[0].attributes).toBeArray()
+    expect(rawQuery.entities[0].attributes).toBeArray()
     // metadata are not included by default
-    expect(rawQuery[0].contentType).toBeUndefined()
-    expect(rawQuery[0].expiresAtBlock).toBeUndefined()
-    expect(rawQuery[0].createdAtBlock).toBeUndefined()
-    expect(rawQuery[0].lastModifiedAtBlock).toBeUndefined()
-    expect(rawQuery[0].transactionIndexInBlock).toBeUndefined()
-    expect(rawQuery[0].operationIndexInTransaction).toBeUndefined()
+    expect(rawQuery.entities[0].contentType).toBeUndefined()
+    expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
+    expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
+    expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
+    expect(rawQuery.entities[0].transactionIndexInBlock).toBeUndefined()
+    expect(rawQuery.entities[0].operationIndexInTransaction).toBeUndefined()
+    // check other fields of result
+    expect(rawQuery.cursor).toBeUndefined()
+    expect(rawQuery.blockNumber).toBeDefined()
+    expect(rawQuery.blockNumber).toBeGreaterThanOrEqual(0n)
 
     // query at specific block
     const queryAtBlock = await client
@@ -225,7 +229,10 @@ describe("Arkiv Integration Tests for public client", () => {
       },
     )
     expect(rawQueryAtBlock).toBeDefined()
-    expect(rawQueryAtBlock.length).toBeGreaterThanOrEqual(0)
+    expect(rawQueryAtBlock.entities.length).toBeGreaterThanOrEqual(0)
+    expect(rawQueryAtBlock.cursor).toBeUndefined()
+    expect(rawQueryAtBlock.blockNumber).toBeDefined()
+    expect(rawQueryAtBlock.blockNumber).toEqual(1n)
   })
 
   test.each(["http", "webSocket"] as const)(
@@ -278,15 +285,15 @@ describe("Arkiv Integration Tests for public client", () => {
         },
       )
       expect(rawQuery).toBeDefined()
-      expect(rawQuery.length).toBeGreaterThanOrEqual(1)
-      expect(rawQuery[0].payload).toBeDefined()
-      expect(rawQuery[0].attributes).toBeArray()
-      expect(rawQuery[0].contentType).toBeUndefined()
-      expect(rawQuery[0].expiresAtBlock).toBeUndefined()
-      expect(rawQuery[0].createdAtBlock).toBeUndefined()
-      expect(rawQuery[0].lastModifiedAtBlock).toBeUndefined()
-      expect(rawQuery[0].transactionIndexInBlock).toBeUndefined()
-      expect(rawQuery[0].operationIndexInTransaction).toBeUndefined()
+      expect(rawQuery.entities.length).toBeGreaterThanOrEqual(1)
+      expect(rawQuery.entities[0].payload).toBeDefined()
+      expect(rawQuery.entities[0].attributes).toBeArray()
+      expect(rawQuery.entities[0].contentType).toBeUndefined()
+      expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
+      expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
+      expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
+      expect(rawQuery.entities[0].transactionIndexInBlock).toBeUndefined()
+      expect(rawQuery.entities[0].operationIndexInTransaction).toBeUndefined()
     },
   )
 
