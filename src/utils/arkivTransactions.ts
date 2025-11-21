@@ -1,4 +1,4 @@
-import { type Hex, toBytes, toHex, toRlp } from "viem"
+import { type Hex, TransactionExecutionError, toBytes, toHex, toRlp } from "viem"
 import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnership"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
@@ -7,6 +7,7 @@ import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
+import { EntityMutationError } from "../errors"
 import type { TxParams } from "../types"
 import { compress } from "./compression"
 import { getLogger } from "./logger"
@@ -85,19 +86,36 @@ export async function sendArkivTransaction(client: ArkivClient, data: Hex, txPar
     ...txParams,
   })
 
-  const compressed = await compress(toBytes(data))
-  const txHash = await walletClient.sendTransaction({
-    account: client.account,
-    chain: client.chain,
-    to: ARKIV_ADDRESS,
-    value: 0n,
-    data: toHex(compressed),
-    ...txParams,
-  })
+  try {
+    const compressed = await compress(toBytes(data))
+    const txHash = await walletClient.sendTransaction({
+      account: client.account,
+      chain: client.chain,
+      to: ARKIV_ADDRESS,
+      value: 0n,
+      data: toHex(compressed),
+      ...txParams,
+    })
 
-  const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash })
+    const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash })
+    logger("Tx receipt %o", receipt)
+    if (receipt.status === "reverted") {
+      logger("Reverted transaction %o", receipt)
+      throw new EntityMutationError(
+        `Transaction ${receipt.transactionHash} reverted. Please make sure the data for entities doesn't contain invalid characters or invalid data types.`,
+      )
+    }
 
-  logger("Tx receipt %o", receipt)
+    return receipt
+  } catch (error) {
+    let message = "Transaction failed"
+    if (error instanceof TransactionExecutionError) {
+      message += `: ${error.details}`
+    } else if (error instanceof EntityMutationError) {
+      throw error
+    }
 
-  return receipt
+    logger("%s Detailed error stack: %o", message, error)
+    throw new EntityMutationError(message)
+  }
 }

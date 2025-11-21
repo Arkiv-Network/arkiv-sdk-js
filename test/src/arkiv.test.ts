@@ -4,11 +4,12 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  NoEntityFoundError,
   toBytes,
   webSocket,
 } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { asc, desc, eq, NoEntityFoundError } from "@arkiv-network/sdk/query"
+import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils.js"
@@ -763,4 +764,15 @@ describe("Arkiv Integration Tests for public client", () => {
     },
     { timeout: 20000 },
   )
+  test("should handle nice error if creating entity with invalid attributes failes - tx is reverted", async () => {
+    const writeClient = walletClient
+    const entity = {
+      payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
+      contentType: "application/json" as const,
+      attributes: [{ key: "test-invalid-key", value: "testValue" }],
+      expiresIn: ExpirationTime.fromBlocks(1000),
+    }
+
+    expect(writeClient.createEntity(entity)).rejects.toThrowError(/^Transaction failed.*$/)
+  })
 })

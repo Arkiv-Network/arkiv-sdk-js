@@ -39,10 +39,10 @@ export type WalletArkivActions<
   Pick<
     WalletActions<chain, account>,
     | "addChain"
+    | "sendCalls"
+    | "waitForCallsStatus"
     | "sendTransaction"
-    | "sendTransactionSync"
     | "sendRawTransaction"
-    | "sendRawTransactionSync"
     | "signMessage"
     | "signTransaction"
   > & {
