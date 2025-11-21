@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../../index.md)
+[**@arkiv-network/sdk v0.5.3**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **PublicArkivActions**\<`transport`, `chain`, `account`\> = `Pick`\<`PublicActions`\<`transport`, `chain`, `account`\>, `"getBalance"` \| `"getBlock"` \| `"getBlockNumber"` \| `"getChainId"` \| `"getLogs"` \| `"getTransaction"` \| `"getTransactionCount"` \| `"getTransactionReceipt"` \| `"waitForTransactionReceipt"` \| `"watchEvent"`\> & `object`
 
-Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/clients/decorators/arkivPublic.ts#L17)
+Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/clients/decorators/arkivPublic.ts#L17)
 
 ## Type Declaration
 
@@ -138,9 +138,10 @@ const entityCount = await client.getEntityCount()
 
 ### query()
 
-> **query**: (`query`) => `Promise`\<[`Entity`](../interfaces/Entity.md)[]\>
+> **query**: (`query`, `queryOptions?`) => `Promise`\<[`QueryReturnType`](QueryReturnType.md)\>
 
 Returns a QueryResult instance for fetching the results of a raw query.
+If no query options are provided, all payload is included, but no metadata (like owner, expiredAt, etc.) and attributes.
 
 #### Parameters
 
@@ -150,11 +151,17 @@ Returns a QueryResult instance for fetching the results of a raw query.
 
 The raw query string
 
+##### queryOptions?
+
+[`QueryOptions`](QueryOptions.md)
+
+The optional query options - [QueryOptions](QueryOptions.md)
+
 #### Returns
 
-`Promise`\<[`Entity`](../interfaces/Entity.md)[]\>
+`Promise`\<[`QueryReturnType`](QueryReturnType.md)\>
 
-An array of entities matching the query. [Entity](../interfaces/Entity.md)
+A QueryReturnType instance - [QueryReturnType](QueryReturnType.md)
 
 #### Example
 
@@ -167,6 +174,19 @@ const client = createPublicClient({
   transport: http(),
 })
 const queryResult = client.query('key = value && $owner = 0x123')
+// queryResult = { entities: [{ key: "0x123", value: "0x123" }], cursor: undefined, blockNumber: undefined }
+const queryResultWithOptions = client.query('key = value && $owner = 0x123', {
+  includeData: {
+    attributes: false,
+    payload: true,
+    metadata: true,
+  },
+  orderBy: [{ name: "key", type: "string", desc: "asc" }],
+  resultsPerPage: 10,
+  cursor: undefined,
+  atBlock: undefined,
+})
+// queryResultWithOptions = { entities: [{ key: "0x123", value: "0x123" }], cursor: "...", blockNumber: 32223n }
 ```
 
 ### subscribeEntityEvents()

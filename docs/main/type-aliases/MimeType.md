@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../../index.md)
+[**@arkiv-network/sdk v0.5.3**](../../index.md)
 
 ***
 
@@ -8,4 +8,4 @@
 
 > **MimeType** = `"text/plain"` \| `"text/html"` \| `"text/css"` \| `"text/csv"` \| `"text/xml"` \| `"text/javascript"` \| `"application/json"` \| `"application/xml"` \| `"application/pdf"` \| `"application/zip"` \| `"application/gzip"` \| `"application/octet-stream"` \| `"application/javascript"` \| `"application/x-www-form-urlencoded"` \| `"image/png"` \| `"image/jpeg"` \| `"image/webp"` \| `"image/gif"` \| `"image/svg+xml"` \| `"audio/mpeg"` \| `"audio/wav"` \| `"audio/ogg"` \| `"video/mp4"` \| `"video/webm"` \| `"video/ogg"` \| `"multipart/form-data"`
 
-Defined in: [src/types/mimeTypes.ts:1](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/mimeTypes.ts#L1)
+Defined in: [src/types/mimeTypes.ts:1](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/mimeTypes.ts#L1)

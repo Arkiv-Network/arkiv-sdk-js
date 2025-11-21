@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../../index.md)
+[**@arkiv-network/sdk v0.5.3**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **OnEntityExpiresInExtendedEvent** = `object`
 
-Defined in: [src/types/events.ts:28](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L28)
+Defined in: [src/types/events.ts:28](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L28)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/events.ts:28](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **cost**: `bigint`
 
-Defined in: [src/types/events.ts:33](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L33)
+Defined in: [src/types/events.ts:33](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L33)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/types/events.ts:33](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **entityKey**: `Hex`
 
-Defined in: [src/types/events.ts:29](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L29)
+Defined in: [src/types/events.ts:29](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L29)
 
 ***
 
@@ -32,7 +32,7 @@ Defined in: [src/types/events.ts:29](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **newExpirationBlock**: `number`
 
-Defined in: [src/types/events.ts:32](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L32)
+Defined in: [src/types/events.ts:32](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L32)
 
 ***
 
@@ -40,7 +40,7 @@ Defined in: [src/types/events.ts:32](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **oldExpirationBlock**: `number`
 
-Defined in: [src/types/events.ts:31](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L31)
+Defined in: [src/types/events.ts:31](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L31)
 
 ***
 
@@ -48,4 +48,4 @@ Defined in: [src/types/events.ts:31](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **owner**: `Hex`
 
-Defined in: [src/types/events.ts:30](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L30)
+Defined in: [src/types/events.ts:30](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L30)

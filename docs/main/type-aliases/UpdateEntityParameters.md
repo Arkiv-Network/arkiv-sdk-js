@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../../index.md)
+[**@arkiv-network/sdk v0.5.3**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **UpdateEntityParameters** = `object`
 
-Defined in: [src/actions/wallet/updateEntity.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/actions/wallet/updateEntity.ts#L17)
+Defined in: [src/actions/wallet/updateEntity.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/wallet/updateEntity.ts#L17)
 
 Parameters for the updateEntity function.
 - entityKey: The key of the entity to update.
@@ -23,7 +23,7 @@ Parameters for the updateEntity function.
 
 > **attributes**: [`Attribute`](Attribute.md)[]
 
-Defined in: [src/actions/wallet/updateEntity.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/actions/wallet/updateEntity.ts#L20)
+Defined in: [src/actions/wallet/updateEntity.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/wallet/updateEntity.ts#L20)
 
 ***
 
@@ -31,7 +31,7 @@ Defined in: [src/actions/wallet/updateEntity.ts:20](https://github.com/Arkiv-Net
 
 > **contentType**: [`MimeType`](MimeType.md)
 
-Defined in: [src/actions/wallet/updateEntity.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/actions/wallet/updateEntity.ts#L21)
+Defined in: [src/actions/wallet/updateEntity.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/wallet/updateEntity.ts#L21)
 
 ***
 
@@ -39,7 +39,7 @@ Defined in: [src/actions/wallet/updateEntity.ts:21](https://github.com/Arkiv-Net
 
 > **entityKey**: `Hex`
 
-Defined in: [src/actions/wallet/updateEntity.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/actions/wallet/updateEntity.ts#L18)
+Defined in: [src/actions/wallet/updateEntity.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/wallet/updateEntity.ts#L18)
 
 ***
 
@@ -47,7 +47,7 @@ Defined in: [src/actions/wallet/updateEntity.ts:18](https://github.com/Arkiv-Net
 
 > **expiresIn**: `number`
 
-Defined in: [src/actions/wallet/updateEntity.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/actions/wallet/updateEntity.ts#L22)
+Defined in: [src/actions/wallet/updateEntity.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/wallet/updateEntity.ts#L22)
 
 ***
 
@@ -55,4 +55,4 @@ Defined in: [src/actions/wallet/updateEntity.ts:22](https://github.com/Arkiv-Net
 
 > **payload**: `Uint8Array`
 
-Defined in: [src/actions/wallet/updateEntity.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/actions/wallet/updateEntity.ts#L19)
+Defined in: [src/actions/wallet/updateEntity.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/wallet/updateEntity.ts#L19)

@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../../index.md)
+[**@arkiv-network/sdk v0.5.3**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **OnEntityDeletedEvent** = `object`
 
-Defined in: [src/types/events.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L18)
+Defined in: [src/types/events.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L18)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/events.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **entityKey**: `Hex`
 
-Defined in: [src/types/events.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L19)
+Defined in: [src/types/events.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L19)
 
 ***
 
@@ -24,4 +24,4 @@ Defined in: [src/types/events.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **owner**: `Hex`
 
-Defined in: [src/types/events.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/types/events.ts#L20)
+Defined in: [src/types/events.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/types/events.ts#L20)

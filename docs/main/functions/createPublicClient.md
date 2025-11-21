@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../../index.md)
+[**@arkiv-network/sdk v0.5.3**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **createPublicClient**\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`\>(`parameters`): `object`
 
-Defined in: [src/clients/createPublicClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/8543404576ea25f45ae951bdfc73f58bd0f4333b/src/clients/createPublicClient.ts#L44)
+Defined in: [src/clients/createPublicClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/clients/createPublicClient.ts#L44)
 
 Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
 
@@ -170,9 +170,10 @@ const entityCount = await client.getEntityCount()
 
 ### query()
 
-> **query**: (`query`) => `Promise`\<[`Entity`](../interfaces/Entity.md)[]\>
+> **query**: (`query`, `queryOptions?`) => `Promise`\<[`QueryReturnType`](../type-aliases/QueryReturnType.md)\>
 
 Returns a QueryResult instance for fetching the results of a raw query.
+If no query options are provided, all payload is included, but no metadata (like owner, expiredAt, etc.) and attributes.
 
 #### Parameters
 
@@ -182,11 +183,17 @@ Returns a QueryResult instance for fetching the results of a raw query.
 
 The raw query string
 
+##### queryOptions?
+
+[`QueryOptions`](../type-aliases/QueryOptions.md)
+
+The optional query options - [QueryOptions](../type-aliases/QueryOptions.md)
+
 #### Returns
 
-`Promise`\<[`Entity`](../interfaces/Entity.md)[]\>
+`Promise`\<[`QueryReturnType`](../type-aliases/QueryReturnType.md)\>
 
-An array of entities matching the query. [Entity](../interfaces/Entity.md)
+A QueryReturnType instance - [QueryReturnType](../type-aliases/QueryReturnType.md)
 
 #### Example
 
@@ -199,6 +206,19 @@ const client = createPublicClient({
   transport: http(),
 })
 const queryResult = client.query('key = value && $owner = 0x123')
+// queryResult = { entities: [{ key: "0x123", value: "0x123" }], cursor: undefined, blockNumber: undefined }
+const queryResultWithOptions = client.query('key = value && $owner = 0x123', {
+  includeData: {
+    attributes: false,
+    payload: true,
+    metadata: true,
+  },
+  orderBy: [{ name: "key", type: "string", desc: "asc" }],
+  resultsPerPage: 10,
+  cursor: undefined,
+  atBlock: undefined,
+})
+// queryResultWithOptions = { entities: [{ key: "0x123", value: "0x123" }], cursor: "...", blockNumber: 32223n }
 ```
 
 ### subscribeEntityEvents()
