@@ -35,7 +35,7 @@ export type WalletArkivActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
-> = Pick<PublicActions<transport, chain, account>, "waitForTransactionReceipt"> &
+> = Pick<PublicActions<transport, chain, account>, "waitForTransactionReceipt" | "call"> &
   Pick<
     WalletActions<chain, account>,
     | "addChain"
