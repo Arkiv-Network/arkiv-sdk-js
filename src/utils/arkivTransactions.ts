@@ -31,7 +31,10 @@ export function opsToTxData({
     key: string
     value: T
   }): [Hex, Hex] {
-    return [toHex(attribute.key), toHex(attribute.value)]
+    return [
+      toHex(attribute.key),
+      toHex(typeof attribute.value === "number" && attribute.value === 0 ? "" : attribute.value),
+    ]
   }
 
   const payload = [

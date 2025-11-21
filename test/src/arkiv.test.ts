@@ -782,4 +782,24 @@ describe("Arkiv Integration Tests for public client", () => {
 
     expect(writeClient.createEntity(entity)).rejects.toThrowError(/^Transaction failed.*$/)
   })
+
+  test("should handle numeric attribute with value 0", async () => {
+    const writeClient = walletClient
+    const readClient = publicClient
+    const entityData = {
+      payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
+      contentType: "application/json" as const,
+      attributes: [{ key: "testNumericKey", value: 0 }],
+      expiresIn: ExpirationTime.fromBlocks(1000),
+    }
+    const { entityKey, txHash } = await writeClient.createEntity(entityData)
+    console.log("result from createEntity", { entityKey, txHash })
+    const entity = await readClient.getEntity(entityKey)
+    console.log("entity from getEntity", entity)
+    expect(entity).toBeDefined()
+    expect(entity.attributes).toBeDefined()
+    expect(entity.attributes).toBeArrayOfSize(1)
+    expect(entity.attributes).toContainEqual({ key: "testNumericKey", value: 0 })
+    expect(entity.attributes[0].value).toBeTypeOf("number")
+  })
 })

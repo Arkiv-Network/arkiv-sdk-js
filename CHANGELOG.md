@@ -1,4 +1,4 @@
-## [0.5.0] - Unreleased
+## [0.5.0] - 2025-11-21
 
 ### Added
 - `chainFromName` - utility function allowing to get a predefined chain by its name, convenient to get chain based on env variable (https://github.com/Arkiv-Network/arkiv-sdk-js/issues/12)
@@ -13,3 +13,4 @@
 ### Fixed
 - Fixed browser compatibility issue with `debug` module causing "exports is not defined" errors in browser environments
 - Improved error handling for reverted transactions when using MetaMask as transport - now throws more descriptive errors (https://github.com/Arkiv-Network/arkiv-sdk-js/issues/16)
+- Fix error while using value=0 with numeric attributes
