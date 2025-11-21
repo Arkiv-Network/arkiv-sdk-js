@@ -1,6 +1,6 @@
 import { bytesToHex, type Hex, hexToBytes } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
-import { NoEntityFoundError } from "../../query/errors"
+import { NoEntityFoundError } from "../../errors"
 import { entityFromRpcResult } from "../../utils/entities"
 
 export async function getEntity(client: ArkivClient, key: Hex) {

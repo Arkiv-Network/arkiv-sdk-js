@@ -4,11 +4,12 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  NoEntityFoundError,
   toBytes,
   webSocket,
 } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { asc, desc, eq, NoEntityFoundError } from "@arkiv-network/sdk/query"
+import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils.js"
@@ -192,7 +193,24 @@ describe("Arkiv Integration Tests for public client", () => {
       `key = "value" && $owner = ${privateKeyToAccount(privateKey).address}`,
     )
     expect(rawQuery).toBeDefined()
-    expect(rawQuery.length).toBeGreaterThanOrEqual(1)
+    expect(rawQuery.entities.length).toBeGreaterThanOrEqual(1)
+    // key is always included
+    expect(rawQuery.entities[0].key).toBeDefined()
+    // payload is included by default in a raw query
+    expect(rawQuery.entities[0].payload).toBeDefined()
+    // attributes are not included by default
+    expect(rawQuery.entities[0].attributes).toBeArray()
+    // metadata are not included by default
+    expect(rawQuery.entities[0].contentType).toBeUndefined()
+    expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
+    expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
+    expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
+    expect(rawQuery.entities[0].transactionIndexInBlock).toBeUndefined()
+    expect(rawQuery.entities[0].operationIndexInTransaction).toBeUndefined()
+    // check other fields of result
+    expect(rawQuery.cursor).toBeUndefined()
+    expect(rawQuery.blockNumber).toBeDefined()
+    expect(rawQuery.blockNumber).toBeGreaterThanOrEqual(0n)
 
     // query at specific block
     const queryAtBlock = await client
@@ -202,7 +220,82 @@ describe("Arkiv Integration Tests for public client", () => {
       .fetch()
     expect(queryAtBlock).toBeDefined()
     expect(queryAtBlock.entities.length).toBeGreaterThanOrEqual(0)
+
+    // raw query at specific block
+    const rawQueryAtBlock = await client.query(
+      `key = "value" && $owner = ${privateKeyToAccount(privateKey).address}`,
+      {
+        atBlock: 1n,
+      },
+    )
+    expect(rawQueryAtBlock).toBeDefined()
+    expect(rawQueryAtBlock.entities.length).toBeGreaterThanOrEqual(0)
+    expect(rawQueryAtBlock.cursor).toBeUndefined()
+    expect(rawQueryAtBlock.blockNumber).toBeDefined()
+    expect(rawQueryAtBlock.blockNumber).toEqual(1n)
   })
+
+  test.each(["http", "webSocket"] as const)(
+    "should handle query using %s fetching only requested data",
+    async (transport) => {
+      const client = transport === "http" ? publicClient : publicClientWS
+      // First, let's try to store some data if the container supports it
+      const result = await execCommand(arkivNode, [
+        "golembase",
+        "entity",
+        "create",
+        "--data",
+        "Hello world",
+        "--string",
+        "key:value",
+        "--btl",
+        "1000",
+      ])
+      // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
+      const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
+      expect(testKey).toBeDefined()
+
+      // build query
+      const query = client.buildQuery()
+      const entities = await query
+        .where(eq("key", "value"))
+        .ownedBy(privateKeyToAccount(privateKey).address)
+        .withMetadata()
+        .fetch()
+      expect(entities).toBeDefined()
+      expect(entities.entities.length).toBeGreaterThanOrEqual(1)
+      expect(entities.entities[0].payload).toBeUndefined()
+      expect(entities.entities[0].attributes).toBeArray()
+      expect(entities.entities[0].contentType).toBeDefined()
+      expect(entities.entities[0].expiresAtBlock).toBeDefined()
+      expect(entities.entities[0].createdAtBlock).toBeDefined()
+      expect(entities.entities[0].lastModifiedAtBlock).toBeDefined()
+      expect(entities.entities[0].transactionIndexInBlock).toBeDefined()
+      expect(entities.entities[0].operationIndexInTransaction).toBeDefined()
+
+      // raw query
+      const rawQuery = await client.query(
+        `key = "value" && $owner = ${privateKeyToAccount(privateKey).address}`,
+        {
+          includeData: {
+            attributes: false,
+            payload: true,
+            metadata: false,
+          },
+        },
+      )
+      expect(rawQuery).toBeDefined()
+      expect(rawQuery.entities.length).toBeGreaterThanOrEqual(1)
+      expect(rawQuery.entities[0].payload).toBeDefined()
+      expect(rawQuery.entities[0].attributes).toBeArray()
+      expect(rawQuery.entities[0].contentType).toBeUndefined()
+      expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
+      expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
+      expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
+      expect(rawQuery.entities[0].transactionIndexInBlock).toBeUndefined()
+      expect(rawQuery.entities[0].operationIndexInTransaction).toBeUndefined()
+    },
+  )
 
   test.each(["http", "webSocket"] as const)(
     "should handle basic CRUD operations using %s",
@@ -678,4 +771,35 @@ describe("Arkiv Integration Tests for public client", () => {
     },
     { timeout: 20000 },
   )
+  test("should handle nice error if creating entity with invalid attributes failes - tx is reverted", async () => {
+    const writeClient = walletClient
+    const entity = {
+      payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
+      contentType: "application/json" as const,
+      attributes: [{ key: "test-invalid-key", value: "testValue" }],
+      expiresIn: ExpirationTime.fromBlocks(1000),
+    }
+
+    expect(writeClient.createEntity(entity)).rejects.toThrowError(/^Transaction failed.*$/)
+  })
+
+  test("should handle numeric attribute with value 0", async () => {
+    const writeClient = walletClient
+    const readClient = publicClient
+    const entityData = {
+      payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
+      contentType: "application/json" as const,
+      attributes: [{ key: "testNumericKey", value: 0 }],
+      expiresIn: ExpirationTime.fromBlocks(1000),
+    }
+    const { entityKey, txHash } = await writeClient.createEntity(entityData)
+    console.log("result from createEntity", { entityKey, txHash })
+    const entity = await readClient.getEntity(entityKey)
+    console.log("entity from getEntity", entity)
+    expect(entity).toBeDefined()
+    expect(entity.attributes).toBeDefined()
+    expect(entity.attributes).toBeArrayOfSize(1)
+    expect(entity.attributes).toContainEqual({ key: "testNumericKey", value: 0 })
+    expect(entity.attributes[0].value).toBeTypeOf("number")
+  })
 })

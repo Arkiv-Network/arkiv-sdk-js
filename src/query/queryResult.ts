@@ -1,6 +1,6 @@
+import { NoCursorOrLimitError, NoMoreResultsError } from "../errors"
 import type { Entity } from "../types/entity"
 import { getLogger } from "../utils/logger"
-import { NoCursorOrLimitError, NoMoreResultsError } from "./errors"
 import type { QueryBuilder } from "./queryBuilder"
 
 const logger = getLogger("query:result")

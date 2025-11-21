@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "bun:test"
+import { NoCursorOrLimitError, NoMoreResultsError } from "../errors"
 import { Entity } from "../types/entity"
-import { NoCursorOrLimitError, NoMoreResultsError } from "./errors"
 import type { QueryBuilder } from "./queryBuilder"
 import { QueryResult } from "./queryResult"
 

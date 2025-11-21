@@ -30,16 +30,16 @@ export type RpcQueryOptions = {
 }
 
 export type RpcIncludeData = {
-  key: boolean
-  attributes: boolean
-  payload: boolean
-  contentType: boolean
-  expiration: boolean
-  owner: boolean
-  createdAtBlock: boolean
-  lastModifiedAtBlock: boolean
-  transactionIndexInBlock: boolean
-  operationIndexInTransaction: boolean
+  key?: boolean
+  attributes?: boolean
+  payload?: boolean
+  contentType?: boolean
+  expiration?: boolean
+  owner?: boolean
+  createdAtBlock?: boolean
+  lastModifiedAtBlock?: boolean
+  transactionIndexInBlock?: boolean
+  operationIndexInTransaction?: boolean
 }
 
 export type ArkivRpcSchema = [
@@ -48,7 +48,7 @@ export type ArkivRpcSchema = [
     Parameters?: [query: string, queryOptions?: RpcQueryOptions]
     ReturnType: {
       data: RpcEntity[]
-      blockNumber: bigint
+      blockNumber: number
       cursor: string
     }
   },

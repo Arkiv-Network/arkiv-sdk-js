@@ -1,4 +1,4 @@
-import { decodeEventLog, parseAbi, toHex } from "viem"
+import { decodeEventLog, type Hex, parseAbi, toHex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { PublicArkivClient } from "../../clients/createPublicClient"
 import type {
@@ -46,14 +46,14 @@ export async function subscribeEntityEvents(
 ): Promise<() => void> {
   const unsubscribe = (client as PublicArkivClient).watchEvent({
     pollingInterval: pollingInterval ?? 1000,
-    fromBlock: fromBlock,
+    fromBlock,
     events: arkivABI,
     onLogs: (logs) => {
       logger("logs from subscribeEntityEvents %o", logs)
       for (const log of logs) {
         const event = decodeEventLog({
           abi: arkivABI,
-          topics: log.topics as [string, string, string] | [string, string, string, string],
+          topics: log.topics as [Hex, ...Hex[]] | [],
           data: log.data,
         })
         logger("event from subscribeEntityEvents %o", event)

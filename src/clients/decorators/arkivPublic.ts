@@ -2,7 +2,7 @@ import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem
 import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
-import { query } from "../../actions/public/query"
+import { type QueryOptions, type QueryReturnType, query } from "../../actions/public/query"
 import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
 import { QueryBuilder } from "../../query/queryBuilder"
 import type { Entity } from "../../types/entity"
@@ -36,7 +36,7 @@ export type PublicArkivActions<
    *
    * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
    *
-   * @param args - {entityKey}
+   * @param key - The entity key (hex string)
    * @returns The entity with the given key. {@link Entity}
    *
    * @example
@@ -79,7 +79,10 @@ export type PublicArkivActions<
 
   /**
    * Returns a QueryResult instance for fetching the results of a raw query.
-   * @returns A QueryResult instance for fetching the results of a raw query. {@link QueryResult}
+   * If no query options are provided, all payload is included, but no metadata (like owner, expiredAt, etc.) and attributes.
+   * @param query - The raw query string
+   * @param queryOptions - The optional query options - {@link QueryOptions}
+   * @returns A QueryReturnType instance - {@link QueryReturnType}
    *
    * @example
    * import { createPublicClient, http } from 'arkiv'
@@ -90,13 +93,25 @@ export type PublicArkivActions<
    *   transport: http(),
    * })
    * const queryResult = client.query('key = value && $owner = 0x123')
-   *
+   * // queryResult = { entities: [{ key: "0x123", value: "0x123" }], cursor: undefined, blockNumber: undefined }
+   * const queryResultWithOptions = client.query('key = value && $owner = 0x123', {
+   *   includeData: {
+   *     attributes: false,
+   *     payload: true,
+   *     metadata: true,
+   *   },
+   *   orderBy: [{ name: "key", type: "string", desc: "asc" }],
+   *   resultsPerPage: 10,
+   *   cursor: undefined,
+   *   atBlock: undefined,
+   * })
+   * // queryResultWithOptions = { entities: [{ key: "0x123", value: "0x123" }], cursor: "...", blockNumber: 32223n }
    */
-  query: (query: string) => Promise<Entity[]>
+  query: (query: string, queryOptions?: QueryOptions) => Promise<QueryReturnType>
 
   /**
    * Returns the number of entities in the DBChain.
-   * @returns The number of entities in the DBChain. {@link number}
+   * @returns The number of entities in the DBChain
    *
    * @example
    * import { createPublicClient, http } from 'arkiv'
@@ -136,6 +151,26 @@ export type PublicArkivActions<
     blockDuration: number
   }>
 
+  /**
+   * Subscribes to entity events.
+   * Takes an object with event handlers: {onError, onEntityCreated, onEntityUpdated, onEntityDeleted, onEntityExpiresInExtended}
+   * @param pollingInterval - The polling interval in milliseconds
+   * @param fromBlock - The block number to start from
+   * @returns A function to unsubscribe from the events
+   *
+   * @example
+   * import { createPublicClient, http } from 'arkiv'
+   * import { kaolin } from 'arkiv/chains'
+   *
+   * const client = createPublicClient({
+   *   chain: kaolin,
+   *   transport: http(),
+   * })
+   * const unsubscribe = await client.subscribeEntityEvents({
+   *   onError: (error) => console.error("subscribeEntityEvents error", error),
+   * })
+   * unsubscribe() // unsubscribe from the events
+   */
   subscribeEntityEvents: (
     {
       onError,
@@ -163,7 +198,7 @@ export function publicArkivActions<
 >(client: Client<transport, chain, account>) {
   return {
     getEntity: (key: Hex) => getEntity(client, key),
-    query: (rawQuery: string) => query(client, rawQuery),
+    query: (rawQuery: string, queryOptions?: QueryOptions) => query(client, rawQuery, queryOptions),
     buildQuery: () => new QueryBuilder(client),
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),

@@ -183,9 +183,36 @@ jobs:
             exit 1
           fi
 
+      - name: Generate documentation
+        if: github.ref == 'refs/heads/main'
+        run: bun run docs
+
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
           tags: true
+
+      - name: Get latest tag
+        id: get_latest_tag
+        run: |
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1))
+          # Remove 'v' prefix if present
+          version=${latest_tag#v}
+          echo "Latest tag: $latest_tag"
+          echo "Version: $version"
+          echo "latest_tag=$version" >> $GITHUB_OUTPUT
+
+      - name: Create github release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## NPM Release
+            https://www.npmjs.com/package/@arkiv-network/sdk/v/${{ steps.get_latest_tag.outputs.latest_tag }}
+          draft: ${{ github.ref == 'refs/heads/develop' }}
+          prerelease: false
+          files: |
+            arkiv-network-sdk-latest.tgz
+            CHANGELOG.md
