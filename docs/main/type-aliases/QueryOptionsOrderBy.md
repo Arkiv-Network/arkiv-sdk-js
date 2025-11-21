@@ -8,7 +8,7 @@
 
 > **QueryOptionsOrderBy** = `object`
 
-Defined in: [src/actions/public/query.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/query.ts#L11)
+Defined in: [src/actions/public/query.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/query.ts#L11)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/actions/public/query.ts:11](https://github.com/Arkiv-Network/ar
 
 > **desc**: `"asc"` \| `"desc"`
 
-Defined in: [src/actions/public/query.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/query.ts#L14)
+Defined in: [src/actions/public/query.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/query.ts#L14)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/actions/public/query.ts:14](https://github.com/Arkiv-Network/ar
 
 > **name**: `string`
 
-Defined in: [src/actions/public/query.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/query.ts#L12)
+Defined in: [src/actions/public/query.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/query.ts#L12)
 
 ***
 
@@ -32,4 +32,4 @@ Defined in: [src/actions/public/query.ts:12](https://github.com/Arkiv-Network/ar
 
 > **type**: `"string"` \| `"numeric"`
 
-Defined in: [src/actions/public/query.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/query.ts#L13)
+Defined in: [src/actions/public/query.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/query.ts#L13)

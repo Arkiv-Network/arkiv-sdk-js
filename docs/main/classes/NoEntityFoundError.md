@@ -6,7 +6,7 @@
 
 # Class: NoEntityFoundError
 
-Defined in: [src/errors.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/errors.ts#L22)
+Defined in: [src/errors.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/errors.ts#L22)
 
 ## Extends
 
@@ -18,7 +18,7 @@ Defined in: [src/errors.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blo
 
 > **new NoEntityFoundError**(): `NoEntityFoundError`
 
-Defined in: [src/errors.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/errors.ts#L23)
+Defined in: [src/errors.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/errors.ts#L23)
 
 #### Returns
 

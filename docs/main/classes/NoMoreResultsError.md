@@ -6,7 +6,7 @@
 
 # Class: NoMoreResultsError
 
-Defined in: [src/errors.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/errors.ts#L8)
+Defined in: [src/errors.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/errors.ts#L8)
 
 ## Extends
 
@@ -18,7 +18,7 @@ Defined in: [src/errors.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob
 
 > **new NoMoreResultsError**(): `NoMoreResultsError`
 
-Defined in: [src/errors.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/errors.ts#L9)
+Defined in: [src/errors.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/errors.ts#L9)
 
 #### Returns
 

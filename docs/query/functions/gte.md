@@ -8,7 +8,7 @@
 
 > **gte**(`key`, `value`): [`Predicate`](../type-aliases/Predicate.md)
 
-Defined in: [src/query/predicate.ts:97](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/query/predicate.ts#L97)
+Defined in: [src/query/predicate.ts:97](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/query/predicate.ts#L97)
 
 Creates a greater than or equal predicate
 

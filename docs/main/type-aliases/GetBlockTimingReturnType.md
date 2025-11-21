@@ -8,7 +8,7 @@
 
 > **GetBlockTimingReturnType** = `object`
 
-Defined in: [src/actions/public/getBlockTiming.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/getBlockTiming.ts#L6)
+Defined in: [src/actions/public/getBlockTiming.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/getBlockTiming.ts#L6)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/actions/public/getBlockTiming.ts:6](https://github.com/Arkiv-Ne
 
 > **blockDuration**: `number`
 
-Defined in: [src/actions/public/getBlockTiming.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/getBlockTiming.ts#L9)
+Defined in: [src/actions/public/getBlockTiming.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/getBlockTiming.ts#L9)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/actions/public/getBlockTiming.ts:9](https://github.com/Arkiv-Ne
 
 > **currentBlock**: `bigint`
 
-Defined in: [src/actions/public/getBlockTiming.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/getBlockTiming.ts#L7)
+Defined in: [src/actions/public/getBlockTiming.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/getBlockTiming.ts#L7)
 
 ***
 
@@ -32,4 +32,4 @@ Defined in: [src/actions/public/getBlockTiming.ts:7](https://github.com/Arkiv-Ne
 
 > **currentBlockTime**: `number`
 
-Defined in: [src/actions/public/getBlockTiming.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/552cd007ec5882e7eec951314066bdc142f5a49a/src/actions/public/getBlockTiming.ts#L8)
+Defined in: [src/actions/public/getBlockTiming.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/public/getBlockTiming.ts#L8)
