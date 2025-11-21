@@ -283,7 +283,7 @@ export class QueryBuilder {
     )
 
     this.cursor(queryResult.cursor)
-    this.validAtBlock(queryResult.blockNumber)
+    this.validAtBlock(BigInt(queryResult.blockNumber ?? 0))
 
     return new QueryResult(entities, this, this._cursor, this._limit, this._validAtBlock)
   }

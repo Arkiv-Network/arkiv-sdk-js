@@ -1,6 +1,6 @@
 {
   "name": "@arkiv-network/sdk",
-  "version": "0.5.0-dev.6",
+  "version": "0.5.1",
   "description": "TypeScript client library for Arkiv's blockchains interactions",
   "type": "module",
   "target": "esnext",
@@ -74,6 +74,7 @@
     "lint:fix": "biome check --write src/",
     "test:unit": "bun test src/**/*",
     "docs": "bunx typedoc --plugin typedoc-plugin-markdown",
+    "docs:verify": "bunx typedoc --emit none --plugin typedoc-plugin-markdown",
     "package": "rimraf arkiv-network-sdk-*.tgz && bun run build && bun pm pack --no-cache",
     "package:test": "bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
     "prepublishOnly": "bun run build && bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",

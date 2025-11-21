@@ -1,12 +1,4 @@
-import {
-  type Hex,
-  hexToString,
-  RpcError,
-  TransactionExecutionError,
-  toBytes,
-  toHex,
-  toRlp,
-} from "viem"
+import { type Hex, hexToString, TransactionExecutionError, toBytes, toHex, toRlp } from "viem"
 import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnership"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
