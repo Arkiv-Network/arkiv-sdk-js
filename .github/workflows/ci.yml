@@ -189,10 +189,12 @@ jobs:
 
       - name: Generate documentation
         if: github.ref == 'refs/heads/main'
+        continue-on-error: true
         run: |
           echo "=== Generating documentation ==="
           bun run docs
           git add docs/
+          git commit -m "Update documentation"
 
       - name: Push changes
         uses: ad-m/github-push-action@master
@@ -221,6 +223,7 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Create github release
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -230,6 +233,3 @@ jobs:
             https://www.npmjs.com/package/@arkiv-network/sdk/v/${{ steps.get_latest_tag.outputs.version }}
           draft: ${{ github.ref == 'refs/heads/develop' }}
           prerelease: false
-          files: |
-            arkiv-network-sdk-latest.tgz
-            CHANGELOG.md

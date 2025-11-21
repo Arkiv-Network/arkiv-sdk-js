@@ -1,4 +1,4 @@
-## [0.5.2] - 2025-11-21
+## [0.5.3] - 2025-11-21
 
 ### Added
 - `chainFromName` - utility function allowing to get a predefined chain by its name, convenient to get chain based on env variable (https://github.com/Arkiv-Network/arkiv-sdk-js/issues/12)
