@@ -189,7 +189,10 @@ jobs:
 
       - name: Generate documentation
         if: github.ref == 'refs/heads/main'
-        run: bun run docs
+        run: |
+          echo "=== Generating documentation ==="
+          bun run docs
+          git add docs/
 
       - name: Push changes
         uses: ad-m/github-push-action@master
