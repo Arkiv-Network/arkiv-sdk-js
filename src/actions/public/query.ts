@@ -1,3 +1,4 @@
+import { numberToHex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { Entity } from "../../types/entity"
 import type { RpcQueryOptions } from "../../types/rpcSchema"
@@ -42,7 +43,7 @@ export async function query(client: ArkivClient, query: string, queryOptions?: Q
       transactionIndexInBlock: queryOptions?.includeData?.metadata ?? false,
       operationIndexInTransaction: queryOptions?.includeData?.metadata ?? false,
     },
-    ...(queryOptions?.atBlock !== undefined && { atBlock: Number(queryOptions.atBlock) }),
+    ...(queryOptions?.atBlock !== undefined && { atBlock: numberToHex(queryOptions.atBlock) }),
     ...(queryOptions?.orderBy && {
       orderBy: queryOptions?.orderBy.map((order) => ({
         name: order.name,
@@ -51,7 +52,7 @@ export async function query(client: ArkivClient, query: string, queryOptions?: Q
       })),
     }),
     ...(queryOptions?.resultsPerPage !== undefined && {
-      resultsPerPage: queryOptions.resultsPerPage,
+      resultsPerPage: numberToHex(queryOptions.resultsPerPage),
     }),
     ...(queryOptions?.cursor !== undefined && { cursor: queryOptions?.cursor }),
   }

@@ -16,7 +16,7 @@ const logger = getLogger("actions:wallet:create-entity")
 export type CreateEntityParameters = {
   payload: Uint8Array
   attributes: Attribute[]
-  contentType: MimeType
+  contentType: MimeType | string
   expiresIn: number
 }
 

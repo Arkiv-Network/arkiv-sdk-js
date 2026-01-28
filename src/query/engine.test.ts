@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from "bun:test"
+import { numberToHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
 import { processQuery } from "./engine"
 import type { Predicate } from "./predicate"
@@ -376,8 +377,8 @@ describe("processQuery tests", () => {
       params: [
         `key = "value" && $owner=0x123`,
         {
-          atBlock: 123,
-          resultsPerPage: 10,
+          atBlock: numberToHex(123n),
+          resultsPerPage: numberToHex(10),
           includeData: {
             key: true,
             attributes: false,
@@ -412,7 +413,7 @@ describe("processQuery tests", () => {
       params: [
         `key = "value" && $owner=0x123`,
         {
-          resultsPerPage: 10,
+          resultsPerPage: numberToHex(10),
           includeData: {
             key: true,
             attributes: false,

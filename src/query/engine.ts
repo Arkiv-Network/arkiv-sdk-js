@@ -1,4 +1,5 @@
 import type { Hex } from "viem"
+import { hexToNumber, numberToHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
 import type { RpcIncludeData, RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
 import { getLogger } from "../utils/logger"
@@ -106,10 +107,10 @@ export async function processQuery(
   }
 
   if (validAtBlock !== undefined) {
-    queryOptions.atBlock = Number(validAtBlock)
+    queryOptions.atBlock = numberToHex(validAtBlock)
   }
   if (limit !== undefined) {
-    queryOptions.resultsPerPage = limit
+    queryOptions.resultsPerPage = numberToHex(limit)
   }
   if (cursor !== undefined) {
     queryOptions.cursor = cursor
@@ -120,7 +121,7 @@ export async function processQuery(
 
   logger("Built query to send %s %o", query, {
     includeData: queryOptions.includeData,
-    atBlock: queryOptions.atBlock?.toString(),
+    atBlock: queryOptions.atBlock ? hexToNumber(queryOptions.atBlock) : undefined,
     orderBy: queryOptions.orderBy,
     resultsPerPage: queryOptions.resultsPerPage,
     cursor: queryOptions.cursor,

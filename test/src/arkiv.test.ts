@@ -724,7 +724,7 @@ describe("Arkiv Integration Tests for public client", () => {
         creates: [
           ...entities.map((ent) => ({
             payload: jsonToPayload(ent),
-            contentType: "application/json" as const,
+            contentType: "application/json",
             attributes: [
               { key: "score", value: ent.score },
               { key: "entityId", value: ent.entityId },
