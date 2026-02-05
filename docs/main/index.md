@@ -1,10 +1,17 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../index.md)
+[**@arkiv-network/sdk v0.5.3**](../index.md)
 
 ***
 
 [@arkiv-network/sdk](../index.md) / main
 
 # main
+
+## Classes
+
+- [EntityMutationError](classes/EntityMutationError.md)
+- [NoCursorOrLimitError](classes/NoCursorOrLimitError.md)
+- [NoEntityFoundError](classes/NoEntityFoundError.md)
+- [NoMoreResultsError](classes/NoMoreResultsError.md)
 
 ## Interfaces
 
@@ -35,6 +42,10 @@
 - [OnEntityUpdatedEvent](type-aliases/OnEntityUpdatedEvent.md)
 - [PublicArkivActions](type-aliases/PublicArkivActions.md)
 - [PublicArkivClient](type-aliases/PublicArkivClient.md)
+- [QueryOptions](type-aliases/QueryOptions.md)
+- [QueryOptionsIncludeData](type-aliases/QueryOptionsIncludeData.md)
+- [QueryOptionsOrderBy](type-aliases/QueryOptionsOrderBy.md)
+- [QueryReturnType](type-aliases/QueryReturnType.md)
 - [RpcEntity](type-aliases/RpcEntity.md)
 - [RpcIncludeData](type-aliases/RpcIncludeData.md)
 - [RpcOrderByAttribute](type-aliases/RpcOrderByAttribute.md)

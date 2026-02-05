@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../index.md)
+[**@arkiv-network/sdk v0.5.3**](../index.md)
 
 ***
 
@@ -8,9 +8,6 @@
 
 ## Classes
 
-- [NoCursorOrLimitError](classes/NoCursorOrLimitError.md)
-- [NoEntityFoundError](classes/NoEntityFoundError.md)
-- [NoMoreResultsError](classes/NoMoreResultsError.md)
 - [QueryBuilder](classes/QueryBuilder.md)
 - [QueryResult](classes/QueryResult.md)
 

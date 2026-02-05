@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.0-dev.0**](../index.md)
+[**@arkiv-network/sdk v0.5.3**](../index.md)
 
 ***
 
@@ -131,6 +131,30 @@ Re-exports [OnEntityOwnerChangedEvent](../main/type-aliases/OnEntityOwnerChanged
 ### OnEntityUpdatedEvent
 
 Re-exports [OnEntityUpdatedEvent](../main/type-aliases/OnEntityUpdatedEvent.md)
+
+***
+
+### QueryOptions
+
+Re-exports [QueryOptions](../main/type-aliases/QueryOptions.md)
+
+***
+
+### QueryOptionsIncludeData
+
+Re-exports [QueryOptionsIncludeData](../main/type-aliases/QueryOptionsIncludeData.md)
+
+***
+
+### QueryOptionsOrderBy
+
+Re-exports [QueryOptionsOrderBy](../main/type-aliases/QueryOptionsOrderBy.md)
+
+***
+
+### QueryReturnType
+
+Re-exports [QueryReturnType](../main/type-aliases/QueryReturnType.md)
 
 ***
 
