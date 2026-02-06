@@ -14,6 +14,7 @@
     "test": "bun test",
     "test:component": "TESTCONTAINERS_RYUK_DISABLED=true bun test src/arkiv.test.ts",
     "test:smoke": "bun src/smoke-tests/index.ts && node src/smoke-tests/index.cjs && node src/smoke-tests/index.mjs && node src/smoke-tests/index.js && bunx tsc --project tsconfig.smoke-test.json && node dist/index.js",
+    "test:network-health": "bun test src/network-health.test.ts",
     "reinstall": "rimraf bun.lockb && bun install --force",
     "refresh": "cd .. && bun run package && cd test && bun install --force"
   },
