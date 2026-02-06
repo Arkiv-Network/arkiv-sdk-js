@@ -47,3 +47,53 @@ jobs:
           PRIVATE_KEY: ${{ secrets.NETWORK_HEALTH_PRIVATE_KEY }}
           CHAIN: ${{ matrix.chain }}
         run: cd test && bun run test:network-health
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [network-health]
+    if: always()
+
+    steps:
+      - name: Get previous run conclusion
+        id: prev
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prev_conclusion=$(gh run list \
+            --repo "${{ github.repository }}" \
+            --workflow "network-health.yml" \
+            --status completed \
+            --limit 1 \
+            --json conclusion \
+            --jq '.[0].conclusion // "none"')
+          echo "conclusion=$prev_conclusion" >> "$GITHUB_OUTPUT"
+          echo "Previous run conclusion: $prev_conclusion"
+
+      - name: Notify Slack on state change
+        if: |
+          (needs.network-health.result == 'failure' && steps.prev.outputs.conclusion != 'failure') ||
+          (needs.network-health.result == 'success' && steps.prev.outputs.conclusion == 'failure')
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          CURRENT_STATUS: ${{ needs.network-health.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$CURRENT_STATUS" = "failure" ]; then
+            emoji="🔴"
+            text="Network health check *FAILED*"
+            color="#dc3545"
+          else
+            emoji="🟢"
+            text="Network health check *RECOVERED*"
+            color="#28a745"
+          fi
+
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"attachments\": [{
+                \"color\": \"$color\",
+                \"text\": \"$emoji $text\\n<$RUN_URL|View run>\",
+                \"footer\": \"arkiv-sdk-js\"
+              }]
+            }"
