@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.3**](../../index.md)
+[**@arkiv-network/sdk v0.6.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **WalletArkivActions**\<`transport`, `chain`, `account`\> = `Pick`\<`PublicActions`\<`transport`, `chain`, `account`\>, `"waitForTransactionReceipt"` \| `"call"`\> & `Pick`\<`WalletActions`\<`chain`, `account`\>, `"addChain"` \| `"sendCalls"` \| `"waitForCallsStatus"` \| `"sendTransaction"` \| `"sendRawTransaction"` \| `"signMessage"` \| `"signTransaction"`\> & `object`
 
-Defined in: [src/clients/decorators/arkivWallet.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/clients/decorators/arkivWallet.ts#L34)
+Defined in: [src/clients/decorators/arkivWallet.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/clients/decorators/arkivWallet.ts#L34)
 
 ## Type Declaration
 

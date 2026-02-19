@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.5.3**](../../index.md)
+[**@arkiv-network/sdk v0.6.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **CreateEntityParameters** = `object`
 
-Defined in: [src/actions/wallet/createEntity.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/wallet/createEntity.ts#L16)
+Defined in: [src/actions/wallet/createEntity.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/createEntity.ts#L16)
 
 Parameters for the createEntity function.
 - payload: The payload of the entity.
@@ -22,15 +22,15 @@ Parameters for the createEntity function.
 
 > **attributes**: [`Attribute`](Attribute.md)[]
 
-Defined in: [src/actions/wallet/createEntity.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/wallet/createEntity.ts#L18)
+Defined in: [src/actions/wallet/createEntity.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/createEntity.ts#L18)
 
 ***
 
 ### contentType
 
-> **contentType**: [`MimeType`](MimeType.md)
+> **contentType**: [`MimeType`](MimeType.md) \| `string`
 
-Defined in: [src/actions/wallet/createEntity.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/wallet/createEntity.ts#L19)
+Defined in: [src/actions/wallet/createEntity.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/createEntity.ts#L19)
 
 ***
 
@@ -38,7 +38,7 @@ Defined in: [src/actions/wallet/createEntity.ts:19](https://github.com/Arkiv-Net
 
 > **expiresIn**: `number`
 
-Defined in: [src/actions/wallet/createEntity.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/wallet/createEntity.ts#L20)
+Defined in: [src/actions/wallet/createEntity.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/createEntity.ts#L20)
 
 ***
 
@@ -46,4 +46,4 @@ Defined in: [src/actions/wallet/createEntity.ts:20](https://github.com/Arkiv-Net
 
 > **payload**: `Uint8Array`
 
-Defined in: [src/actions/wallet/createEntity.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/08d5204746de17cd551f756b87a4d260c4eda928/src/actions/wallet/createEntity.ts#L17)
+Defined in: [src/actions/wallet/createEntity.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/createEntity.ts#L17)

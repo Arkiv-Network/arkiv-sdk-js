@@ -2,13 +2,13 @@
 
 ***
 
-[@arkiv-network/sdk](../../index.md) / [chains](../index.md) / mendoza
+[@arkiv-network/sdk](../../index.md) / [chains](../index.md) / rosario
 
-# Variable: mendoza
+# Variable: rosario
 
-> `const` **mendoza**: `object`
+> `const` **rosario**: `object`
 
-Defined in: [src/chains/mendoza.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/chains/mendoza.ts#L3)
+Defined in: [src/chains/rosario.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/chains/rosario.ts#L3)
 
 ## Type Declaration
 
@@ -24,25 +24,25 @@ Collection of block explorers
 
 #### blockExplorers.default.apiUrl
 
-> `readonly` **apiUrl**: `"https://explorer.mendoza.hoodi.arkiv.network/api"` = `"https://explorer.mendoza.hoodi.arkiv.network/api"`
+> `readonly` **apiUrl**: `"https://explorer.rosario.hoodi.arkiv.network/api"` = `"https://explorer.rosario.hoodi.arkiv.network/api"`
 
 #### blockExplorers.default.name
 
-> `readonly` **name**: `"Mendoza Arkiv Explorer"` = `"Mendoza Arkiv Explorer"`
+> `readonly` **name**: `"Rosario Arkiv Explorer"` = `"Rosario Arkiv Explorer"`
 
 #### blockExplorers.default.url
 
-> `readonly` **url**: `"https://explorer.mendoza.hoodi.arkiv.network"` = `"https://explorer.mendoza.hoodi.arkiv.network"`
+> `readonly` **url**: `"https://explorer.rosario.hoodi.arkiv.network"` = `"https://explorer.rosario.hoodi.arkiv.network"`
 
 ### id
 
-> **id**: `60138453056`
+> **id**: `60138453057`
 
 ID in number form
 
 ### name
 
-> **name**: `"Mendoza"`
+> **name**: `"Rosario"`
 
 Human-readable name
 
@@ -66,7 +66,7 @@ Currency used by chain
 
 ### network
 
-> `readonly` **network**: `"mendoza"` = `"mendoza"`
+> `readonly` **network**: `"rosario"` = `"rosario"`
 
 ### rpcUrls
 
@@ -80,11 +80,11 @@ Collection of RPC endpoints
 
 #### rpcUrls.default.http
 
-> `readonly` **http**: readonly \[`"https://mendoza.hoodi.arkiv.network/rpc"`\]
+> `readonly` **http**: readonly \[`"https://rosario.hoodi.arkiv.network/rpc"`\]
 
 #### rpcUrls.default.webSocket
 
-> `readonly` **webSocket**: readonly \[`"wss://mendoza.hoodi.arkiv.network/rpc/ws"`\]
+> `readonly` **webSocket**: readonly \[`"wss://rosario.hoodi.arkiv.network/rpc/ws"`\]
 
 ### testnet
 
