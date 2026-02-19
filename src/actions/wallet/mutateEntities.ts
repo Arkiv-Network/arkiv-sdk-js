@@ -40,12 +40,10 @@ function parseReceipt(receipt: TransactionReceipt, params: MutateEntitiesParamet
   const totalExtensions = params.extensions?.length ?? 0
 
   // iterate over all logs and parse the event
-  // each odd log is the interested ones, logs goes in order like: creates, deleted, updates, extends
-  for (let i = 0; i < receipt.logs.length; i++) {
-    const log = receipt.logs[i]
-    if (i % 2 === 1) continue
+  // logs go in the following order: creates, deleted, updates, extends, ownership changes
+  for (let index = 0; index < receipt.logs.length; index++) {
+    const log = receipt.logs[index]
 
-    const index = i / 2
     if (index < totalCreates) {
       createdEntities.push(log.topics[1] as Hex)
     } else if (index < totalCreates + totalDeletes) {

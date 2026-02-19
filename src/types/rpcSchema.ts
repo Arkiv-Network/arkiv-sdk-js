@@ -5,14 +5,14 @@ export type RpcEntity = {
   key: Hex
   contentType: MimeType
   value: string
-  expiresAt: string
-  createdAtBlock: string
-  lastModifiedAtBlock: string
-  transactionIndexInBlock: string
-  operationIndexInTransaction: string
+  expiresAt: Hex
+  createdAtBlock: Hex
+  lastModifiedAtBlock: Hex
+  transactionIndexInBlock: Hex
+  operationIndexInTransaction: Hex
   owner: Hex
   stringAttributes?: [{ key: string; value: string }]
-  numericAttributes?: [{ key: string; value: number }]
+  numericAttributes?: [{ key: string; value: Hex }]
 }
 
 export type RpcOrderByAttribute = {
@@ -22,10 +22,10 @@ export type RpcOrderByAttribute = {
 }
 
 export type RpcQueryOptions = {
-  atBlock?: number
+  atBlock?: Hex
   includeData?: RpcIncludeData
   orderBy?: RpcOrderByAttribute[]
-  resultsPerPage?: number
+  resultsPerPage?: Hex
   cursor?: string
 }
 
@@ -48,7 +48,7 @@ export type ArkivRpcSchema = [
     Parameters?: [query: string, queryOptions?: RpcQueryOptions]
     ReturnType: {
       data: RpcEntity[]
-      blockNumber: number
+      blockNumber: bigint
       cursor: string
     }
   },

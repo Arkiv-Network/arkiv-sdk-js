@@ -18,7 +18,7 @@ export type UpdateEntityParameters = {
   entityKey: Hex
   payload: Uint8Array
   attributes: Attribute[]
-  contentType: MimeType
+  contentType: MimeType | string
   expiresIn: number
 }
 
