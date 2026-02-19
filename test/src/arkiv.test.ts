@@ -56,7 +56,7 @@ describe("Arkiv Integration Tests for public client", () => {
       chain: localTestNetwork,
       account: privateKeyToAccount(privateKey),
     })
-  })
+  }, 60000)
 
   afterAll(async () => {
     if (arkivNode) {
