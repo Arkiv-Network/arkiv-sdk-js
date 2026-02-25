@@ -14,3 +14,9 @@
 - Fixed browser compatibility issue with `debug` module causing "exports is not defined" errors in browser environments
 - Improved error handling for reverted transactions when using MetaMask as transport - now throws more descriptive errors (https://github.com/Arkiv-Network/arkiv-sdk-js/issues/16)
 - Fix error while using value=0 with numeric attributes
+
+
+## [0.6.0] - 2022-02-19
+
+### Changed
+- All numeric values are now represented as Hex for RPC communication (https://github.com/Arkiv-Network/arkiv-sdk-js/issues/19)
