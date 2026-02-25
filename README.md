@@ -83,7 +83,7 @@ npm install @arkiv-network/sdk
 This command will update your `package.json` with a section like:
 ```json
 "dependencies": {
-  "@arkiv-network/sdk": "^0.4.4"
+  "@arkiv-network/sdk": "^0.6.0"
 }
 ```
 It will also create a `node_modules` directory with all dependencies installed.
