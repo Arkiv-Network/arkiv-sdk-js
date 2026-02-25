@@ -1,8 +1,8 @@
-**@arkiv-network/sdk v0.6.0**
+**@arkiv-network/sdk v0.6.1**
 
 ***
 
-# @arkiv-network/sdk v0.6.0
+# @arkiv-network/sdk v0.6.1
 
 ## Modules
 

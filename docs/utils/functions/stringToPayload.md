@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.0**](../../index.md)
+[**@arkiv-network/sdk v0.6.1**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **stringToPayload**(`data`): `Uint8Array`
 
-Defined in: [src/utils/payload.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/utils/payload.ts#L7)
+Defined in: [src/utils/payload.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/utils/payload.ts#L7)
 
 ## Parameters
 

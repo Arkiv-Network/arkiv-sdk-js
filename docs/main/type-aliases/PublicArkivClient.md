@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.0**](../../index.md)
+[**@arkiv-network/sdk v0.6.1**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **PublicArkivClient**\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`\> = `Prettify`\<`Client`\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`, [`PublicArkivActions`](PublicArkivActions.md)\<`transport`, `chain`\>\>\>
 
-Defined in: [src/clients/createPublicClient.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/clients/createPublicClient.ts#L16)
+Defined in: [src/clients/createPublicClient.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/clients/createPublicClient.ts#L16)
 
 ## Type Parameters
 

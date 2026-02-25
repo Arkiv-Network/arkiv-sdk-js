@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.0**](../../index.md)
+[**@arkiv-network/sdk v0.6.1**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **OnEntityExpiredEvent** = `object`
 
-Defined in: [src/types/events.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/types/events.ts#L23)
+Defined in: [src/types/events.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/events.ts#L23)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/events.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **entityKey**: `Hex`
 
-Defined in: [src/types/events.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/types/events.ts#L24)
+Defined in: [src/types/events.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/events.ts#L24)
 
 ***
 
@@ -24,4 +24,4 @@ Defined in: [src/types/events.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **owner**: `Hex`
 
-Defined in: [src/types/events.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/types/events.ts#L25)
+Defined in: [src/types/events.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/events.ts#L25)

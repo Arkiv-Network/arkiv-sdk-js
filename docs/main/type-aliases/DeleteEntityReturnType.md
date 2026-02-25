@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.0**](../../index.md)
+[**@arkiv-network/sdk v0.6.1**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **DeleteEntityReturnType** = `object`
 
-Defined in: [src/actions/wallet/deleteEntity.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/deleteEntity.ts#L22)
+Defined in: [src/actions/wallet/deleteEntity.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/actions/wallet/deleteEntity.ts#L22)
 
 Return type for the deleteEntity function.
 - entityKey: The key of the entity.
@@ -20,7 +20,7 @@ Return type for the deleteEntity function.
 
 > **entityKey**: `Hex`
 
-Defined in: [src/actions/wallet/deleteEntity.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/deleteEntity.ts#L23)
+Defined in: [src/actions/wallet/deleteEntity.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/actions/wallet/deleteEntity.ts#L23)
 
 ***
 
@@ -28,4 +28,4 @@ Defined in: [src/actions/wallet/deleteEntity.ts:23](https://github.com/Arkiv-Net
 
 > **txHash**: `Hash`
 
-Defined in: [src/actions/wallet/deleteEntity.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/actions/wallet/deleteEntity.ts#L24)
+Defined in: [src/actions/wallet/deleteEntity.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/actions/wallet/deleteEntity.ts#L24)

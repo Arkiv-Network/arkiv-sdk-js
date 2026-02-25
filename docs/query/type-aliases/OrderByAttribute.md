@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.0**](../../index.md)
+[**@arkiv-network/sdk v0.6.1**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **OrderByAttribute** = `object`
 
-Defined in: [src/query/queryBuilder.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/query/queryBuilder.ts#L9)
+Defined in: [src/query/queryBuilder.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/query/queryBuilder.ts#L9)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/query/queryBuilder.ts:9](https://github.com/Arkiv-Network/arkiv
 
 > **name**: `string`
 
-Defined in: [src/query/queryBuilder.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/query/queryBuilder.ts#L10)
+Defined in: [src/query/queryBuilder.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/query/queryBuilder.ts#L10)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/query/queryBuilder.ts:10](https://github.com/Arkiv-Network/arki
 
 > **order**: `"asc"` \| `"desc"`
 
-Defined in: [src/query/queryBuilder.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/query/queryBuilder.ts#L12)
+Defined in: [src/query/queryBuilder.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/query/queryBuilder.ts#L12)
 
 ***
 
@@ -32,4 +32,4 @@ Defined in: [src/query/queryBuilder.ts:12](https://github.com/Arkiv-Network/arki
 
 > **type**: `"string"` \| `"number"`
 
-Defined in: [src/query/queryBuilder.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2ea409e4a615ac295234b8ab33be508f9a65f324/src/query/queryBuilder.ts#L11)
+Defined in: [src/query/queryBuilder.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/query/queryBuilder.ts#L11)
