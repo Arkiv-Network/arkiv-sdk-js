@@ -94,11 +94,11 @@ You can now use Arkiv's public client to query data. Paste the following in `rea
 
 ```typescript
 import { createPublicClient, http } from "@arkiv-network/sdk"
-import { mendoza } from "@arkiv-network/sdk/chains"
+import { kaolin } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
 
 const publicClient = createPublicClient({
-  chain: mendoza, // "mendoza" is Arkiv's testnet, used during hackathons at DevConnect 2025 in Buenos Aires
+  chain: kaolin, // "kaolin" is Arkiv's testnet
   transport: http(),
 });
 
@@ -172,17 +172,17 @@ Create a file named `write_example.ts` with the following content:
 ```typescript
 import { createPublicClient, createWalletClient, http } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { mendoza } from "@arkiv-network/sdk/chains"
+import { kaolin } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: mendoza, // mendoza is the Arkiv testnet for the purposes of hackathons organized in Buenos Aires during devconnect 2025
+  chain: kaolin, // kaolin is the Arkiv testnet
   transport: http(),
 })
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: mendoza,
+  chain: kaolin,
   transport: http(),
   account: privateKeyToAccount('0x...'), // Replace with your private key
 });
@@ -193,7 +193,7 @@ const { entityKey, txHash } = await client.createEntity({
     entity: {
       entityType: 'document',
       entityId: 'doc-123',
-      entityContent: "Hello from DevConnect Hackathon 2025! Arkiv Mendoza chain wishes you all the best!"
+      entityContent: "Hello from DevConnect Hackathon 2025! Arkiv chain wishes you all the best!"
     },
   }),
   contentType: 'application/json',
@@ -231,8 +231,8 @@ Now you can run it in the same way as in the previous example:
 **Note:**  
 You must provide your own private key with a minimum balance on the Arkiv L3 network.  
 You can generate a private key using any tool, for example: https://vanity-eth.tk/  
-Once you have a key, you can paste it into the example above and fund its address using the Arkiv Mendoza testnet faucet at:  
-https://mendoza.hoodi.arkiv.network/faucet/
+Once you have a key, you can paste it into the example above and fund its address using the Arkiv Kaolin testnet faucet at:  
+https://kaolin.hoodi.arkiv.network/faucet/
 
 For quick testing, you may use this example key:
 ```
