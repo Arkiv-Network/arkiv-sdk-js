@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.1**](../../index.md)
+[**@arkiv-network/sdk v0.6.2**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **ArkivClient**\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`\> = `Client`\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`\>
 
-Defined in: [src/clients/baseClient.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/clients/baseClient.ts#L4)
+Defined in: [src/clients/baseClient.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/clients/baseClient.ts#L4)
 
 ## Type Parameters
 

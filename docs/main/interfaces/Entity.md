@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.1**](../../index.md)
+[**@arkiv-network/sdk v0.6.2**](../../index.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: Entity
 
-Defined in: [src/types/entity.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L5)
+Defined in: [src/types/entity.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L5)
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: [src/types/entity.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **attributes**: [`Attribute`](../type-aliases/Attribute.md)[]
 
-Defined in: [src/types/entity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L15)
+Defined in: [src/types/entity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L15)
 
 ***
 
@@ -22,7 +22,7 @@ Defined in: [src/types/entity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **contentType**: [`MimeType`](../type-aliases/MimeType.md) \| `undefined`
 
-Defined in: [src/types/entity.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L7)
+Defined in: [src/types/entity.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L7)
 
 ***
 
@@ -30,7 +30,7 @@ Defined in: [src/types/entity.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **createdAtBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L10)
+Defined in: [src/types/entity.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L10)
 
 ***
 
@@ -38,7 +38,7 @@ Defined in: [src/types/entity.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **expiresAtBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L9)
+Defined in: [src/types/entity.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L9)
 
 ***
 
@@ -46,7 +46,7 @@ Defined in: [src/types/entity.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **key**: `` `0x${string}` ``
 
-Defined in: [src/types/entity.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L6)
+Defined in: [src/types/entity.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L6)
 
 ***
 
@@ -54,7 +54,7 @@ Defined in: [src/types/entity.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **lastModifiedAtBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L11)
+Defined in: [src/types/entity.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L11)
 
 ***
 
@@ -62,7 +62,7 @@ Defined in: [src/types/entity.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **operationIndexInTransaction**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L13)
+Defined in: [src/types/entity.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L13)
 
 ***
 
@@ -70,7 +70,7 @@ Defined in: [src/types/entity.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **owner**: `` `0x${string}` `` \| `undefined`
 
-Defined in: [src/types/entity.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L8)
+Defined in: [src/types/entity.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L8)
 
 ***
 
@@ -78,7 +78,7 @@ Defined in: [src/types/entity.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **payload**: `Uint8Array`\<`ArrayBufferLike`\> \| `undefined`
 
-Defined in: [src/types/entity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L14)
+Defined in: [src/types/entity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L14)
 
 ***
 
@@ -86,7 +86,7 @@ Defined in: [src/types/entity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **transactionIndexInBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L12)
+Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L12)
 
 ## Methods
 
@@ -94,7 +94,7 @@ Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **toJson**(): `any`
 
-Defined in: [src/types/entity.ts:45](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L45)
+Defined in: [src/types/entity.ts:45](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L45)
 
 #### Returns
 
@@ -106,7 +106,7 @@ Defined in: [src/types/entity.ts:45](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **toText**(): `string`
 
-Defined in: [src/types/entity.ts:41](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/c260e07488c8d139ede2633208b0eec1ee0b9713/src/types/entity.ts#L41)
+Defined in: [src/types/entity.ts:41](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L41)
 
 #### Returns
 
