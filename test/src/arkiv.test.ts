@@ -236,6 +236,51 @@ describe("Arkiv Integration Tests for public client", () => {
   })
 
   test.each(["http", "webSocket"] as const)(
+    "should handle query with createdBy filter using %s",
+    async (transport) => {
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+      const creatorAddress = privateKeyToAccount(privateKey).address
+
+      await writeClient.createEntity({
+        payload: jsonToPayload({ entity: { entityType: "test", entityId: "createdByTest" } }),
+        contentType: "application/json",
+        attributes: [{ key: "createdByTestKey", value: "createdByTestValue" }],
+        expiresIn: 1000,
+      })
+
+      // query using the createdBy filter (maps to $creator)
+      const queryResult = await readClient
+        .buildQuery()
+        .where(eq("createdByTestKey", "createdByTestValue"))
+        .createdBy(creatorAddress)
+        .fetch()
+      expect(queryResult).toBeDefined()
+      expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
+
+      // query combining both ownedBy and createdBy
+      const combinedResult = await readClient
+        .buildQuery()
+        .where(eq("createdByTestKey", "createdByTestValue"))
+        .ownedBy(creatorAddress)
+        .createdBy(creatorAddress)
+        .fetch()
+      expect(combinedResult).toBeDefined()
+      expect(combinedResult.entities.length).toBeGreaterThanOrEqual(1)
+
+      // query with a non-matching creator should return no results
+      const noResults = await readClient
+        .buildQuery()
+        .where(eq("createdByTestKey", "createdByTestValue"))
+        .createdBy("0x0000000000000000000000000000000000000000")
+        .fetch()
+      expect(noResults).toBeDefined()
+      expect(noResults.entities.length).toEqual(0)
+    },
+    { timeout: 20000 },
+  )
+
+  test.each(["http", "webSocket"] as const)(
     "should handle query using %s fetching only requested data",
     async (transport) => {
       const client = transport === "http" ? publicClient : publicClientWS

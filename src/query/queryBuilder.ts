@@ -54,6 +54,7 @@ export function desc(attributeName: string, attributeType: "string" | "number"):
 export class QueryBuilder {
   private _client: ArkivClient
   private _ownedBy: Hex | undefined
+  private _createdBy: Hex | undefined
   private _orderBy: RpcOrderByAttribute[] | undefined
   private _validAtBlock: bigint | undefined
   private _withAttributes: boolean | undefined
@@ -79,6 +80,20 @@ export class QueryBuilder {
    */
   ownedBy(ownedBy: Hex) {
     this._ownedBy = ownedBy
+    return this
+  }
+
+  /**
+   * Sets the createdBy filter
+   * @param createdBy - The address of the creator
+   * @returns The QueryBuilder instance
+   *
+   * @example
+   * const builder = new QueryBuilder(client)
+   * builder.createdBy("0x1234567890123456789012345678901234567890")
+   */
+  createdBy(createdBy: Hex) {
+    this._createdBy = createdBy
     return this
   }
 
@@ -271,6 +286,7 @@ export class QueryBuilder {
       limit: this._limit,
       cursor: this._cursor,
       ownedBy: this._ownedBy,
+      createdBy: this._createdBy,
       orderBy: this._orderBy,
       validAtBlock: this._validAtBlock,
       withAttributes: this._withAttributes,
@@ -303,6 +319,7 @@ export class QueryBuilder {
       limit: this._limit,
       cursor: this._cursor,
       ownedBy: this._ownedBy,
+      createdBy: this._createdBy,
       orderBy: undefined,
       validAtBlock: this._validAtBlock,
       withAttributes: false,

@@ -16,6 +16,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      createdBy: undefined,
       orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
@@ -59,6 +60,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      createdBy: undefined,
       orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
@@ -103,6 +105,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      createdBy: undefined,
       orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
@@ -147,6 +150,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      createdBy: undefined,
       orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
@@ -197,6 +201,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      createdBy: undefined,
       orderBy: undefined,
       validAtBlock: undefined,
       withAttributes: undefined,
@@ -233,6 +238,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: "0x123",
+      createdBy: undefined,
     })
 
     expect(client.request).lastCalledWith({
@@ -268,12 +274,82 @@ describe("processQuery tests", () => {
       withAttributes: undefined,
       withMetadata: undefined,
       ownedBy: "0x123",
+      createdBy: undefined,
     })
 
     expect(client.request).lastCalledWith({
       method: "arkiv_query",
       params: [
         `$owner=0x123`,
+        {
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
+          },
+        },
+      ],
+    })
+  })
+
+  it("should process simple predicates with createdBy", async () => {
+    const predicates = [{ type: "eq" as const, key: "key", value: "value" }]
+    await processQuery(client, {
+      predicates,
+      orderBy: undefined,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      createdBy: "0x123",
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `key = "value" && $creator=0x123`,
+        {
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
+          },
+        },
+      ],
+    })
+  })
+
+  it("should process only createdBy", async () => {
+    const predicates = [] as Predicate[]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      orderBy: undefined,
+      validAtBlock: undefined,
+      withAttributes: undefined,
+      withMetadata: undefined,
+      ownedBy: undefined,
+      createdBy: "0x123",
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `$creator=0x123`,
         {
           includeData: {
             key: true,
@@ -300,6 +376,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      createdBy: undefined,
     })
 
     expect(client.request).lastCalledWith({
@@ -332,6 +409,7 @@ describe("processQuery tests", () => {
       limit: undefined,
       cursor: undefined,
       ownedBy: undefined,
+      createdBy: undefined,
       orderBy: [{ name: "key", type: "string", desc: true }],
       validAtBlock: undefined,
       withAttributes: undefined,
@@ -370,6 +448,7 @@ describe("processQuery tests", () => {
       orderBy: undefined,
       validAtBlock: 123n,
       ownedBy: "0x123",
+      createdBy: undefined,
     })
 
     expect(client.request).lastCalledWith({
@@ -405,6 +484,7 @@ describe("processQuery tests", () => {
       orderBy: undefined,
       validAtBlock: undefined,
       ownedBy: "0x123",
+      createdBy: undefined,
       withMetadata: true,
     })
 
