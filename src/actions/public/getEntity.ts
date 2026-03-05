@@ -32,6 +32,7 @@ export async function getEntity(client: ArkivClient, key: Hex) {
           contentType: true,
           expiration: true,
           owner: true,
+          creator: true,
           createdAtBlock: true,
           lastModifiedAtBlock: true,
           transactionIndexInBlock: true,

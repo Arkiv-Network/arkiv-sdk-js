@@ -11,6 +11,7 @@ export type RpcEntity = {
   transactionIndexInBlock: Hex
   operationIndexInTransaction: Hex
   owner: Hex
+  creator: Hex
   stringAttributes?: [{ key: string; value: string }]
   numericAttributes?: [{ key: string; value: Hex }]
 }
@@ -36,6 +37,7 @@ export type RpcIncludeData = {
   contentType?: boolean
   expiration?: boolean
   owner?: boolean
+  creator?: boolean
   createdAtBlock?: boolean
   lastModifiedAtBlock?: boolean
   transactionIndexInBlock?: boolean

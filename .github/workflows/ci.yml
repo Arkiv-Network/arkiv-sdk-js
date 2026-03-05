@@ -76,10 +76,10 @@ jobs:
         run: bun run package:test
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile
+        run: cd test && bun install --frozen-lockfile --no-verify
 
       - name: Run smoke tests
-        run: cd test &&bun run test:smoke
+        run: cd test && bun run test:smoke
 
   component-tests:
     runs-on: ubuntu-latest
@@ -111,10 +111,10 @@ jobs:
           retention-days: 30
 
       - name: Install test dependencies
-        run: cd test && bun install
+        run: cd test && bun install --frozen-lockfile --no-verify
 
       - name: Pull GolemDB Docker image
-        run: docker pull golemnetwork/golembase-op-geth:latest
+        run: docker pull golemnetwork/arkiv-op-geth:latest
 
       # Using a test private key (randomly generated for testing purposes only)
       - name: Run component tests
