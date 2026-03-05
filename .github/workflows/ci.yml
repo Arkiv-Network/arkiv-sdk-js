@@ -114,7 +114,7 @@ jobs:
         run: cd test && bun install --frozen-lockfile --no-verify
 
       - name: Pull GolemDB Docker image
-        run: docker pull golemnetwork/golembase-op-geth:latest
+        run: docker pull golemnetwork/arkiv-op-geth:latest
 
       # Using a test private key (randomly generated for testing purposes only)
       - name: Run component tests
