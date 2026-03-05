@@ -38,6 +38,7 @@ export async function query(client: ArkivClient, query: string, queryOptions?: Q
       contentType: queryOptions?.includeData?.metadata ?? false,
       expiration: queryOptions?.includeData?.metadata ?? false,
       owner: queryOptions?.includeData?.metadata ?? false,
+      creator: queryOptions?.includeData?.metadata ?? false,
       createdAtBlock: queryOptions?.includeData?.metadata ?? false,
       lastModifiedAtBlock: queryOptions?.includeData?.metadata ?? false,
       transactionIndexInBlock: queryOptions?.includeData?.metadata ?? false,
