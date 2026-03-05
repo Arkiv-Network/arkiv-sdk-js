@@ -76,7 +76,7 @@ jobs:
         run: bun run package:test
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile
+        run: cd test && bun install --frozen-lockfile --no-verify
 
       - name: Run smoke tests
         run: cd test && bun run test:smoke
@@ -111,7 +111,7 @@ jobs:
           retention-days: 30
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile
+        run: cd test && bun install --frozen-lockfile --no-verify
 
       - name: Pull GolemDB Docker image
         run: docker pull golemnetwork/golembase-op-geth:latest
