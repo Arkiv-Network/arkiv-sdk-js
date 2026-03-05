@@ -40,7 +40,7 @@ export function opsToTxData({
   const payload = [
     //creates
     (creates ?? []).map((item) => [
-      toHex(item.expiresIn / BLOCK_TIME),
+      toHex(Math.ceil(item.expiresIn / BLOCK_TIME)),
       toHex(item.contentType),
       toHex(item.payload),
       item.attributes
@@ -54,7 +54,7 @@ export function opsToTxData({
     (updates ?? []).map((item) => [
       item.entityKey,
       toHex(item.contentType),
-      toHex(item.expiresIn / BLOCK_TIME),
+      toHex(Math.ceil(item.expiresIn / BLOCK_TIME)),
       toHex(item.payload),
       item.attributes
         .filter((attribute) => typeof attribute.value === "string")
@@ -66,7 +66,10 @@ export function opsToTxData({
     //deletes
     (deletes ?? []).map((item) => item.entityKey),
     //extends
-    (extensions ?? []).map((item) => [item.entityKey, toHex(item.expiresIn / BLOCK_TIME)]),
+    (extensions ?? []).map((item) => [
+      item.entityKey,
+      toHex(Math.ceil(item.expiresIn / BLOCK_TIME)),
+    ]),
     //ownershipChanges TODO
     (ownershipChanges ?? []).map((item) => [item.entityKey, item.newOwner]),
   ]

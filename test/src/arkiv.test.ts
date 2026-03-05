@@ -414,6 +414,16 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(extendedEntityKey).toBeDefined()
       expect(extendedTxHash).toBeDefined()
 
+      // extend entity with odd number of seconds
+      const { entityKey: extendedEntityKey2, txHash: extendedTxHash2 } =
+        await writeClient.extendEntity({
+          entityKey: updatedEntityKey,
+          expiresIn: 999,
+        })
+      console.log("result from extendEntity", { extendedEntityKey2, extendedTxHash2 })
+      expect(extendedEntityKey).toBeDefined()
+      expect(extendedTxHash).toBeDefined()
+
       // delete entity
       const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await writeClient.deleteEntity(
         {
