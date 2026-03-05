@@ -12,6 +12,7 @@ export async function entityFromRpcResult(rpcEntity: RpcEntity) {
     rpcEntity.key,
     rpcEntity.contentType,
     rpcEntity.owner,
+    rpcEntity.creator,
     rpcEntity.expiresAt !== undefined ? BigInt(rpcEntity.expiresAt) : undefined,
     rpcEntity.createdAtBlock !== undefined ? BigInt(rpcEntity.createdAtBlock) : undefined,
     rpcEntity.lastModifiedAtBlock !== undefined ? BigInt(rpcEntity.lastModifiedAtBlock) : undefined,

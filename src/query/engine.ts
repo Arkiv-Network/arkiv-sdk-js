@@ -105,6 +105,7 @@ export async function processQuery(
       contentType: withMetadata ?? false,
       expiration: withMetadata ?? false,
       owner: withMetadata ?? false,
+      creator: withMetadata ?? false,
       createdAtBlock: withMetadata ?? false,
       lastModifiedAtBlock: withMetadata ?? false,
       transactionIndexInBlock: withMetadata ?? false,
