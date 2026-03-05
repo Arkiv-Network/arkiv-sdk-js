@@ -722,7 +722,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(entity).toBeDefined()
       expect(entity.owner).toEqual(newOwner)
       // creator should remain the original account even after ownership change
-      expect(entity.creator).toEqual(privateKeyToAccount(privateKey).address)
+      expect(entity.creator).toEqual(privateKeyToAccount(privateKey).address.toLowerCase() as Hex)
     },
     { timeout: 20000 },
   )
