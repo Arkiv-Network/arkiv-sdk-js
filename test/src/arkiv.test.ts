@@ -139,6 +139,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(entity.operationIndexInTransaction).toBeDefined()
       expect(entity.contentType).toBeDefined()
       expect(entity.owner).toBeDefined()
+      expect(entity.creator).toBeDefined()
       expect(entity.key).toBeDefined()
       expect(entity.key).toBe(testKey)
     },
@@ -202,6 +203,8 @@ describe("Arkiv Integration Tests for public client", () => {
     expect(rawQuery.entities[0].attributes).toBeArray()
     // metadata are not included by default
     expect(rawQuery.entities[0].contentType).toBeUndefined()
+    expect(rawQuery.entities[0].owner).toBeUndefined()
+    expect(rawQuery.entities[0].creator).toBeUndefined()
     expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
     expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
     expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
@@ -334,6 +337,8 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(rawQuery.entities[0].payload).toBeDefined()
       expect(rawQuery.entities[0].attributes).toBeArray()
       expect(rawQuery.entities[0].contentType).toBeUndefined()
+      expect(rawQuery.entities[0].owner).toBeUndefined()
+      expect(rawQuery.entities[0].creator).toBeUndefined()
       expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
       expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
       expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
@@ -627,6 +632,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult).toBeDefined()
       expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
       expect(queryResult.entities[0].owner).toBeUndefined()
+      expect(queryResult.entities[0].creator).toBeUndefined()
       expect(queryResult.entities[0].payload).toBeUndefined()
       expect(queryResult.entities[0].attributes).toHaveLength(0)
       expect(queryResult.entities[0].expiresAtBlock).toBeUndefined()
@@ -660,6 +666,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
       console.log("queryResult.entities[0]", queryResult.entities[0])
       expect(queryResult.entities[0].owner).toBeDefined()
+      expect(queryResult.entities[0].creator).toBeDefined()
       expect(queryResult.entities[0].expiresAtBlock).toBeDefined()
       expect(queryResult.entities[0].createdAtBlock).toBeDefined()
       expect(queryResult.entities[0].lastModifiedAtBlock).toBeDefined()
@@ -714,6 +721,8 @@ describe("Arkiv Integration Tests for public client", () => {
       console.log("entity from getEntity", entity)
       expect(entity).toBeDefined()
       expect(entity.owner).toEqual(newOwner)
+      // creator should remain the original account even after ownership change
+      expect(entity.creator).toEqual(privateKeyToAccount(privateKey).address)
     },
     { timeout: 20000 },
   )
