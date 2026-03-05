@@ -103,6 +103,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(created.key).toBe(entityKey);
       expect(created.payload).toEqual(payload);
       expect(created.attributes).toContainEqual({ key: "tag", value: tag });
+      expect(created.creator).toBeDefined();
       console.log(`  READ    entity found after create`);
 
       // QUERY
@@ -270,7 +271,8 @@ describe(`Network health check (${chain.name})`, () => {
       // confirm initial owner
       const before = await publicClient.getEntity(entityKey);
       expect(before.owner?.toLowerCase()).toBe(account.address.toLowerCase());
-      console.log(`  OWNER   before=${before.owner}`);
+      expect(before.creator?.toLowerCase()).toBe(account.address.toLowerCase());
+      console.log(`  OWNER   before=${before.owner}  creator=${before.creator}`);
 
       // createdBy query should find the entity before transfer
       const createdByBefore = await publicClient
@@ -290,7 +292,9 @@ describe(`Network health check (${chain.name})`, () => {
 
       const after = await publicClient.getEntity(entityKey);
       expect(after.owner?.toLowerCase()).toBe(newOwner.toLowerCase());
-      console.log(`  OWNER   after=${after.owner}`);
+      // creator should remain the original account even after ownership transfer
+      expect(after.creator?.toLowerCase()).toBe(account.address.toLowerCase());
+      console.log(`  OWNER   after=${after.owner}  creator=${after.creator}`);
 
       // after ownership transfer, createdBy should still return the entity
       const createdByAfter = await publicClient
@@ -582,6 +586,7 @@ describe(`Network health check (${chain.name})`, () => {
         .fetch();
       const e2 = metadataOnly.entities[0];
       expect(e2.owner).toBeDefined();
+      expect(e2.creator).toBeDefined();
       expect(e2.expiresAtBlock).toBeDefined();
       expect(e2.createdAtBlock).toBeDefined();
       expect(e2.lastModifiedAtBlock).toBeDefined();
@@ -614,6 +619,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(e4.payload?.length).toBeGreaterThan(0);
       expect(e4.attributes.length).toBeGreaterThanOrEqual(1);
       expect(e4.owner).toBeDefined();
+      expect(e4.creator).toBeDefined();
       expect(e4.expiresAtBlock).toBeDefined();
       console.log(`  PROJ    all projections`);
     },
