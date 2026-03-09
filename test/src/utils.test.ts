@@ -11,6 +11,18 @@ const PRIVATE_KEY =
   "0x049f4de101c81033ab95e057fa3535c131b1da022a1922cd175cf6b63d263892" as const
 
 describe("getArkivTestConfigFromEnv", () => {
+  test("requires PRIVATE_KEY to be provided", () => {
+    expect(() => getArkivTestConfigFromEnv({})).toThrow("PRIVATE_KEY env var is required")
+  })
+
+  test("requires PRIVATE_KEY to be a hex string", () => {
+    expect(() =>
+      getArkivTestConfigFromEnv({
+        PRIVATE_KEY: "not-a-hex-key",
+      }),
+    ).toThrow("Malformed PRIVATE_KEY: must be a hex string")
+  })
+
   test("defaults to docker-backed tests when no RPC env vars are provided", () => {
     const config = getArkivTestConfigFromEnv({ PRIVATE_KEY })
 
@@ -54,12 +66,14 @@ describe("getArkivTestConfigFromEnv", () => {
   })
 
   test("rejects invalid chain ids", () => {
-    expect(() =>
-      getArkivTestConfigFromEnv({
-        PRIVATE_KEY,
-        [TEST_HTTP_RPC_URL_ENV]: "https://rpc.example.test",
-        [TEST_CHAIN_ID_ENV]: "not-a-number",
-      }),
-    ).toThrow(`${TEST_CHAIN_ID_ENV} must be a positive integer`)
+    for (const invalidChainId of ["not-a-number", "0", "-1", "1.5"]) {
+      expect(() =>
+        getArkivTestConfigFromEnv({
+          PRIVATE_KEY,
+          [TEST_HTTP_RPC_URL_ENV]: "https://rpc.example.test",
+          [TEST_CHAIN_ID_ENV]: invalidChainId,
+        }),
+      ).toThrow(`${TEST_CHAIN_ID_ENV} must be a positive integer`)
+    }
   })
 })

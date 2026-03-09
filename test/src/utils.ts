@@ -75,7 +75,7 @@ function parseOptionalChainId(rawChainId: string | undefined) {
   }
 
   const chainId = Number(rawChainId)
-  if (!Number.isInteger(chainId) || chainId <= 0) {
+  if (Number.isNaN(chainId) || !Number.isInteger(chainId) || chainId <= 0) {
     throw new Error(`${TEST_CHAIN_ID_ENV} must be a positive integer`)
   }
 

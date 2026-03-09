@@ -27,7 +27,7 @@ describe("Arkiv Integration Tests for public client", () => {
   let publicClientWS!: PublicArkivClient
   let walletClient: WalletArkivClient
   let walletClientWS!: WalletArkivClient
-  let expectedChainId = testConfig.mode === "docker" ? testConfig.chainId : 0
+  let expectedChainId!: number
   let stopTestEnvironment = async () => {}
 
   function getPublicClientForTransport(transport: TestTransport) {
