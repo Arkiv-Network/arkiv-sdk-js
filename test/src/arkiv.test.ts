@@ -12,38 +12,79 @@ import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
 import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
-import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils.js"
+import { getArkivTestNetwork, launchLocalArkivNode } from "./utils.js"
 
 describe("Arkiv Integration Tests for public client", () => {
-  let arkivNode: StartedTestContainer
+  type TestTransport = "http" | "webSocket"
+
+  let arkivNode: StartedTestContainer | undefined
   let publicClient: PublicArkivClient
-  let publicClientWS: PublicArkivClient
+  let publicClientWS: PublicArkivClient | undefined
   let walletClient: WalletArkivClient
-  let walletClientWS: WalletArkivClient
+  let walletClientWS: WalletArkivClient | undefined
   const privateKey = process.env.PRIVATE_KEY as Hex
+  const rpcUrl = process.env.ARKIV_SDK_TEST_RPC_URL
+  const transports: TestTransport[] = rpcUrl ? ["http"] : ["http", "webSocket"]
+
+  function getPublicTestClient(transport: TestTransport) {
+    if (transport === "http") {
+      return publicClient
+    }
+
+    if (!publicClientWS) {
+      throw new Error("WebSocket public client is not configured")
+    }
+
+    return publicClientWS
+  }
+
+  function getWalletTestClient(transport: TestTransport) {
+    if (transport === "http") {
+      return walletClient
+    }
+
+    if (!walletClientWS) {
+      throw new Error("WebSocket wallet client is not configured")
+    }
+
+    return walletClientWS
+  }
+
+  async function createTestEntity(
+    transport: TestTransport,
+    {
+      attributes = [],
+      expiresIn = ExpirationTime.fromBlocks(1000),
+      payload = toBytes("Hello world"),
+    }: {
+      attributes?: { key: string; value: string }[]
+      expiresIn?: number
+      payload?: Uint8Array
+    } = {},
+  ) {
+    const { entityKey } = await getWalletTestClient(transport).createEntity({
+      payload,
+      contentType: "text/plain",
+      attributes,
+      expiresIn,
+    })
+
+    return entityKey
+  }
 
   beforeAll(async () => {
-    // Start GolemDB container
-    const { container, httpPort, wsPort } = await launchLocalArkivNode(privateKey)
-    arkivNode = container
-    const localTestNetwork = {
-      id: 1337,
-      name: "Localhost",
-      nativeCurrency: {
-        decimals: 18,
-        name: "Ether",
-        symbol: "ETH",
-      },
-      rpcUrls: getArkivLocalhostRpcUrls(httpPort, wsPort),
-    }
+    const localTestNetwork = rpcUrl
+      ? getArkivTestNetwork(rpcUrl)
+      : await (async () => {
+          const { container, httpPort, wsPort } = await launchLocalArkivNode(privateKey)
+          arkivNode = container
+
+          return getArkivTestNetwork(`http://127.0.0.1:${httpPort}`, `ws://127.0.0.1:${wsPort}`)
+        })()
 
     // Create the public client
     publicClient = createPublicClient({
       transport: http(),
-      chain: localTestNetwork,
-    })
-    publicClientWS = createPublicClient({
-      transport: webSocket(),
       chain: localTestNetwork,
     })
     walletClient = createWalletClient({
@@ -51,11 +92,18 @@ describe("Arkiv Integration Tests for public client", () => {
       chain: localTestNetwork,
       account: privateKeyToAccount(privateKey),
     })
-    walletClientWS = createWalletClient({
-      transport: webSocket(),
-      chain: localTestNetwork,
-      account: privateKeyToAccount(privateKey),
-    })
+
+    if (!rpcUrl) {
+      publicClientWS = createPublicClient({
+        transport: webSocket(),
+        chain: localTestNetwork,
+      })
+      walletClientWS = createWalletClient({
+        transport: webSocket(),
+        chain: localTestNetwork,
+        account: privateKeyToAccount(privateKey),
+      })
+    }
   }, 60000)
 
   afterAll(async () => {
@@ -64,91 +112,74 @@ describe("Arkiv Integration Tests for public client", () => {
     }
   })
 
-  test.each(["http", "webSocket"] as const)("should get chain ID using %s", async (transport) => {
-    const client = transport === "http" ? publicClient : publicClientWS
+  test.each(transports)("should get chain ID using %s", async (transport) => {
+    const client = getPublicTestClient(transport)
     const chainId = await client.getChainId()
     expect(chainId).toBeDefined()
     expect(chainId).toBe(1337)
   })
 
-  test.each(["http", "webSocket"] as const)(
-    "should get block number using %s",
-    async (transport) => {
-      const client = transport === "http" ? publicClient : publicClientWS
-      const blockNumber = await client.getBlockNumber()
-      expect(blockNumber).toBeDefined()
-      expect(typeof blockNumber).toBe("bigint")
-      expect(blockNumber).toBeGreaterThanOrEqual(0n)
-    },
-  )
+  test.each(transports)("should get block number using %s", async (transport) => {
+    const client = getPublicTestClient(transport)
+    const blockNumber = await client.getBlockNumber()
+    expect(blockNumber).toBeDefined()
+    expect(typeof blockNumber).toBe("bigint")
+    expect(blockNumber).toBeGreaterThanOrEqual(0n)
+  })
 
-  test.each(["http", "webSocket"] as const)(
-    "should get entity count using %s",
-    async (transport) => {
-      const client = transport === "http" ? publicClient : publicClientWS
-      const entityCount = await client.getEntityCount()
-      console.log("entityCount", entityCount)
-      expect(entityCount).toBeDefined()
+  test.each(transports)("should get entity count using %s", async (transport) => {
+    const client = getPublicTestClient(transport)
+    const entityCount = await client.getEntityCount()
+    console.log("entityCount", entityCount)
+    expect(entityCount).toBeDefined()
+    if (rpcUrl) {
+      expect(entityCount).toBeGreaterThanOrEqual(0)
+    } else {
       expect(entityCount).toEqual(0)
-    },
-  )
+    }
+  })
 
-  test.each(["http", "webSocket"] as const)(
-    "should get block timing using %s",
-    async (transport) => {
-      const client = transport === "http" ? publicClient : publicClientWS
-      const blockTiming = await client.getBlockTiming()
-      console.log("blockTiming", blockTiming)
-      expect(blockTiming).toBeDefined()
-      expect(blockTiming.currentBlock).toBeDefined()
-      expect(blockTiming.currentBlock).toBeGreaterThan(0n)
-      expect(blockTiming.currentBlockTime).toBeDefined()
-      expect(blockTiming.currentBlockTime).toBeGreaterThan(0)
-      expect(blockTiming.blockDuration).toBeDefined()
-      expect(blockTiming.blockDuration).toBeGreaterThan(0)
-    },
-  )
+  test.each(transports)("should get block timing using %s", async (transport) => {
+    const client = getPublicTestClient(transport)
+    const blockTiming = await client.getBlockTiming()
+    console.log("blockTiming", blockTiming)
+    expect(blockTiming).toBeDefined()
+    expect(blockTiming.currentBlock).toBeDefined()
+    expect(blockTiming.currentBlock).toBeGreaterThan(0n)
+    expect(blockTiming.currentBlockTime).toBeDefined()
+    expect(blockTiming.currentBlockTime).toBeGreaterThan(0)
+    expect(blockTiming.blockDuration).toBeDefined()
+    expect(blockTiming.blockDuration).toBeGreaterThan(0)
+  })
 
-  test.each(["http", "webSocket"] as const)(
-    "should call getEntity with existing key using %s",
-    async (transport) => {
-      const client = transport === "http" ? publicClient : publicClientWS
-      // First, let's try to store some data if the container supports it
-      const result = await execCommand(arkivNode, [
-        "golembase",
-        "entity",
-        "create",
-        "--data",
-        "Hello world",
-      ])
-      // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
-      const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
-      expect(testKey).toBeDefined()
+  test.each(transports)("should call getEntity with existing key using %s", async (transport) => {
+    const client = getPublicTestClient(transport)
+    const testKey = await createTestEntity(transport)
+    expect(testKey).toBeDefined()
 
-      const entity = await client.getEntity(testKey)
+    const entity = await client.getEntity(testKey)
 
-      // The result could be null, undefined, or an actual entity
-      // depending on whether the key exists and what the RPC returns
-      expect(entity).toBeDefined()
-      expect(entity.payload).toBeDefined()
-      expect(entity.attributes).toBeDefined()
-      expect(entity.expiresAtBlock).toBeDefined()
-      expect(entity.createdAtBlock).toBeDefined()
-      expect(entity.lastModifiedAtBlock).toBeDefined()
-      expect(entity.transactionIndexInBlock).toBeDefined()
-      expect(entity.operationIndexInTransaction).toBeDefined()
-      expect(entity.contentType).toBeDefined()
-      expect(entity.owner).toBeDefined()
-      expect(entity.creator).toBeDefined()
-      expect(entity.key).toBeDefined()
-      expect(entity.key).toBe(testKey)
-    },
-  )
+    // The result could be null, undefined, or an actual entity
+    // depending on whether the key exists and what the RPC returns
+    expect(entity).toBeDefined()
+    expect(entity.payload).toBeDefined()
+    expect(entity.attributes).toBeDefined()
+    expect(entity.expiresAtBlock).toBeDefined()
+    expect(entity.createdAtBlock).toBeDefined()
+    expect(entity.lastModifiedAtBlock).toBeDefined()
+    expect(entity.transactionIndexInBlock).toBeDefined()
+    expect(entity.operationIndexInTransaction).toBeDefined()
+    expect(entity.contentType).toBeDefined()
+    expect(entity.owner).toBeDefined()
+    expect(entity.creator).toBeDefined()
+    expect(entity.key).toBeDefined()
+    expect(entity.key).toBe(testKey)
+  })
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should handle getEntity with non-existent key using %s",
     async (transport) => {
-      const client = transport === "http" ? publicClient : publicClientWS
+      const client = getPublicTestClient(transport)
       const nonExistentKey = "0x567b6b2dfe0d9f87f054b9e3282a579630cab0b011643c4912f3b8b172b14fb7"
 
       try {
@@ -162,22 +193,11 @@ describe("Arkiv Integration Tests for public client", () => {
     },
   )
 
-  test.each(["http", "webSocket"] as const)("should handle query using %s", async (transport) => {
-    const client = transport === "http" ? publicClient : publicClientWS
-    // First, let's try to store some data if the container supports it
-    const result = await execCommand(arkivNode, [
-      "golembase",
-      "entity",
-      "create",
-      "--data",
-      "Hello world",
-      "--string",
-      "key:value",
-      "--btl",
-      "1000",
-    ])
-    // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
-    const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
+  test.each(transports)("should handle query using %s", async (transport) => {
+    const client = getPublicTestClient(transport)
+    const testKey = await createTestEntity(transport, {
+      attributes: [{ key: "key", value: "value" }],
+    })
     expect(testKey).toBeDefined()
 
     // build query
@@ -238,11 +258,11 @@ describe("Arkiv Integration Tests for public client", () => {
     expect(rawQueryAtBlock.blockNumber).toEqual(0n) // TODO: bring back to 1n once this feature is backed by the DBChain, otherwise if we resign from bi-temporal support we should remove this part of test
   })
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should handle query with createdBy filter using %s",
     async (transport) => {
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
       const creatorAddress = privateKeyToAccount(privateKey).address
 
       await writeClient.createEntity({
@@ -283,24 +303,13 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 20000 },
   )
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should handle query using %s fetching only requested data",
     async (transport) => {
-      const client = transport === "http" ? publicClient : publicClientWS
-      // First, let's try to store some data if the container supports it
-      const result = await execCommand(arkivNode, [
-        "golembase",
-        "entity",
-        "create",
-        "--data",
-        "Hello world",
-        "--string",
-        "key:value",
-        "--btl",
-        "1000",
-      ])
-      // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
-      const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
+      const client = getPublicTestClient(transport)
+      const testKey = await createTestEntity(transport, {
+        attributes: [{ key: "key", value: "value" }],
+      })
       expect(testKey).toBeDefined()
 
       // build query
@@ -347,11 +356,11 @@ describe("Arkiv Integration Tests for public client", () => {
     },
   )
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should handle basic CRUD operations using %s",
     async (transport) => {
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
 
       // subscribe to entity events
       const unsubscribe = await readClient.subscribeEntityEvents(
@@ -443,12 +452,12 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 20000 },
   )
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should handle mutateEntities using %s",
     async (transport) => {
       const newOwner = "0x6186b0dba9652262942d5a465d49686eb560834c" as Hex
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
       // subscribe to entity events
       const unsubscribe = await readClient.subscribeEntityEvents(
         {
@@ -458,35 +467,35 @@ describe("Arkiv Integration Tests for public client", () => {
       )
 
       // need to create a few entities first
-      const { entityKey: entityKey1, txHash: txHash1 } = await writeClient.createEntity({
+      const { entityKey: entityKey1 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
-      const { entityKey: entityKey2, txHash: txHash2 } = await writeClient.createEntity({
+      const { entityKey: entityKey2 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
-      const { entityKey: entityKey3, txHash: txHash3 } = await writeClient.createEntity({
+      const { entityKey: entityKey3 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
-      const { entityKey: entityKey4, txHash: txHash4 } = await writeClient.createEntity({
+      const { entityKey: entityKey4 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
         expiresIn: 1000,
       })
 
-      const { entityKey: entityKey5, txHash: txHash5 } = await writeClient.createEntity({
+      const { entityKey: entityKey5 } = await writeClient.createEntity({
         payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
         contentType: "application/json",
         attributes: [{ key: "testKey", value: "testValue" }],
@@ -553,11 +562,11 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 60000 },
   )
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should handle query with pagination using",
     async (transport) => {
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
       const value = transport === "http" ? "testValuePaging" : "testValuePagingWS"
       // create 10 entities
       for (let i = 0; i < 10; i++) {
@@ -609,11 +618,11 @@ describe("Arkiv Integration Tests for public client", () => {
     },
     { timeout: 60000 },
   )
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "Query with various projections using withAttributes, withMetadata, withPayload",
     async (transport) => {
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
       // create entity
       await writeClient.createEntity({
         payload: jsonToPayload({
@@ -692,11 +701,11 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 20000 },
   )
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should handle ownershipChange using %s",
     async (transport) => {
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
       const newOwner = "0x6186b0dba9652262942d5a465d49686eb560834c" as Hex
       // create entity
       const { entityKey } = await writeClient.createEntity({
@@ -727,11 +736,11 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 20000 },
   )
 
-  test.each(["http", "webSocket"] as const)(
+  test.each(transports)(
     "should properly handle numeric values in attributes and metadata",
     async (transport) => {
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
       const { entityKey, txHash } = await writeClient.createEntity({
         payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
         contentType: "application/json",
@@ -771,11 +780,11 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 20000 },
   )
 
-  test.skip.each(["http", "webSocket"] as const)(
+  test.skip.each(transports)(
     "should order entities by attribute using orderBy() with %s transport",
     async (transport) => {
-      const writeClient = transport === "http" ? walletClient : walletClientWS
-      const readClient = transport === "http" ? publicClient : publicClientWS
+      const writeClient = getWalletTestClient(transport)
+      const readClient = getPublicTestClient(transport)
 
       // Create three entities with different numeric values for 'score'
       const entities = [

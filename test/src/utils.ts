@@ -1,6 +1,16 @@
 import type { Hex } from "@arkiv-network/sdk"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
+const arkivTestChain = {
+  id: 1337,
+  name: "Localhost",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ether",
+    symbol: "ETH",
+  },
+} as const
+
 export async function launchLocalArkivNode(withFundingAccount: Hex | undefined = undefined) {
   const container = await new GenericContainer("golemnetwork/arkiv-op-geth:latest")
     .withExposedPorts(8545)
@@ -38,7 +48,6 @@ export async function launchLocalArkivNode(withFundingAccount: Hex | undefined =
 
   const httpPort = container.getMappedPort(8545)
   const wsPort = container.getMappedPort(8546)
-  const containerID = container.getId()
 
   if (withFundingAccount) {
     await execCommand(container, [
@@ -55,10 +64,24 @@ export async function launchLocalArkivNode(withFundingAccount: Hex | undefined =
 
   return { container, httpPort, wsPort }
 }
-export function getArkivLocalhostRpcUrls(httpPort: number, wsPort: number) {
+export function getArkivRpcUrls(httpUrl: string, webSocketUrl?: string) {
   return {
-    default: { http: [`http://127.0.0.1:${httpPort}`], webSocket: [`ws://127.0.0.1:${wsPort}`] },
+    default: {
+      http: [httpUrl],
+      ...(webSocketUrl ? { webSocket: [webSocketUrl] } : {}),
+    },
   }
+}
+
+export function getArkivTestNetwork(httpUrl: string, webSocketUrl?: string) {
+  return {
+    ...arkivTestChain,
+    rpcUrls: getArkivRpcUrls(httpUrl, webSocketUrl),
+  }
+}
+
+export function getArkivLocalhostRpcUrls(httpPort: number, wsPort: number) {
+  return getArkivRpcUrls(`http://127.0.0.1:${httpPort}`, `ws://127.0.0.1:${wsPort}`)
 }
 
 export async function execCommand(container: StartedTestContainer, command: string[]) {
