@@ -1,6 +1,13 @@
 import type { Hex } from "@arkiv-network/sdk"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
+type ArkivTestRpcUrlOptions = {
+  httpPort?: number
+  wsPort?: number
+  rpcUrl?: string
+  wsUrl?: string
+}
+
 export async function launchLocalArkivNode(withFundingAccount: Hex | undefined = undefined) {
   const container = await new GenericContainer("golemnetwork/arkiv-op-geth:latest")
     .withExposedPorts(8545)
@@ -55,10 +62,37 @@ export async function launchLocalArkivNode(withFundingAccount: Hex | undefined =
 
   return { container, httpPort, wsPort }
 }
-export function getArkivLocalhostRpcUrls(httpPort: number, wsPort: number) {
-  return {
-    default: { http: [`http://127.0.0.1:${httpPort}`], webSocket: [`ws://127.0.0.1:${wsPort}`] },
+
+export function getArkivTestRpcUrls(options: ArkivTestRpcUrlOptions = {}) {
+  const rpcUrl = options.rpcUrl ?? process.env.ARKIV_SDK_TEST_RPC_URL
+  const wsUrl = options.wsUrl ?? process.env.ARKIV_SDK_TEST_WS_URL
+
+  if (rpcUrl || wsUrl) {
+    if (!rpcUrl || !wsUrl) {
+      throw new Error(
+        "Both ARKIV_SDK_TEST_RPC_URL and ARKIV_SDK_TEST_WS_URL must be set to use an external test network",
+      )
+    }
+
+    return {
+      default: { http: [rpcUrl], webSocket: [wsUrl] },
+    }
   }
+
+  if (options.httpPort === undefined || options.wsPort === undefined) {
+    throw new Error("httpPort and wsPort are required when external test network URLs are not set")
+  }
+
+  return {
+    default: {
+      http: [`http://127.0.0.1:${options.httpPort}`],
+      webSocket: [`ws://127.0.0.1:${options.wsPort}`],
+    },
+  }
+}
+
+export function getArkivLocalhostRpcUrls(httpPort: number, wsPort: number) {
+  return getArkivTestRpcUrls({ httpPort, wsPort })
 }
 
 export async function execCommand(container: StartedTestContainer, command: string[]) {
