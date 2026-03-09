@@ -159,6 +159,7 @@ The continuous integration pipeline runs the following checks in sequence:
 - Integration tests with GolemDB using Docker containers
 - Validates full SDK functionality against a real GolemDB instance
 - Uses Testcontainers for isolated testing environments
+- By default `cd test && bun run test:component` starts a local Docker node, but you can point the suite at an existing RPC by setting `PRIVATE_KEY` together with `ARKIV_TEST_HTTP_RPC_URL` (required), `ARKIV_TEST_WS_RPC_URL` (optional), `ARKIV_TEST_CHAIN_ID` (optional), and `ARKIV_TEST_CHAIN_NAME` (optional)
 
 ### 5. Publish
 - Only runs after all tests pass
@@ -181,4 +182,3 @@ For detailed information about building and developing the SDK, see:
 - Ask questions in discussions (if available)
 
 Thank you for contributing to Arkiv!
-
