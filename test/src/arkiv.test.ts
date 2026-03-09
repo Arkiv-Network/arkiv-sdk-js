@@ -24,18 +24,34 @@ describe("Arkiv Integration Tests for public client", () => {
   const account = privateKeyToAccount(privateKey)
 
   let publicClient: PublicArkivClient
-  let publicClientWS!: PublicArkivClient
+  let publicClientWS: PublicArkivClient | undefined
   let walletClient: WalletArkivClient
-  let walletClientWS!: WalletArkivClient
+  let walletClientWS: WalletArkivClient | undefined
   let expectedChainId!: number
   let stopTestEnvironment = async () => {}
 
-  function getPublicClientForTransport(transport: TestTransport) {
-    return transport === "http" ? publicClient : publicClientWS
+  function getPublicClientForTransport(transport: TestTransport): PublicArkivClient {
+    if (transport === "http") {
+      return publicClient
+    }
+
+    if (!publicClientWS) {
+      throw new Error("WebSocket public client is not configured for this test environment")
+    }
+
+    return publicClientWS
   }
 
-  function getWalletClientForTransport(transport: TestTransport) {
-    return transport === "http" ? walletClient : walletClientWS
+  function getWalletClientForTransport(transport: TestTransport): WalletArkivClient {
+    if (transport === "http") {
+      return walletClient
+    }
+
+    if (!walletClientWS) {
+      throw new Error("WebSocket wallet client is not configured for this test environment")
+    }
+
+    return walletClientWS
   }
 
   async function createTestEntity(
