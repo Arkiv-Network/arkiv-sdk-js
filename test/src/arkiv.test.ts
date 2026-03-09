@@ -130,7 +130,6 @@ describe("Arkiv Integration Tests for public client", () => {
   test.each(transports)("should get entity count using %s", async (transport) => {
     const client = getPublicTestClient(transport)
     const entityCount = await client.getEntityCount()
-    console.log("entityCount", entityCount)
     expect(entityCount).toBeDefined()
     if (rpcUrl) {
       expect(entityCount).toBeGreaterThanOrEqual(0)
@@ -142,7 +141,6 @@ describe("Arkiv Integration Tests for public client", () => {
   test.each(transports)("should get block timing using %s", async (transport) => {
     const client = getPublicTestClient(transport)
     const blockTiming = await client.getBlockTiming()
-    console.log("blockTiming", blockTiming)
     expect(blockTiming).toBeDefined()
     expect(blockTiming.currentBlock).toBeDefined()
     expect(blockTiming.currentBlock).toBeGreaterThan(0n)
