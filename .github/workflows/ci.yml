@@ -113,7 +113,7 @@ jobs:
       - name: Install test dependencies
         run: cd test && bun install --frozen-lockfile --no-verify
 
-      - name: Pull GolemDB Docker image
+      - name: Pull Arkiv Docker image
         run: docker pull golemnetwork/arkiv-op-geth:latest
 
       # Using a test private key (randomly generated for testing purposes only)
