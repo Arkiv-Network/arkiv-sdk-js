@@ -49,6 +49,7 @@ export async function processQuery(
     limit: number | undefined
     cursor: string | undefined
     ownedBy: Hex | undefined
+    createdBy: Hex | undefined
     orderBy: RpcOrderByAttribute[] | undefined
     validAtBlock?: bigint | undefined
     withAttributes?: boolean | undefined
@@ -61,6 +62,7 @@ export async function processQuery(
     limit,
     cursor,
     ownedBy,
+    createdBy,
     orderBy,
     validAtBlock,
     withAttributes,
@@ -73,6 +75,7 @@ export async function processQuery(
     cursor,
     limit,
     ownedBy,
+    createdBy,
     orderBy,
     validAtBlock,
     withAttributes,
@@ -83,6 +86,9 @@ export async function processQuery(
   let query = processPredicates(predicates)
   if (ownedBy) {
     query += ` && $owner=${ownedBy}`
+  }
+  if (createdBy) {
+    query += ` && $creator=${createdBy}`
   }
 
   // remove leading and trailing spaces and leading &&
@@ -99,6 +105,7 @@ export async function processQuery(
       contentType: withMetadata ?? false,
       expiration: withMetadata ?? false,
       owner: withMetadata ?? false,
+      creator: withMetadata ?? false,
       createdAtBlock: withMetadata ?? false,
       lastModifiedAtBlock: withMetadata ?? false,
       transactionIndexInBlock: withMetadata ?? false,

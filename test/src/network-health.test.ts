@@ -103,6 +103,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(created.key).toBe(entityKey);
       expect(created.payload).toEqual(payload);
       expect(created.attributes).toContainEqual({ key: "tag", value: tag });
+      expect(created.creator).toBeDefined();
       console.log(`  READ    entity found after create`);
 
       // QUERY
@@ -258,18 +259,30 @@ describe(`Network health check (${chain.name})`, () => {
     "changeOwnership transfers entity to new owner",
     async () => {
       const newOwner = "0x1234567890abcdef1234567890abcdef12345678" as Hex;
+      const tag = `ownership-${Date.now()}`;
 
       const { entityKey } = await walletClient.createEntity({
         payload: jsonToPayload({ ownershipTest: true }),
         contentType: "application/json",
-        attributes: [{ key: "purpose", value: "ownership_test" }],
+        attributes: [{ key: "purpose", value: "ownership_test" }, { key: "tag", value: tag }],
         expiresIn: ExpirationTime.fromHours(1),
       });
 
       // confirm initial owner
       const before = await publicClient.getEntity(entityKey);
       expect(before.owner?.toLowerCase()).toBe(account.address.toLowerCase());
-      console.log(`  OWNER   before=${before.owner}`);
+      expect(before.creator?.toLowerCase()).toBe(account.address.toLowerCase());
+      console.log(`  OWNER   before=${before.owner}  creator=${before.creator}`);
+
+      // createdBy query should find the entity before transfer
+      const createdByBefore = await publicClient
+        .buildQuery()
+        .where(eq("tag", tag))
+        .createdBy(account.address)
+        .fetch();
+      expect(createdByBefore.entities.length).toBe(1);
+      expect(createdByBefore.entities[0].key).toBe(entityKey);
+      console.log(`  QUERY   createdBy matches before transfer`);
 
       const { txHash } = await walletClient.changeOwnership({
         entityKey,
@@ -279,7 +292,38 @@ describe(`Network health check (${chain.name})`, () => {
 
       const after = await publicClient.getEntity(entityKey);
       expect(after.owner?.toLowerCase()).toBe(newOwner.toLowerCase());
-      console.log(`  OWNER   after=${after.owner}`);
+      // creator should remain the original account even after ownership transfer
+      expect(after.creator?.toLowerCase()).toBe(account.address.toLowerCase());
+      console.log(`  OWNER   after=${after.owner}  creator=${after.creator}`);
+
+      // after ownership transfer, createdBy should still return the entity
+      const createdByAfter = await publicClient
+        .buildQuery()
+        .where(eq("tag", tag))
+        .createdBy(account.address)
+        .fetch();
+      expect(createdByAfter.entities.length).toBe(1);
+      expect(createdByAfter.entities[0].key).toBe(entityKey);
+      console.log(`  QUERY   createdBy still matches after ownership transfer`);
+
+      // ownedBy with the original owner should no longer return the entity
+      const ownedByOriginal = await publicClient
+        .buildQuery()
+        .where(eq("tag", tag))
+        .ownedBy(account.address)
+        .fetch();
+      expect(ownedByOriginal.entities.length).toBe(0);
+      console.log(`  QUERY   ownedBy original owner correctly returns 0 after transfer`);
+
+      // ownedBy with the new owner should return the entity
+      const ownedByNew = await publicClient
+        .buildQuery()
+        .where(eq("tag", tag))
+        .ownedBy(newOwner)
+        .fetch();
+      expect(ownedByNew.entities.length).toBe(1);
+      expect(ownedByNew.entities[0].key).toBe(entityKey);
+      console.log(`  QUERY   ownedBy new owner returns entity after transfer`);
     },
     { timeout: 60_000 },
   );
@@ -542,6 +586,7 @@ describe(`Network health check (${chain.name})`, () => {
         .fetch();
       const e2 = metadataOnly.entities[0];
       expect(e2.owner).toBeDefined();
+      expect(e2.creator).toBeDefined();
       expect(e2.expiresAtBlock).toBeDefined();
       expect(e2.createdAtBlock).toBeDefined();
       expect(e2.lastModifiedAtBlock).toBeDefined();
@@ -574,6 +619,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(e4.payload?.length).toBeGreaterThan(0);
       expect(e4.attributes.length).toBeGreaterThanOrEqual(1);
       expect(e4.owner).toBeDefined();
+      expect(e4.creator).toBeDefined();
       expect(e4.expiresAtBlock).toBeDefined();
       console.log(`  PROJ    all projections`);
     },

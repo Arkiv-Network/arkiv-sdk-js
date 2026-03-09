@@ -6,6 +6,7 @@ export class Entity {
   key: Hex
   contentType: MimeType | undefined
   owner: Hex | undefined
+  creator: Hex | undefined
   expiresAtBlock: bigint | undefined
   createdAtBlock: bigint | undefined
   lastModifiedAtBlock: bigint | undefined
@@ -18,6 +19,7 @@ export class Entity {
     key: Hex,
     contentType: MimeType | undefined = undefined,
     owner: Hex | undefined = undefined,
+    creator: Hex | undefined = undefined,
     expiresAtBlock: bigint | undefined = undefined,
     createdAtBlock: bigint | undefined = undefined,
     lastModifiedAtBlock: bigint | undefined = undefined,
@@ -28,6 +30,7 @@ export class Entity {
   ) {
     this.key = key
     this.owner = owner
+    this.creator = creator
     this.expiresAtBlock = expiresAtBlock
     this.createdAtBlock = createdAtBlock
     this.lastModifiedAtBlock = lastModifiedAtBlock

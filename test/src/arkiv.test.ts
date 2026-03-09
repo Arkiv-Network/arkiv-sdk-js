@@ -139,6 +139,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(entity.operationIndexInTransaction).toBeDefined()
       expect(entity.contentType).toBeDefined()
       expect(entity.owner).toBeDefined()
+      expect(entity.creator).toBeDefined()
       expect(entity.key).toBeDefined()
       expect(entity.key).toBe(testKey)
     },
@@ -202,6 +203,8 @@ describe("Arkiv Integration Tests for public client", () => {
     expect(rawQuery.entities[0].attributes).toBeArray()
     // metadata are not included by default
     expect(rawQuery.entities[0].contentType).toBeUndefined()
+    expect(rawQuery.entities[0].owner).toBeUndefined()
+    expect(rawQuery.entities[0].creator).toBeUndefined()
     expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
     expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
     expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
@@ -234,6 +237,51 @@ describe("Arkiv Integration Tests for public client", () => {
     expect(rawQueryAtBlock.blockNumber).toBeDefined()
     expect(rawQueryAtBlock.blockNumber).toEqual(0n) // TODO: bring back to 1n once this feature is backed by the DBChain, otherwise if we resign from bi-temporal support we should remove this part of test
   })
+
+  test.each(["http", "webSocket"] as const)(
+    "should handle query with createdBy filter using %s",
+    async (transport) => {
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+      const creatorAddress = privateKeyToAccount(privateKey).address
+
+      await writeClient.createEntity({
+        payload: jsonToPayload({ entity: { entityType: "test", entityId: "createdByTest" } }),
+        contentType: "application/json",
+        attributes: [{ key: "createdByTestKey", value: "createdByTestValue" }],
+        expiresIn: 1000,
+      })
+
+      // query using the createdBy filter (maps to $creator)
+      const queryResult = await readClient
+        .buildQuery()
+        .where(eq("createdByTestKey", "createdByTestValue"))
+        .createdBy(creatorAddress)
+        .fetch()
+      expect(queryResult).toBeDefined()
+      expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
+
+      // query combining both ownedBy and createdBy
+      const combinedResult = await readClient
+        .buildQuery()
+        .where(eq("createdByTestKey", "createdByTestValue"))
+        .ownedBy(creatorAddress)
+        .createdBy(creatorAddress)
+        .fetch()
+      expect(combinedResult).toBeDefined()
+      expect(combinedResult.entities.length).toBeGreaterThanOrEqual(1)
+
+      // query with a non-matching creator should return no results
+      const noResults = await readClient
+        .buildQuery()
+        .where(eq("createdByTestKey", "createdByTestValue"))
+        .createdBy("0x0000000000000000000000000000000000000000")
+        .fetch()
+      expect(noResults).toBeDefined()
+      expect(noResults.entities.length).toEqual(0)
+    },
+    { timeout: 20000 },
+  )
 
   test.each(["http", "webSocket"] as const)(
     "should handle query using %s fetching only requested data",
@@ -289,6 +337,8 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(rawQuery.entities[0].payload).toBeDefined()
       expect(rawQuery.entities[0].attributes).toBeArray()
       expect(rawQuery.entities[0].contentType).toBeUndefined()
+      expect(rawQuery.entities[0].owner).toBeUndefined()
+      expect(rawQuery.entities[0].creator).toBeUndefined()
       expect(rawQuery.entities[0].expiresAtBlock).toBeUndefined()
       expect(rawQuery.entities[0].createdAtBlock).toBeUndefined()
       expect(rawQuery.entities[0].lastModifiedAtBlock).toBeUndefined()
@@ -368,6 +418,16 @@ describe("Arkiv Integration Tests for public client", () => {
       console.log("result from extendEntity", { extendedEntityKey, extendedTxHash })
       expect(extendedEntityKey).toBeDefined()
       expect(extendedTxHash).toBeDefined()
+
+      // extend entity with odd number of seconds
+      const { entityKey: extendedEntityKey2, txHash: extendedTxHash2 } =
+        await writeClient.extendEntity({
+          entityKey: updatedEntityKey,
+          expiresIn: 999,
+        })
+      console.log("result from extendEntity", { extendedEntityKey2, extendedTxHash2 })
+      expect(extendedEntityKey2).toBeDefined()
+      expect(extendedTxHash2).toBeDefined()
 
       // delete entity
       const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await writeClient.deleteEntity(
@@ -572,6 +632,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult).toBeDefined()
       expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
       expect(queryResult.entities[0].owner).toBeUndefined()
+      expect(queryResult.entities[0].creator).toBeUndefined()
       expect(queryResult.entities[0].payload).toBeUndefined()
       expect(queryResult.entities[0].attributes).toHaveLength(0)
       expect(queryResult.entities[0].expiresAtBlock).toBeUndefined()
@@ -605,6 +666,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
       console.log("queryResult.entities[0]", queryResult.entities[0])
       expect(queryResult.entities[0].owner).toBeDefined()
+      expect(queryResult.entities[0].creator).toBeDefined()
       expect(queryResult.entities[0].expiresAtBlock).toBeDefined()
       expect(queryResult.entities[0].createdAtBlock).toBeDefined()
       expect(queryResult.entities[0].lastModifiedAtBlock).toBeDefined()
@@ -659,6 +721,8 @@ describe("Arkiv Integration Tests for public client", () => {
       console.log("entity from getEntity", entity)
       expect(entity).toBeDefined()
       expect(entity.owner).toEqual(newOwner)
+      // creator should remain the original account even after ownership change
+      expect(entity.creator).toEqual(privateKeyToAccount(privateKey).address.toLowerCase() as Hex)
     },
     { timeout: 20000 },
   )
