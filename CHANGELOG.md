@@ -1,7 +1,7 @@
-## [0.6.3] - 2022-03-09
+## [0.6.3] - 2026-03-09
 
 ### Added
-- Creator field im query requests and results
+- Creator field in query requests and results
 
 ### Fixed
 - When using TTL as odd number, mutating entities fails https://github.com/Arkiv-Network/arkiv-sdk-js/issues/28

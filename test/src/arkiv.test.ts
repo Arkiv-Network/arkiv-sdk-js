@@ -449,8 +449,8 @@ describe("Arkiv Integration Tests for public client", () => {
           expiresIn: 999,
         })
       console.log("result from extendEntity", { extendedEntityKey2, extendedTxHash2 })
-      expect(extendedEntityKey).toBeDefined()
-      expect(extendedTxHash).toBeDefined()
+      expect(extendedEntityKey2).toBeDefined()
+      expect(extendedTxHash2).toBeDefined()
 
       // delete entity
       const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await writeClient.deleteEntity(
