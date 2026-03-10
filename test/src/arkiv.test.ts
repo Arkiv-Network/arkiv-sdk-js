@@ -27,8 +27,7 @@ describe("Arkiv Integration Tests for public client", () => {
   const privateKey = process.env.PRIVATE_KEY as Hex
 
   beforeAll(async () => {
-    let rpcUrls
-    let rpcName
+    let rpcName: string
 
     let httpUrls: [string]
     let wsUrls: [string]
@@ -97,7 +96,13 @@ describe("Arkiv Integration Tests for public client", () => {
       }
 
       const result = await execCommand(arkivNode, command)
-      return result.match(/Entity created key (.*)/)?.[1] as Hex
+      const match = result.match(/Entity created key (.*)/)
+      if (!match || !match[1]) {
+        throw new Error(
+          `Failed to parse entity key from CLI output. Expected format "Entity created key <hex>". Actual output:\n${result}`,
+        )
+      }
+      return match[1] as Hex
     }
 
     const client = transport === "http" ? walletClient : walletClientWS
