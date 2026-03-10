@@ -12,29 +12,53 @@ import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
 import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
-import { execCommand, getArkivLocalhostRpcUrls, launchLocalArkivNode } from "./utils.js"
+import { execCommand, launchLocalArkivNode } from "./utils.js"
+
+
+const basicCRUDTestTimeout: number = parseInt(process.env.ARKIV_SDK_TEST_CRUD_TIMEOUT || "20000")
 
 describe("Arkiv Integration Tests for public client", () => {
-  let arkivNode: StartedTestContainer
+  let arkivNode: StartedTestContainer | undefined
   let publicClient: PublicArkivClient
   let publicClientWS: PublicArkivClient
   let walletClient: WalletArkivClient
   let walletClientWS: WalletArkivClient
+  let chainId: number
   const privateKey = process.env.PRIVATE_KEY as Hex
 
   beforeAll(async () => {
-    // Start GolemDB container
-    const { container, httpPort, wsPort } = await launchLocalArkivNode(privateKey)
-    arkivNode = container
+    let rpcName: string
+
+    let httpUrls: [string]
+    let wsUrls: [string]
+    if (process.env.ARKIV_SDK_TEST_RPC_URL || process.env.ARKIV_SDK_TEST_WS_URL) {
+      httpUrls = [process.env.ARKIV_SDK_TEST_RPC_URL || "undefined"]
+      wsUrls = [process.env.ARKIV_SDK_TEST_WS_URL || "undefined"]
+      rpcName = "External Arkiv Node"
+      chainId = parseInt(process.env.ARKIV_SDK_TEST_CHAIN_ID || "1337")
+    } else {
+      const { container, httpPort, wsPort } = await launchLocalArkivNode(privateKey)
+      rpcName = "Containerized Arkiv Node"
+      arkivNode = container
+      httpUrls = [`http://127.0.0.1:${httpPort}`]
+      wsUrls = [`ws://127.0.0.1:${wsPort}`]
+      chainId = 1337
+    }
+
     const localTestNetwork = {
-      id: 1337,
-      name: "Localhost",
+      id: chainId,
+      name: rpcName,
       nativeCurrency: {
         decimals: 18,
         name: "Ether",
         symbol: "ETH",
       },
-      rpcUrls: getArkivLocalhostRpcUrls(httpPort, wsPort),
+      rpcUrls: {
+        default: {
+          http: httpUrls,
+          webSocket: wsUrls,
+        },
+      },
     }
 
     // Create the public client
@@ -58,6 +82,40 @@ describe("Arkiv Integration Tests for public client", () => {
     })
   }, 60000)
 
+  async function createEntityForTest(
+    transport: "http" | "webSocket",
+    options: { payload?: string; attribute?: { key: string; value: string } } = {},
+  ) {
+    const payload = options.payload ?? "Hello world"
+
+    if (arkivNode) {
+      const command = ["golembase", "entity", "create", "--data", payload]
+
+      if (options.attribute) {
+        command.push("--string", `${options.attribute.key}:${options.attribute.value}`, "--btl", "1000")
+      }
+
+      const result = await execCommand(arkivNode, command)
+      const match = result.match(/Entity created key (.*)/)
+      if (!match || !match[1]) {
+        throw new Error(
+          `Failed to parse entity key from CLI output. Expected format "Entity created key <hex>". Actual output:\n${result}`,
+        )
+      }
+      return match[1] as Hex
+    }
+
+    const client = transport === "http" ? walletClient : walletClientWS
+    const { entityKey } = await client.createEntity({
+      payload: toBytes(payload),
+      contentType: "text/plain",
+      attributes: options.attribute ? [options.attribute] : [],
+      expiresIn: 1000,
+    })
+
+    return entityKey
+  }
+
   afterAll(async () => {
     if (arkivNode) {
       await arkivNode.stop()
@@ -66,9 +124,9 @@ describe("Arkiv Integration Tests for public client", () => {
 
   test.each(["http", "webSocket"] as const)("should get chain ID using %s", async (transport) => {
     const client = transport === "http" ? publicClient : publicClientWS
-    const chainId = await client.getChainId()
-    expect(chainId).toBeDefined()
-    expect(chainId).toBe(1337)
+    const cId = await client.getChainId()
+    expect(cId).toBeDefined()
+    expect(cId).toBe(chainId)
   })
 
   test.each(["http", "webSocket"] as const)(
@@ -113,16 +171,7 @@ describe("Arkiv Integration Tests for public client", () => {
     "should call getEntity with existing key using %s",
     async (transport) => {
       const client = transport === "http" ? publicClient : publicClientWS
-      // First, let's try to store some data if the container supports it
-      const result = await execCommand(arkivNode, [
-        "golembase",
-        "entity",
-        "create",
-        "--data",
-        "Hello world",
-      ])
-      // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
-      const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
+      const testKey = await createEntityForTest(transport)
       expect(testKey).toBeDefined()
 
       const entity = await client.getEntity(testKey)
@@ -164,20 +213,9 @@ describe("Arkiv Integration Tests for public client", () => {
 
   test.each(["http", "webSocket"] as const)("should handle query using %s", async (transport) => {
     const client = transport === "http" ? publicClient : publicClientWS
-    // First, let's try to store some data if the container supports it
-    const result = await execCommand(arkivNode, [
-      "golembase",
-      "entity",
-      "create",
-      "--data",
-      "Hello world",
-      "--string",
-      "key:value",
-      "--btl",
-      "1000",
-    ])
-    // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
-    const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
+    const testKey = await createEntityForTest(transport, {
+      attribute: { key: "key", value: "value" },
+    })
     expect(testKey).toBeDefined()
 
     // build query
@@ -287,20 +325,9 @@ describe("Arkiv Integration Tests for public client", () => {
     "should handle query using %s fetching only requested data",
     async (transport) => {
       const client = transport === "http" ? publicClient : publicClientWS
-      // First, let's try to store some data if the container supports it
-      const result = await execCommand(arkivNode, [
-        "golembase",
-        "entity",
-        "create",
-        "--data",
-        "Hello world",
-        "--string",
-        "key:value",
-        "--btl",
-        "1000",
-      ])
-      // extract the key from result - Entity created key 0xb86bbe79ac65ce938f622ce1a01740a2067cda60bba74e40b9358ae29b4b4668
-      const testKey = result.match(/Entity created key (.*)/)?.[1] as Hex
+      const testKey = await createEntityForTest(transport, {
+        attribute: { key: "key", value: "value" },
+      })
       expect(testKey).toBeDefined()
 
       // build query
@@ -440,7 +467,7 @@ describe("Arkiv Integration Tests for public client", () => {
       // unsubscribe from entity events
       unsubscribe()
     },
-    { timeout: 20000 },
+    { timeout: basicCRUDTestTimeout },
   )
 
   test.each(["http", "webSocket"] as const)(
