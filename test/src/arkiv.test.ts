@@ -57,8 +57,8 @@ describe("Arkiv Integration Tests for public client", () => {
         default: {
           http: httpUrls,
           webSocket: wsUrls,
-        }
-      }
+        },
+      },
     }
 
     // Create the public client
