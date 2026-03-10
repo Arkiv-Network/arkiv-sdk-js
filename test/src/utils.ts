@@ -1,7 +1,6 @@
 import type { Hex } from "@arkiv-network/sdk"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
-
 export async function launchLocalArkivNode(withFundingAccount: Hex | undefined = undefined) {
   const container = await new GenericContainer("golemnetwork/arkiv-op-geth:latest")
     .withExposedPorts(8545)
