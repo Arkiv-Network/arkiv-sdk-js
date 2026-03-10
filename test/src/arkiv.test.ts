@@ -12,7 +12,7 @@ import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
 import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
-import { execCommand, getArkivTestRpcUrls, launchLocalArkivNode } from "./utils.js"
+import { execCommand, launchLocalArkivNode } from "./utils.js"
 
 
 const basicCRUDTestTimeout: number = parseInt(process.env.ARKIV_SDK_TEST_CRUD_TIMEOUT || "20000")
@@ -30,15 +30,19 @@ describe("Arkiv Integration Tests for public client", () => {
     let rpcUrls
     let rpcName
 
+    let httpUrls: [string]
+    let wsUrls: [string]
     if (process.env.ARKIV_SDK_TEST_RPC_URL || process.env.ARKIV_SDK_TEST_WS_URL) {
-      rpcUrls = getArkivTestRpcUrls()
+      httpUrls = [process.env.ARKIV_SDK_TEST_RPC_URL || "undefined"]
+      wsUrls = [process.env.ARKIV_SDK_TEST_WS_URL || "undefined"]
       rpcName = "External Arkiv Node"
       chainId = parseInt(process.env.ARKIV_SDK_TEST_CHAIN_ID || "1337")
     } else {
       const { container, httpPort, wsPort } = await launchLocalArkivNode(privateKey)
       rpcName = "Containerized Arkiv Node"
       arkivNode = container
-      rpcUrls = getArkivTestRpcUrls({ httpPort, wsPort })
+      httpUrls = [`http://127.0.0.1:${httpPort}`]
+      wsUrls = [`ws://127.0.0.1:${wsPort}`]
       chainId = 1337
     }
 
@@ -50,7 +54,12 @@ describe("Arkiv Integration Tests for public client", () => {
         name: "Ether",
         symbol: "ETH",
       },
-      rpcUrls,
+      rpcUrls: {
+        default: {
+          http: httpUrls,
+          webSocket: wsUrls,
+        }
+      }
     }
 
     // Create the public client
