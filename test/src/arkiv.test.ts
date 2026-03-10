@@ -20,6 +20,7 @@ describe("Arkiv Integration Tests for public client", () => {
   let publicClientWS: PublicArkivClient
   let walletClient: WalletArkivClient
   let walletClientWS: WalletArkivClient
+  let chainId: number
   const privateKey = process.env.PRIVATE_KEY as Hex
 
   beforeAll(async () => {
@@ -27,14 +28,16 @@ describe("Arkiv Integration Tests for public client", () => {
 
     if (process.env.ARKIV_SDK_TEST_RPC_URL || process.env.ARKIV_SDK_TEST_WS_URL) {
       rpcUrls = getArkivTestRpcUrls()
+      chainId = parseInt(process.env.ARKIV_SDK_TEST_CHAIN_ID || "1337")
     } else {
       const { container, httpPort, wsPort } = await launchLocalArkivNode(privateKey)
       arkivNode = container
       rpcUrls = getArkivTestRpcUrls({ httpPort, wsPort })
+      chainId = 1337
     }
 
     const localTestNetwork = {
-      id: 1337,
+      id: chainId,
       name: "Localhost",
       nativeCurrency: {
         decimals: 18,
@@ -101,9 +104,9 @@ describe("Arkiv Integration Tests for public client", () => {
 
   test.each(["http", "webSocket"] as const)("should get chain ID using %s", async (transport) => {
     const client = transport === "http" ? publicClient : publicClientWS
-    const chainId = await client.getChainId()
-    expect(chainId).toBeDefined()
-    expect(chainId).toBe(1337)
+    const cId = await client.getChainId()
+    expect(cId).toBeDefined()
+    expect(cId).toBe(chainId)
   })
 
   test.each(["http", "webSocket"] as const)(
