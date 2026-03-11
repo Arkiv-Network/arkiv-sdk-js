@@ -861,7 +861,7 @@ describe("Arkiv Integration Tests for public client", () => {
   )
 
   test.each(["http", "webSocket"] as const)(
-    "should order entities by attribute and support manual cursor pagination using %s transport",
+    "should accept orderBy clauses and support manual cursor pagination using %s transport",
     async (transport) => {
       const writeClient = transport === "http" ? walletClient : walletClientWS
       const readClient = transport === "http" ? publicClient : publicClientWS
@@ -883,6 +883,7 @@ describe("Arkiv Integration Tests for public client", () => {
               { key: "score", value: ent.score },
               { key: "entityId", value: ent.entityId },
               { key: "group", value: group },
+              { key: "transport", value: transport },
             ],
             expiresIn: ExpirationTime.fromBlocks(1000),
           })),
@@ -891,12 +892,15 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // Helper to read all entities for the current test group.
       const getEntities = async (orderDesc: boolean) => {
-        const query = readClient.buildQuery().where(eq("group", group)).withAttributes(true)
+        const query = readClient
+          .buildQuery()
+          .where([eq("group", group), eq("transport", transport)])
+          .withAttributes(true)
 
         if (orderDesc) {
-          query.orderBy(desc("score", "number")).orderBy("entityId", "string", "desc")
+          query.orderBy(desc("score", "number")).orderBy(desc("entityId", "string"))
         } else {
-          query.orderBy("score", "number", "asc").orderBy(asc("entityId", "string"))
+          query.orderBy(asc("score", "number")).orderBy(asc("entityId", "string"))
         }
 
         const result = await query.fetch()
@@ -906,8 +910,11 @@ describe("Arkiv Integration Tests for public client", () => {
           .filter((value): value is string => typeof value === "string")
       }
 
-      // The live node currently does not guarantee the returned order, but it should accept
-      // multi-attribute orderBy definitions and return the expected entity set.
+      // The live node currently does not guarantee stable server-side ordering for these
+      // queries, but this still exercises multi-attribute orderBy chaining end-to-end and
+      // verifies that the query endpoint accepts the generated orderBy array without
+      // breaking the result set. Exact orderBy serialization is covered by the unit tests
+      // in src/query/queryBuilder.test.ts.
       const ascScores = await getEntities(false)
       expect(ascScores.sort()).toEqual(["A", "B", "C"])
 
@@ -916,7 +923,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const firstPage = await readClient
         .buildQuery()
-        .where(eq("group", group))
+        .where([eq("group", group), eq("transport", transport)])
         .orderBy(asc("entityId", "string"))
         .withAttributes(true)
         .limit(2)
@@ -929,7 +936,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const secondPage = await readClient
         .buildQuery()
-        .where(eq("group", group))
+        .where([eq("group", group), eq("transport", transport)])
         .orderBy(asc("entityId", "string"))
         .withAttributes(true)
         .limit(2)
