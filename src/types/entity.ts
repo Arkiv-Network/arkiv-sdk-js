@@ -58,6 +58,7 @@ export class Entity {
     } catch (e) {
       throw new Error(
         `Failed to convert entity payload to text: ${e instanceof Error ? e.message : String(e)}`,
+        { cause: e },
       )
     }
   }
@@ -77,6 +78,7 @@ export class Entity {
     } catch (e) {
       throw new Error(
         `Failed to parse entity payload as JSON: ${e instanceof Error ? e.message : String(e)}`,
+        { cause: e },
       )
     }
   }
