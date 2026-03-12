@@ -65,6 +65,7 @@ export class Entity {
 
   /**
    * Parses the entity payload as JSON and returns the resulting object.
+   * Throws an error if the payload is undefined, which may occur if the entity was not queried with the withPayload option.
    * Throws an error if the payload is empty or cannot be parsed as JSON.
    * @returns The parsed JSON object from the entity payload.
    */
