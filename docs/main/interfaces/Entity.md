@@ -94,7 +94,7 @@ Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **toJson**(): `any`
 
-Defined in: [src/types/entity.ts:70](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/develop/src/types/entity.ts#L70)
+Defined in: [src/types/entity.ts:71](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/develop/src/types/entity.ts#L71)
 
 #### Returns
 
