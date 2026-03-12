@@ -51,14 +51,14 @@ export class Entity {
   }
 
   toJson(): any {
-    if (this.payload === undefined) {
-      throw new Error(
-        "Entity has no payload - probably not added withPayload when querying for the entity",
-      )
-    }
-    if (this.payload.length === 0) {
+    const text = this.toText()
+    if (!text) {
       throw new Error("Entity has empty payload, cannot parse as JSON")
     }
-    return JSON.parse(bytesToString(this.payload))
+    try {
+      return JSON.parse(text)
+    } catch (e) {
+      throw new Error("Failed to parse entity payload as JSON: " + (e instanceof Error ? e.message : String(e)))
+    }
   }
 }
