@@ -42,10 +42,19 @@ export class Entity {
   }
 
   toText(): string {
-    return this.payload ? bytesToString(this.payload) : ""
+    if (this.payload === undefined) {
+      throw new Error("Entity has no payload - probably not add payload in includeData when querying for the entity")
+    }
+    return bytesToString(this.payload)
   }
 
   toJson(): any {
-    return this.payload ? JSON.parse(bytesToString(this.payload)) : {}
+    if (this.payload === undefined) {
+      throw new Error("Entity has no payload - probably not add payload in includeData when querying for the entity")
+    }
+    if (this.payload.length === 0) {
+      throw new Error("Entity has empty payload, cannot parse as JSON")
+    }
+    return JSON.parse(bytesToString(this.payload))
   }
 }
