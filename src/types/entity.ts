@@ -44,7 +44,7 @@ export class Entity {
   toText(): string {
     if (this.payload === undefined) {
       throw new Error(
-        "Entity has no payload - probably not add payload in includeData when querying for the entity",
+        "Entity has no payload - probably not added withPayload when querying for the entity",
       )
     }
     return bytesToString(this.payload)
@@ -53,7 +53,7 @@ export class Entity {
   toJson(): any {
     if (this.payload === undefined) {
       throw new Error(
-        "Entity has no payload - probably not add payload in includeData when querying for the entity",
+        "Entity has no payload - probably not added withPayload when querying for the entity",
       )
     }
     if (this.payload.length === 0) {
