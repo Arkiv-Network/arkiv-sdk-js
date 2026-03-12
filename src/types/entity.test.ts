@@ -114,6 +114,31 @@ describe("Entity.toJson()", () => {
     expect(() => entity.toJson()).toThrow("Failed to parse entity payload as JSON")
   })
 
+  test("preserves original error as cause when JSON parsing fails", () => {
+    const payload = new TextEncoder().encode("not valid json {")
+    const entity = new Entity(
+      KEY,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      payload,
+      [],
+    )
+    let caught: unknown
+    try {
+      entity.toJson()
+    } catch (e) {
+      caught = e
+    }
+    expect(caught).toBeInstanceOf(Error)
+    expect((caught as Error).cause).toBeInstanceOf(Error)
+  })
+
   test("returns parsed object for valid JSON payload", () => {
     const data = { foo: "bar", count: 42 }
     const payload = new TextEncoder().encode(JSON.stringify(data))
