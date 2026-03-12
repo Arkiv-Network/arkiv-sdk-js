@@ -50,14 +50,14 @@ export class Entity {
   toText(): string {
     if (this.payload === undefined) {
       throw new Error(
-        "Entity has no payload - probably not added withPayload when querying for the entity",
+        "Entity has no payload – it was probably queried without withPayload(true) via QueryBuilder",
       )
     }
     try {
       return bytesToString(this.payload)
     } catch (e) {
       throw new Error(
-        "Failed to convert entity payload to text: " + (e instanceof Error ? e.message : String(e)),
+        `Failed to convert entity payload to text: ${e instanceof Error ? e.message : String(e)}`,
       )
     }
   }
@@ -76,7 +76,7 @@ export class Entity {
       return JSON.parse(text)
     } catch (e) {
       throw new Error(
-        "Failed to parse entity payload as JSON: " + (e instanceof Error ? e.message : String(e)),
+        `Failed to parse entity payload as JSON: ${e instanceof Error ? e.message : String(e)}`,
       )
     }
   }
