@@ -41,15 +41,30 @@ export class Entity {
     this.contentType = contentType
   }
 
+  /**
+   * Converts the entity payload from bytes to a string and returns it.
+   * Throws an error if the payload is undefined, which may occur if the entity was not queried with the withPayload option.
+   * Throws an error if the conversion from bytes to string fails.
+   * @return The entity payload as a string.
+   */
   toText(): string {
     if (this.payload === undefined) {
       throw new Error(
         "Entity has no payload - probably not added withPayload when querying for the entity",
       )
     }
-    return bytesToString(this.payload)
+    try {
+      return bytesToString(this.payload)
+    } catch (e) {
+      throw new Error("Failed to convert entity payload to text: " + (e instanceof Error ? e.message : String(e)))
+    }
   }
 
+  /**
+   * Parses the entity payload as JSON and returns the resulting object.
+   * Throws an error if the payload is empty or cannot be parsed as JSON.
+   * @return The parsed JSON object from the entity payload.
+   */
   toJson(): any {
     const text = this.toText()
     if (!text) {
