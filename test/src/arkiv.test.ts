@@ -273,7 +273,7 @@ describe("Arkiv Integration Tests for public client", () => {
     expect(rawQueryAtBlock.entities.length).toBeGreaterThanOrEqual(0)
     expect(rawQueryAtBlock.cursor).toBeUndefined()
     expect(rawQueryAtBlock.blockNumber).toBeDefined()
-    expect(rawQueryAtBlock.blockNumber).toEqual(0n) // TODO: bring back to 1n once this feature is backed by the DBChain, otherwise if we resign from bi-temporal support we should remove this part of test
+    expect(rawQueryAtBlock.blockNumber).toEqual(1n)
   })
 
   test.each(["http", "webSocket"] as const)(
