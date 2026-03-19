@@ -7,6 +7,7 @@ import type {
 import {
   createPublicClient,
   createWalletClient,
+  defineChain,
   http,
   isHex,
   NoEntityFoundError,
@@ -25,7 +26,32 @@ if (!isHex(PRIVATE_KEY)) {
   throw new Error("Malformed PRIVATE_KEY: must be a hex string");
 }
 
-const chains = { kaolin, mendoza, rosario } as const;
+const pebbly = defineChain({
+  id: 60138453096,
+  name: "Pebbly",
+  network: "pebbly",
+  nativeCurrency: {
+    name: "Ethereum",
+    symbol: "ETH",
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://pebbly.hoodi.arkiv.network/rpc"],
+      webSocket: ["wss://pebbly.hoodi.arkiv.network/rpc/ws"],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Pebbly Arkiv Explorer",
+      url: "https://explorer.pebbly.hoodi.arkiv.network",
+      apiUrl: "https://explorer.pebbly.hoodi.arkiv.network/api",
+    },
+  },
+  testnet: true,
+});
+
+const chains = { kaolin, mendoza, rosario, pebbly } as const;
 const chainName = (process.env.CHAIN ?? "kaolin") as keyof typeof chains;
 const chain = chains[chainName];
 if (!chain) {
@@ -264,7 +290,10 @@ describe(`Network health check (${chain.name})`, () => {
       const { entityKey } = await walletClient.createEntity({
         payload: jsonToPayload({ ownershipTest: true }),
         contentType: "application/json",
-        attributes: [{ key: "purpose", value: "ownership_test" }, { key: "tag", value: tag }],
+        attributes: [
+          { key: "purpose", value: "ownership_test" },
+          { key: "tag", value: tag },
+        ],
         expiresIn: ExpirationTime.fromHours(1),
       });
 
@@ -272,7 +301,9 @@ describe(`Network health check (${chain.name})`, () => {
       const before = await publicClient.getEntity(entityKey);
       expect(before.owner?.toLowerCase()).toBe(account.address.toLowerCase());
       expect(before.creator?.toLowerCase()).toBe(account.address.toLowerCase());
-      console.log(`  OWNER   before=${before.owner}  creator=${before.creator}`);
+      console.log(
+        `  OWNER   before=${before.owner}  creator=${before.creator}`,
+      );
 
       // createdBy query should find the entity before transfer
       const createdByBefore = await publicClient
@@ -313,7 +344,9 @@ describe(`Network health check (${chain.name})`, () => {
         .ownedBy(account.address)
         .fetch();
       expect(ownedByOriginal.entities.length).toBe(0);
-      console.log(`  QUERY   ownedBy original owner correctly returns 0 after transfer`);
+      console.log(
+        `  QUERY   ownedBy original owner correctly returns 0 after transfer`,
+      );
 
       // ownedBy with the new owner should return the entity
       const ownedByNew = await publicClient
