@@ -57,10 +57,10 @@ export type WalletArkivActions<
      * @returns The created entity with transaction hash
      *
      * @example
-     * import { createPublicClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { createWalletClient, http } from '@arkiv-network/sdk'
+     * import { kaolin } from '@arkiv-network/sdk/chains'
      *
-     * const client = createPublicClient({
+     * const client = createWalletClient({
      *   chain: kaolin,
      *   transport: http(),
      * })
@@ -92,8 +92,8 @@ export type WalletArkivActions<
      * @returns The updated entity with transaction hash
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { createWalletClient, http } from '@arkiv-network/sdk'
+     * import { kaolin } from '@arkiv-network/sdk/chains'
      *
      * const client = createWalletClient({
      *   chain: kaolin,
@@ -116,8 +116,8 @@ export type WalletArkivActions<
      * @returns The deleted entity with transaction hash
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { createWalletClient, http } from '@arkiv-network/sdk'
+     * import { kaolin } from '@arkiv-network/sdk/chains'
      *
      * const client = createWalletClient({
      *   chain: kaolin,
@@ -147,14 +147,15 @@ export type WalletArkivActions<
      * @returns The updated entity with transaction hash
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { createWalletClient, http } from '@arkiv-network/sdk'
+     * import { kaolin } from '@arkiv-network/sdk/chains'
      *
      * const client = createWalletClient({
      *   chain: kaolin,
      *   transport: http(),
      * })
-     * const { entityKey, txHash } = await client.extendEntity("0x123", {
+     * const { entityKey, txHash } = await client.extendEntity({
+     *   entityKey: "0x123",
      *   expiresIn: 1000,
      * })
      * console.log("entityKey", entityKey)
@@ -195,8 +196,8 @@ export type WalletArkivActions<
      * @returns The mutation result with transaction hash
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { createWalletClient, http } from '@arkiv-network/sdk'
+     * import { kaolin } from '@arkiv-network/sdk/chains'
      *
      * const client = createWalletClient({
      *   chain: kaolin,
@@ -205,7 +206,7 @@ export type WalletArkivActions<
      * const { entityKey, txHash } = await client.mutateEntities({
      *   creates: [{
      *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-     *     attriubutes: [{ key: "testKey", value: "testValue" }],
+     *     attributes: [{ key: "testKey", value: "testValue" }],
      *     expiresIn: 1000,
      *   }],
      *   updates: [{

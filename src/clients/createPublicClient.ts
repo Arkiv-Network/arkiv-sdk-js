@@ -33,8 +33,8 @@ export type PublicArkivClient<
  * @returns A Arkiv Public Client. {@link PublicArkivClient}
  *
  * @example
- * import { createPublicClient, http } from 'arkiv'
- * import { kaolin } from 'arkiv/chains'
+ * import { createPublicClient, http } from '@arkiv-network/sdk'
+ * import { kaolin } from '@arkiv-network/sdk/chains'
  *
  * const client = createPublicClient({
  *   chain: kaolin,

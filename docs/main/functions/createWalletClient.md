@@ -10,11 +10,11 @@
 
 Defined in: [src/clients/createWalletClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/clients/createWalletClient.ts#L44)
 
-Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
+Creates a Wallet Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
 
-- Docs: https://docs.arkiv.network/ts-sdk/clients/public
+- Docs: https://docs.arkiv.network/ts-sdk/clients/wallet
 
-A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Kaolin JSON-RPC API](https://kaolin.holesky.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
+A Wallet Client extends the base client with Arkiv wallet actions for creating, updating, deleting, extending, and transferring ownership of entities.
 
 ## Type Parameters
 
@@ -105,10 +105,10 @@ The created entity with transaction hash
 #### Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createWalletClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
-const client = createPublicClient({
+const client = createWalletClient({
   chain: kaolin,
   transport: http(),
 })
@@ -157,8 +157,8 @@ The deleted entity with transaction hash
 #### Example
 
 ```ts
-import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createWalletClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createWalletClient({
   chain: kaolin,
@@ -205,14 +205,15 @@ The updated entity with transaction hash
 #### Example
 
 ```ts
-import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createWalletClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createWalletClient({
   chain: kaolin,
   transport: http(),
 })
-const { entityKey, txHash } = await client.extendEntity("0x123", {
+const { entityKey, txHash } = await client.extendEntity({
+  entityKey: "0x123",
   expiresIn: 1000,
 })
 console.log("entityKey", entityKey)
@@ -255,8 +256,8 @@ The mutation result with transaction hash
 #### Example
 
 ```ts
-import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createWalletClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createWalletClient({
   chain: kaolin,
@@ -265,7 +266,7 @@ const client = createWalletClient({
 const { entityKey, txHash } = await client.mutateEntities({
   creates: [{
     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-    attriubutes: [{ key: "testKey", value: "testValue" }],
+    attributes: [{ key: "testKey", value: "testValue" }],
     expiresIn: 1000,
   }],
   updates: [{
@@ -322,8 +323,8 @@ The updated entity with transaction hash
 #### Example
 
 ```ts
-import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createWalletClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createWalletClient({
   chain: kaolin,
@@ -334,10 +335,10 @@ const client = createWalletClient({
 ## Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createPublicClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
-const client = createPublicClient({
+const client = createWalletClient({
   chain: kaolin,
   transport: http(),
 })
