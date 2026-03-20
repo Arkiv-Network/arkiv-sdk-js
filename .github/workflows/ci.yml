@@ -157,6 +157,13 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "github-actions[bot]@golem.network"
 
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.ARKIV_APP_AUTOMATOR_ID }}
+          private-key: ${{ secrets.ARKIV_APP_AUTOMATOR_KEY }}
+
       - name: Version package prerelease
         if: github.ref == 'refs/heads/develop'
         run: bun run version:prerelease
@@ -207,7 +214,7 @@ jobs:
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
           branch: ${{ github.ref }}
           tags: true
 
