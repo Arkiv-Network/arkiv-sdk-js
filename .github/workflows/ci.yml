@@ -133,8 +133,20 @@ jobs:
       id-token: write
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARKIV_APP_AUTOMATOR_ID }}
+          private-key: ${{ secrets.ARKIV_APP_AUTOMATOR_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -156,13 +168,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "github-actions[bot]@golem.network"
-
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.ARKIV_APP_AUTOMATOR_ID }}
-          private-key: ${{ secrets.ARKIV_APP_AUTOMATOR_KEY }}
 
       - name: Version package prerelease
         if: github.ref == 'refs/heads/develop'
@@ -217,7 +222,7 @@ jobs:
           github_token: ${{ steps.app-token.outputs.token }}
           branch: ${{ github.ref }}
           tags: true
-
+        
       - name: Get latest tag
         id: get_latest_tag
         run: |
