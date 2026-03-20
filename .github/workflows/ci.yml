@@ -159,10 +159,12 @@ jobs:
 
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.ARKIV_APP_AUTOMATOR_ID }}
+          app-id: ${{ vars.ARKIV_APP_AUTOMATOR_ID }}
           private-key: ${{ secrets.ARKIV_APP_AUTOMATOR_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Version package prerelease
         if: github.ref == 'refs/heads/develop'
