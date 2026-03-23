@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../index.md)
+[**@arkiv-network/sdk v0.6.5-dev.10**](../index.md)
 
 ***
 
@@ -6,10 +6,32 @@
 
 # chains
 
-## Variables
+## References
 
-- [kaolin](variables/kaolin.md)
-- [localhost](variables/localhost.md)
-- [marketplace](variables/marketplace.md)
-- [mendoza](variables/mendoza.md)
-- [rosario](variables/rosario.md)
+### kaolin
+
+Re-exports [kaolin](kaolin/variables/kaolin.md)
+
+***
+
+### localhost
+
+Re-exports [localhost](localhost/variables/localhost.md)
+
+***
+
+### marketplace
+
+Re-exports [marketplace](marketplace/variables/marketplace.md)
+
+***
+
+### mendoza
+
+Re-exports [mendoza](mendoza/variables/mendoza.md)
+
+***
+
+### rosario
+
+Re-exports [rosario](rosario/variables/rosario.md)

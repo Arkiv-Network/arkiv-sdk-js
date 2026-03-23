@@ -1,4 +1,5 @@
 import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem"
+import type { GetBlockTimingReturnType } from "../../actions/public/getBlockTiming"
 import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
@@ -145,11 +146,7 @@ export type PublicArkivActions<
    * //   blockDuration: 2, // in seconds
    * // }
    */
-  getBlockTiming: () => Promise<{
-    currentBlock: bigint
-    currentBlockTime: number
-    blockDuration: number
-  }>
+  getBlockTiming: () => Promise<GetBlockTimingReturnType>
 
   /**
    * Subscribes to entity events.
