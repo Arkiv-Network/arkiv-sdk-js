@@ -8,16 +8,16 @@ const logger = getLogger("utils:compression")
 // Detect if we're in Node.js environment
 const isNode = typeof process !== "undefined" && process.versions?.node != null
 
-let zlib: typeof import("zlib") | null = null
+let zlib: typeof import("node:zlib") | null = null
 let brotli: BrotliWasmType | null = null
 
 // Lazy load zlib (Node.js only)
-async function getZlib(): Promise<typeof import("zlib") | null> {
+async function getZlib(): Promise<typeof import("node:zlib") | null> {
   if (!isNode) return null
 
   if (!zlib) {
     try {
-      zlib = await import("zlib")
+      zlib = await import("node:zlib")
     } catch (error) {
       console.error("Error importing zlib", error)
       return null

@@ -30,8 +30,8 @@ A QueryBuilder instance for building and executing queries. [QueryBuilder](../..
 #### Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createPublicClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createPublicClient({
   chain: kaolin,
@@ -56,8 +56,8 @@ The current block timing. [GetBlockTimingReturnType](GetBlockTimingReturnType.md
 #### Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createPublicClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createPublicClient({
   chain: kaolin,
@@ -96,8 +96,8 @@ The entity with the given key. [Entity](../interfaces/Entity.md)
 #### Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createPublicClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createPublicClient({
   chain: kaolin,
@@ -125,8 +125,8 @@ The number of entities in the DBChain
 #### Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createPublicClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createPublicClient({
   chain: kaolin,
@@ -166,8 +166,8 @@ A QueryReturnType instance - [QueryReturnType](QueryReturnType.md)
 #### Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createPublicClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createPublicClient({
   chain: kaolin,
@@ -257,8 +257,8 @@ A function to unsubscribe from the events
 #### Example
 
 ```ts
-import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { createPublicClient, http } from '@arkiv-network/sdk'
+import { kaolin } from '@arkiv-network/sdk/chains'
 
 const client = createPublicClient({
   chain: kaolin,

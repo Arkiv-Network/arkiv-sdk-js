@@ -40,8 +40,8 @@ export type PublicArkivActions<
    * @returns The entity with the given key. {@link Entity}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { kaolin } from 'arkiv/chains'
+   * import { createPublicClient, http } from '@arkiv-network/sdk'
+   * import { kaolin } from '@arkiv-network/sdk/chains'
    *
    * const client = createPublicClient({
    *   chain: kaolin,
@@ -64,8 +64,8 @@ export type PublicArkivActions<
    * @returns A QueryBuilder instance for building and executing queries. {@link QueryBuilder}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { kaolin } from 'arkiv/chains'
+   * import { createPublicClient, http } from '@arkiv-network/sdk'
+   * import { kaolin } from '@arkiv-network/sdk/chains'
    *
    * const client = createPublicClient({
    *   chain: kaolin,
@@ -85,8 +85,8 @@ export type PublicArkivActions<
    * @returns A QueryReturnType instance - {@link QueryReturnType}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { kaolin } from 'arkiv/chains'
+   * import { createPublicClient, http } from '@arkiv-network/sdk'
+   * import { kaolin } from '@arkiv-network/sdk/chains'
    *
    * const client = createPublicClient({
    *   chain: kaolin,
@@ -114,8 +114,8 @@ export type PublicArkivActions<
    * @returns The number of entities in the DBChain
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { kaolin } from 'arkiv/chains'
+   * import { createPublicClient, http } from '@arkiv-network/sdk'
+   * import { kaolin } from '@arkiv-network/sdk/chains'
    *
    * const client = createPublicClient({
    *   chain: kaolin,
@@ -131,8 +131,8 @@ export type PublicArkivActions<
    * @returns The current block timing. {@link GetBlockTimingReturnType}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { kaolin } from 'arkiv/chains'
+   * import { createPublicClient, http } from '@arkiv-network/sdk'
+   * import { kaolin } from '@arkiv-network/sdk/chains'
    *
    * const client = createPublicClient({
    *   chain: kaolin,
@@ -159,8 +159,8 @@ export type PublicArkivActions<
    * @returns A function to unsubscribe from the events
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { kaolin } from 'arkiv/chains'
+   * import { createPublicClient, http } from '@arkiv-network/sdk'
+   * import { kaolin } from '@arkiv-network/sdk/chains'
    *
    * const client = createPublicClient({
    *   chain: kaolin,
