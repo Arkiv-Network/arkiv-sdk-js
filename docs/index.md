@@ -1,13 +1,55 @@
-**@arkiv-network/sdk v0.6.2**
+**@arkiv-network/sdk v0.6.5-dev.10**
 
 ***
 
-# @arkiv-network/sdk v0.6.2
+# @arkiv-network/sdk v0.6.5-dev.10
 
 ## Modules
 
+- [accounts](accounts/index.md)
+- [actions/public/buildQuery](actions/public/buildQuery/index.md)
+- [actions/public/getBlockTiming](actions/public/getBlockTiming/index.md)
+- [actions/public/getEntity](actions/public/getEntity/index.md)
+- [actions/public/getEntityCount](actions/public/getEntityCount/index.md)
+- [actions/public/query](actions/public/query/index.md)
+- [actions/public/subscribeEntityEvents](actions/public/subscribeEntityEvents/index.md)
+- [actions/wallet/changeOwnership](actions/wallet/changeOwnership/index.md)
+- [actions/wallet/createEntity](actions/wallet/createEntity/index.md)
+- [actions/wallet/deleteEntity](actions/wallet/deleteEntity/index.md)
+- [actions/wallet/extendEntity](actions/wallet/extendEntity/index.md)
+- [actions/wallet/mutateEntities](actions/wallet/mutateEntities/index.md)
+- [actions/wallet/updateEntity](actions/wallet/updateEntity/index.md)
 - [chains](chains/index.md)
+- [chains/kaolin](chains/kaolin/index.md)
+- [chains/localhost](chains/localhost/index.md)
+- [chains/marketplace](chains/marketplace/index.md)
+- [chains/mendoza](chains/mendoza/index.md)
+- [chains/rosario](chains/rosario/index.md)
+- [clients/baseClient](clients/baseClient/index.md)
+- [clients/createPublicClient](clients/createPublicClient/index.md)
+- [clients/createWalletClient](clients/createWalletClient/index.md)
+- [clients/decorators/arkivPublic](clients/decorators/arkivPublic/index.md)
+- [clients/decorators/arkivWallet](clients/decorators/arkivWallet/index.md)
+- [consts](consts/index.md)
+- [errors](errors/index.md)
 - [main](main/index.md)
 - [query](query/index.md)
+- [query/engine](query/engine/index.md)
+- [query/predicate](query/predicate/index.md)
+- [query/queryBuilder](query/queryBuilder/index.md)
+- [query/queryResult](query/queryResult/index.md)
 - [types](types/index.md)
+- [types/attributes](types/attributes/index.md)
+- [types/entity](types/entity/index.md)
+- [types/events](types/events/index.md)
+- [types/mimeTypes](types/mimeTypes/index.md)
+- [types/rpcSchema](types/rpcSchema/index.md)
+- [types/txParams](types/txParams/index.md)
 - [utils](utils/index.md)
+- [utils/arkivTransactions](utils/arkivTransactions/index.md)
+- [utils/chains](utils/chains/index.md)
+- [utils/compression](utils/compression/index.md)
+- [utils/entities](utils/entities/index.md)
+- [utils/expirationTime](utils/expirationTime/index.md)
+- [utils/logger](utils/logger/index.md)
+- [utils/payload](utils/payload/index.md)

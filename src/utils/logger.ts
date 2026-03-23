@@ -1,7 +1,7 @@
 const ROOT_NAMESPACE = "arkiv"
 
 // Debug logger type - returns a function that can be called to log messages
-type DebugLogger = (...args: unknown[]) => void
+export type DebugLogger = (...args: unknown[]) => void
 
 // Get DEBUG environment variable (works in both Node.js and browser)
 function getDebugEnv(): string {

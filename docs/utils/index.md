@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../index.md)
+[**@arkiv-network/sdk v0.6.5-dev.10**](../index.md)
 
 ***
 
@@ -6,11 +6,20 @@
 
 # utils
 
-## Variables
+## References
 
-- [ExpirationTime](variables/ExpirationTime.md)
+### ExpirationTime
 
-## Functions
+Re-exports [ExpirationTime](expirationTime/variables/ExpirationTime.md)
 
-- [jsonToPayload](functions/jsonToPayload.md)
-- [stringToPayload](functions/stringToPayload.md)
+***
+
+### jsonToPayload
+
+Re-exports [jsonToPayload](payload/functions/jsonToPayload.md)
+
+***
+
+### stringToPayload
+
+Re-exports [stringToPayload](payload/functions/stringToPayload.md)

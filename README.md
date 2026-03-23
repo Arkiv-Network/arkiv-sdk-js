@@ -272,6 +272,19 @@ import { createPublicClient } from '@arkiv-network/sdk'; // Uses *.ts directly
 
 All formats provide full type safety and IntelliSense support when using TypeScript.
 
+## Documentation
+
+The repository includes two levels of SDK documentation:
+
+- generated API reference in [`docs/`](./docs), produced from the full `src/` tree
+- an implementation-oriented guide in [`ARCHITECTURE.md`](./ARCHITECTURE.md) that explains the SDK structure, major flows, and notable internal/private helpers
+
+To regenerate the API reference locally:
+
+```bash
+npm run docs
+```
+
 ## Development
 
 To install dependencies:
@@ -314,4 +327,3 @@ DEBUG=arkiv:* bun run your-script
 ```
 
 Adjust the namespace (for example, `arkiv:rpc` or `arkiv:query`) to target specific log sources. Unset `DEBUG` to silence debug output.
-
