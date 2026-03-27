@@ -15,6 +15,7 @@ on:
           - kaolin
           - mendoza
           - rosario
+          - pebbly
       branch:
         description: "Branch to checkout"
         required: false
