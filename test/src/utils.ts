@@ -2,7 +2,7 @@ import type { Hex } from "@arkiv-network/sdk"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
 export async function launchLocalArkivNode(withFundingAccount: Hex | undefined = undefined) {
-  const container = await new GenericContainer("golemnetwork/arkiv-op-geth:latest")
+  const container = await new GenericContainer("golemnetwork/arkiv-op-geth:v1.101605.0-2.7-pebble-test")
     .withExposedPorts(8545)
     .withExposedPorts(8546)
     .withCommand([
