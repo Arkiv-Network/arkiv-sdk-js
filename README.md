@@ -315,3 +315,4 @@ DEBUG=arkiv:* bun run your-script
 
 Adjust the namespace (for example, `arkiv:rpc` or `arkiv:query`) to target specific log sources. Unset `DEBUG` to silence debug output.
 
+

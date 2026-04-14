@@ -133,8 +133,20 @@ jobs:
       id-token: write
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.ARKIV_APP_AUTOMATOR_ID }}
+          private-key: ${{ secrets.ARKIV_APP_AUTOMATOR_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
@@ -202,15 +214,17 @@ jobs:
           echo "=== Generating documentation ==="
           bun run docs
           git add docs/
-          git commit -m "Update documentation"
+            if ! git diff --cached --quiet; then
+              git commit -m "docs: update generated docs [skip ci]"
+            fi
 
       - name: Push changes
         uses: ad-m/github-push-action@master
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
           branch: ${{ github.ref }}
           tags: true
-
+        
       - name: Get latest tag
         id: get_latest_tag
         run: |
