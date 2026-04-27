@@ -1,7 +1,7 @@
 import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
-import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:wallet:extend-entity")
@@ -32,13 +32,12 @@ export async function extendEntity(
   txParams?: TxParams,
 ): Promise<ExtendEntityReturnType> {
   logger("extendEntity %o", data)
-  const txData = opsToTxData({ extensions: [data] })
-  const receipt = await sendArkivTransaction(client, txData, txParams)
+  const { receipt } = await sendArkivTransaction(client, { extensions: [data] }, txParams)
 
   logger("Receipt from extendEntity %o", receipt)
 
   return {
     txHash: receipt.transactionHash as Hash,
-    entityKey: receipt.logs[0].topics[1] as Hex,
+    entityKey: data.entityKey,
   }
 }

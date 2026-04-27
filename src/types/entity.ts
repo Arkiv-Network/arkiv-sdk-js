@@ -1,4 +1,13 @@
 import { bytesToString, type Hex } from "viem"
+
+export enum EntityOperationType {
+  Create = 1,
+  Update = 2,
+  Extend = 3,
+  Transfer = 4,
+  Delete = 5,
+  Expire = 6,
+}
 import type { MimeType } from "../types"
 import type { Attribute } from "./attributes"
 

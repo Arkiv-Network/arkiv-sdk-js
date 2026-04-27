@@ -1,7 +1,7 @@
 import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { Attribute, MimeType, TxParams } from "../../types"
-import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:wallet:update-entity")
@@ -38,13 +38,12 @@ export async function updateEntity(
   txParams?: TxParams,
 ): Promise<UpdateEntityReturnType> {
   logger("updateEntity %o", data)
-  const txData = opsToTxData({ updates: [data] })
-  const receipt = await sendArkivTransaction(client, txData, txParams)
+  const { receipt } = await sendArkivTransaction(client, { updates: [data] }, txParams)
 
   logger("Receipt from updateEntity %o", receipt)
 
   return {
     txHash: receipt.transactionHash as Hash,
-    entityKey: receipt.logs[0].topics[1] as Hex,
+    entityKey: data.entityKey,
   }
 }

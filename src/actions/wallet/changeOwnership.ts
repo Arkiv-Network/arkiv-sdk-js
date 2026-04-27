@@ -1,14 +1,15 @@
 import type { Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
-import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:wallet:change-ownership")
 
 /**
- * Parameters for the deleteEntity function.
- * - entityKey: The key of the entity to delete.
+ * Parameters for the changeOwnership function.
+ * - entityKey: The key of the entity.
+ * - newOwner: The address of the new owner.
  */
 export type ChangeOwnershipParameters = {
   entityKey: Hex
@@ -16,7 +17,7 @@ export type ChangeOwnershipParameters = {
 }
 
 /**
- * Return type for the deleteEntity function.
+ * Return type for the changeOwnership function.
  * - entityKey: The key of the entity.
  * - txHash: The transaction hash.
  */
@@ -31,8 +32,7 @@ export async function changeOwnership(
   txParams?: TxParams,
 ): Promise<ChangeOwnershipReturnType> {
   logger("changeOwnership %o", data)
-  const txData = opsToTxData({ ownershipChanges: [data] })
-  const receipt = await sendArkivTransaction(client, txData, txParams)
+  const { receipt } = await sendArkivTransaction(client, { ownershipChanges: [data] }, txParams)
 
   logger("Receipt from changeOwnership %o", receipt)
 

@@ -35,7 +35,10 @@ export type WalletArkivActions<
   transport extends Transport = Transport,
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
-> = Pick<PublicActions<transport, chain, account>, "waitForTransactionReceipt" | "call"> &
+> = Pick<
+    PublicActions<transport, chain, account>,
+    "waitForTransactionReceipt" | "call" | "simulateContract" | "readContract" | "getBlockNumber"
+  > &
   Pick<
     WalletActions<chain, account>,
     | "addChain"
@@ -45,6 +48,7 @@ export type WalletArkivActions<
     | "sendRawTransaction"
     | "signMessage"
     | "signTransaction"
+    | "writeContract"
   > & {
     /**
      * Creates a new entity.
