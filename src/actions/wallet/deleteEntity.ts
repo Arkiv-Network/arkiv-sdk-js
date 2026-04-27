@@ -1,7 +1,7 @@
 import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
-import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:wallet:delete-entity")
@@ -30,8 +30,7 @@ export async function deleteEntity(
   txParams?: TxParams,
 ): Promise<DeleteEntityReturnType> {
   logger("deleteEntity %o", data)
-  const txData = opsToTxData({ deletes: [data] })
-  const receipt = await sendArkivTransaction(client, txData, txParams)
+  const { receipt } = await sendArkivTransaction(client, { deletes: [data] }, txParams)
 
   logger("Receipt from deleteEntity %o", receipt)
 

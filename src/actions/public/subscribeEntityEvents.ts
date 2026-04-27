@@ -1,4 +1,4 @@
-import { decodeEventLog, type Hex, parseAbi, toHex } from "viem"
+import { decodeEventLog, type Hex, toHex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { PublicArkivClient } from "../../clients/createPublicClient"
 import type {
@@ -9,18 +9,13 @@ import type {
   OnEntityOwnerChangedEvent,
   OnEntityUpdatedEvent,
 } from "../../types/events"
+import { EntityOperationType } from "../../types/entity"
+import { ENTITY_OPERATION_EVENT_ABI } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:public:subscribe-entity-events")
 
-export const arkivABI = parseAbi([
-  "event ArkivEntityCreated(uint256 indexed entityKey, address indexed ownerAddress, uint256 expirationBlock, uint256 cost)",
-  "event ArkivEntityUpdated(uint256 indexed entityKey, address indexed ownerAddress, uint256 oldExpirationBlock, uint256 newExpirationBlock, uint256 cost)",
-  "event ArkivEntityExpired(uint256 indexed entityKey, address indexed ownerAddress)",
-  "event ArkivEntityDeleted(uint256 indexed entityKey, address indexed ownerAddress)",
-  "event ArkivEntityBTLExtended(uint256 indexed entityKey, address indexed ownerAddress, uint256 oldExpirationBlock, uint256 newExpirationBlock, uint256 cost)",
-  "event ArkivEntityOwnerChanged(uint256 indexed entityKey, address indexed oldOwnerAddress, address indexed newOwnerAddress)",
-])
+export const arkivABI = ENTITY_OPERATION_EVENT_ABI
 
 export async function subscribeEntityEvents(
   client: ArkivClient,
@@ -57,54 +52,33 @@ export async function subscribeEntityEvents(
           data: log.data,
         })
         logger("event from subscribeEntityEvents %o", event)
-        switch (event.eventName) {
-          case "ArkivEntityCreated":
-            onEntityCreated?.({
-              entityKey: toHex(event.args.entityKey, { size: 32 }),
-              owner: event.args.ownerAddress,
-              expirationBlock: Number(event.args.expirationBlock),
-              cost: event.args.cost,
-            })
+
+        if (event.eventName !== "EntityOperation") continue
+
+        const entityKey = toHex(event.args.entityKey, { size: 32 })
+        const owner = event.args.owner
+        const expiresAt = event.args.expiresAt
+        const entityHash = toHex(event.args.entityHash, { size: 32 })
+        const opType = Number(event.args.operationType)
+
+        switch (opType) {
+          case EntityOperationType.Create:
+            onEntityCreated?.({ entityKey, owner, expiresAt, entityHash })
             break
-          case "ArkivEntityUpdated":
-            onEntityUpdated?.({
-              entityKey: toHex(event.args.entityKey, { size: 32 }),
-              owner: event.args.ownerAddress,
-              oldExpirationBlock: Number(event.args.oldExpirationBlock),
-              newExpirationBlock: Number(event.args.newExpirationBlock),
-              cost: event.args.cost,
-            })
+          case EntityOperationType.Update:
+            onEntityUpdated?.({ entityKey, owner, expiresAt, entityHash })
             break
-          case "ArkivEntityDeleted":
-            onEntityDeleted?.({
-              entityKey: toHex(event.args.entityKey, { size: 32 }),
-              owner: event.args.ownerAddress,
-            })
+          case EntityOperationType.Extend:
+            onEntityExpiresInExtended?.({ entityKey, owner, expiresAt, entityHash })
             break
-          case "ArkivEntityBTLExtended":
-            onEntityExpiresInExtended?.({
-              entityKey: toHex(event.args.entityKey, { size: 32 }),
-              owner: event.args.ownerAddress,
-              oldExpirationBlock: Number(event.args.oldExpirationBlock),
-              newExpirationBlock: Number(event.args.newExpirationBlock),
-              cost: event.args.cost,
-            })
+          case EntityOperationType.Transfer:
+            onEntityOwnerChanged?.({ entityKey, owner, entityHash })
             break
-          case "ArkivEntityExpired":
-            onEntityExpired?.({
-              entityKey: toHex(event.args.entityKey, { size: 32 }),
-              owner: event.args.ownerAddress,
-            })
-            break
-          case "ArkivEntityOwnerChanged":
-            onEntityOwnerChanged?.({
-              entityKey: toHex(event.args.entityKey, { size: 32 }),
-              oldOwner: event.args.oldOwnerAddress,
-              newOwner: event.args.newOwnerAddress,
-            })
+          case EntityOperationType.Delete:
+            onEntityDeleted?.({ entityKey, owner })
             break
           default:
-            console.warn("unknown event from subscribeEntityEvents", event)
+            onEntityExpired?.({ entityKey, owner })
             break
         }
       }

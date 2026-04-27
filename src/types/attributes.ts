@@ -1,3 +1,9 @@
+export enum AttributeValueType {
+  Uint = 1,
+  String = 2,
+  EntityKey = 3,
+}
+
 /**
  * An entity attribute (key/value pair).
  *

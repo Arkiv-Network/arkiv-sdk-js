@@ -1,40 +1,38 @@
-import type { Hex } from "viem"
+import type { Address, Hex } from "viem"
 
 export type OnEntityCreatedEvent = {
   entityKey: Hex
-  owner: Hex
-  expirationBlock: number
-  cost: bigint
+  owner: Address
+  expiresAt: number
+  entityHash: Hex
 }
 
 export type OnEntityUpdatedEvent = {
   entityKey: Hex
-  owner: Hex
-  oldExpirationBlock: number
-  newExpirationBlock: number
-  cost: bigint
+  owner: Address
+  expiresAt: number
+  entityHash: Hex
 }
 
 export type OnEntityDeletedEvent = {
   entityKey: Hex
-  owner: Hex
+  owner: Address
 }
 
 export type OnEntityExpiredEvent = {
   entityKey: Hex
-  owner: Hex
+  owner: Address
 }
 
 export type OnEntityExpiresInExtendedEvent = {
   entityKey: Hex
-  owner: Hex
-  oldExpirationBlock: number
-  newExpirationBlock: number
-  cost: bigint
+  owner: Address
+  expiresAt: number
+  entityHash: Hex
 }
 
 export type OnEntityOwnerChangedEvent = {
   entityKey: Hex
-  oldOwner: Hex
-  newOwner: Hex
+  owner: Address
+  entityHash: Hex
 }
