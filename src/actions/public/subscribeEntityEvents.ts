@@ -1,4 +1,4 @@
-import { decodeEventLog, type Hex, toHex } from "viem"
+import { decodeEventLog, type Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { PublicArkivClient } from "../../clients/createPublicClient"
 import type {
@@ -55,10 +55,10 @@ export async function subscribeEntityEvents(
 
         if (event.eventName !== "EntityOperation") continue
 
-        const entityKey = toHex(event.args.entityKey, { size: 32 })
+        const entityKey = event.args.entityKey as Hex
         const owner = event.args.owner
         const expiresAt = event.args.expiresAt
-        const entityHash = toHex(event.args.entityHash, { size: 32 })
+        const entityHash = event.args.entityHash as Hex
         const opType = Number(event.args.operationType)
 
         switch (opType) {
