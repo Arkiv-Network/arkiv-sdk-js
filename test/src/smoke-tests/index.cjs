@@ -1,8 +1,8 @@
 const { createPublicClient, http } = require("@arkiv-network/sdk")
-const { kaolin } = require("@arkiv-network/sdk/chains")
+const { braga } = require("@arkiv-network/sdk/chains")
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 

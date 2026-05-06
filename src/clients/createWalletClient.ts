@@ -27,17 +27,17 @@ export type WalletArkivClient<
  *
  * - Docs: https://docs.arkiv.network/ts-sdk/clients/public
  *
- * A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Kaolin JSON-RPC API](https://kaolin.holesky.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
+ * A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Braga JSON-RPC API](https://braga.holesky.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
  *
  * @param parameters - Configuration object for the wallet client (chain, transport, account, etc.)
  * @returns A Arkiv Wallet Client. {@link WalletArkivClient}
  *
  * @example
  * import { createPublicClient, http } from 'arkiv'
- * import { kaolin } from 'arkiv/chains'
+ * import { braga } from 'arkiv/chains'
  *
  * const client = createPublicClient({
- *   chain: kaolin,
+ *   chain: braga,
  *   transport: http(),
  * })
  */

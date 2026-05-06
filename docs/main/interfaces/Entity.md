@@ -94,7 +94,7 @@ Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **toJson**(): `any`
 
-Defined in: [src/types/entity.ts:45](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L45)
+Defined in: [src/types/entity.ts:72](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/develop/src/types/entity.ts#L72)
 
 #### Returns
 
@@ -106,7 +106,7 @@ Defined in: [src/types/entity.ts:45](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **toText**(): `string`
 
-Defined in: [src/types/entity.ts:41](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L41)
+Defined in: [src/types/entity.ts:50](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/develop/src/types/entity.ts#L50)
 
 #### Returns
 

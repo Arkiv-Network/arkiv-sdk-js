@@ -55,11 +55,6 @@ export async function launchLocalArkivNode(withFundingAccount: Hex | undefined =
 
   return { container, httpPort, wsPort }
 }
-export function getArkivLocalhostRpcUrls(httpPort: number, wsPort: number) {
-  return {
-    default: { http: [`http://127.0.0.1:${httpPort}`], webSocket: [`ws://127.0.0.1:${wsPort}`] },
-  }
-}
 
 export async function execCommand(container: StartedTestContainer, command: string[]) {
   console.debug("Executing command", command)

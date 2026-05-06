@@ -58,10 +58,10 @@ export type WalletArkivActions<
      *
      * @example
      * import { createPublicClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { braga } from 'arkiv/chains'
      *
      * const client = createPublicClient({
-     *   chain: kaolin,
+     *   chain: braga,
      *   transport: http(),
      * })
      * const { entityKey, txHash } = await client.createEntity({
@@ -93,10 +93,10 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { braga } from 'arkiv/chains'
      *
      * const client = createWalletClient({
-     *   chain: kaolin,
+     *   chain: braga,
      *   transport: http(),
      * })
      */
@@ -117,10 +117,10 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { braga } from 'arkiv/chains'
      *
      * const client = createWalletClient({
-     *   chain: kaolin,
+     *   chain: braga,
      *   transport: http(),
      * })
      * const { entityKey, txHash } = await client.deleteEntity({ entityKey: "0x123" })
@@ -148,10 +148,10 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { braga } from 'arkiv/chains'
      *
      * const client = createWalletClient({
-     *   chain: kaolin,
+     *   chain: braga,
      *   transport: http(),
      * })
      * const { entityKey, txHash } = await client.extendEntity("0x123", {
@@ -196,10 +196,10 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
-     * import { kaolin } from 'arkiv/chains'
+     * import { braga } from 'arkiv/chains'
      *
      * const client = createWalletClient({
-     *   chain: kaolin,
+     *   chain: braga,
      *   transport: http(),
      * })
      * const { entityKey, txHash } = await client.mutateEntities({
