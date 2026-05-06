@@ -1,17 +1,17 @@
 import { createPublicClient, createWalletClient, http } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { kaolin } from "@arkiv-network/sdk/chains"
+import { braga } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: kaolin, // kaolin is the Arkiv testnet
+  chain: braga, // braga is the Arkiv testnet
   transport: http(),
 })
 
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
   account: privateKeyToAccount("0x..."), // Replace with your private key
 })
