@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../../index.md)
+[**@arkiv-network/sdk v0.6.6**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **WalletArkivActions**\<`transport`, `chain`, `account`\> = `Pick`\<`PublicActions`\<`transport`, `chain`, `account`\>, `"waitForTransactionReceipt"` \| `"call"`\> & `Pick`\<`WalletActions`\<`chain`, `account`\>, `"addChain"` \| `"sendCalls"` \| `"waitForCallsStatus"` \| `"sendTransaction"` \| `"sendRawTransaction"` \| `"signMessage"` \| `"signTransaction"`\> & `object`
 
-Defined in: [src/clients/decorators/arkivWallet.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/clients/decorators/arkivWallet.ts#L34)
+Defined in: [src/clients/decorators/arkivWallet.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/clients/decorators/arkivWallet.ts#L34)
 
 ## Type Declaration
 
@@ -74,10 +74,10 @@ The created entity with transaction hash
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.createEntity({
@@ -126,10 +126,10 @@ The deleted entity with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.deleteEntity({ entityKey: "0x123" })
@@ -174,10 +174,10 @@ The updated entity with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.extendEntity("0x123", {
@@ -224,10 +224,10 @@ The mutation result with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.mutateEntities({
@@ -291,10 +291,10 @@ The updated entity with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 ```

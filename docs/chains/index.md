@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../index.md)
+[**@arkiv-network/sdk v0.6.6**](../index.md)
 
 ***
 
@@ -8,6 +8,7 @@
 
 ## Variables
 
+- [braga](variables/braga.md)
 - [kaolin](variables/kaolin.md)
 - [localhost](variables/localhost.md)
 - [marketplace](variables/marketplace.md)

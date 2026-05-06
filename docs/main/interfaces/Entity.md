@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../../index.md)
+[**@arkiv-network/sdk v0.6.6**](../../index.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: Entity
 
-Defined in: [src/types/entity.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L5)
+Defined in: [src/types/entity.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L5)
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: [src/types/entity.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **attributes**: [`Attribute`](../type-aliases/Attribute.md)[]
 
-Defined in: [src/types/entity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L15)
+Defined in: [src/types/entity.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L16)
 
 ***
 
@@ -22,7 +22,7 @@ Defined in: [src/types/entity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **contentType**: [`MimeType`](../type-aliases/MimeType.md) \| `undefined`
 
-Defined in: [src/types/entity.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L7)
+Defined in: [src/types/entity.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L7)
 
 ***
 
@@ -30,7 +30,15 @@ Defined in: [src/types/entity.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **createdAtBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L10)
+Defined in: [src/types/entity.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L11)
+
+***
+
+### creator
+
+> **creator**: `` `0x${string}` `` \| `undefined`
+
+Defined in: [src/types/entity.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L9)
 
 ***
 
@@ -38,7 +46,7 @@ Defined in: [src/types/entity.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **expiresAtBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L9)
+Defined in: [src/types/entity.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L10)
 
 ***
 
@@ -46,7 +54,7 @@ Defined in: [src/types/entity.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **key**: `` `0x${string}` ``
 
-Defined in: [src/types/entity.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L6)
+Defined in: [src/types/entity.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L6)
 
 ***
 
@@ -54,7 +62,7 @@ Defined in: [src/types/entity.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **lastModifiedAtBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L11)
+Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L12)
 
 ***
 
@@ -62,7 +70,7 @@ Defined in: [src/types/entity.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **operationIndexInTransaction**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L13)
+Defined in: [src/types/entity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L14)
 
 ***
 
@@ -70,7 +78,7 @@ Defined in: [src/types/entity.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **owner**: `` `0x${string}` `` \| `undefined`
 
-Defined in: [src/types/entity.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L8)
+Defined in: [src/types/entity.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L8)
 
 ***
 
@@ -78,7 +86,7 @@ Defined in: [src/types/entity.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **payload**: `Uint8Array`\<`ArrayBufferLike`\> \| `undefined`
 
-Defined in: [src/types/entity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L14)
+Defined in: [src/types/entity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L15)
 
 ***
 
@@ -86,7 +94,7 @@ Defined in: [src/types/entity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **transactionIndexInBlock**: `bigint` \| `undefined`
 
-Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/entity.ts#L12)
+Defined in: [src/types/entity.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L13)
 
 ## Methods
 
@@ -94,11 +102,17 @@ Defined in: [src/types/entity.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **toJson**(): `any`
 
-Defined in: [src/types/entity.ts:72](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/develop/src/types/entity.ts#L72)
+Defined in: [src/types/entity.ts:72](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L72)
+
+Parses the entity payload as JSON and returns the resulting object.
+Throws an error if the payload is undefined, which may occur if the entity was not queried with the withPayload option.
+Throws an error if the payload is empty or cannot be parsed as JSON.
 
 #### Returns
 
 `any`
+
+The parsed JSON object from the entity payload.
 
 ***
 
@@ -106,8 +120,14 @@ Defined in: [src/types/entity.ts:72](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **toText**(): `string`
 
-Defined in: [src/types/entity.ts:50](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/develop/src/types/entity.ts#L50)
+Defined in: [src/types/entity.ts:50](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/entity.ts#L50)
+
+Converts the entity payload from bytes to a string and returns it.
+Throws an error if the payload is undefined, which may occur if the entity was not queried with the withPayload option.
+Throws an error if the conversion from bytes to string fails.
 
 #### Returns
 
 `string`
+
+The entity payload as a string.

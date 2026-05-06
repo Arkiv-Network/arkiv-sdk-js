@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../../index.md)
+[**@arkiv-network/sdk v0.6.6**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **WalletArkivClient**\<`transport`, `chain`, `account`, `rpcSchema`\> = `Prettify`\<`Client`\<`transport`, `chain`, `account`, `rpcSchema`, [`WalletArkivActions`](WalletArkivActions.md)\<`transport`, `chain`, `account`\>\>\>
 
-Defined in: [src/clients/createWalletClient.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/clients/createWalletClient.ts#L16)
+Defined in: [src/clients/createWalletClient.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/clients/createWalletClient.ts#L16)
 
 ## Type Parameters
 

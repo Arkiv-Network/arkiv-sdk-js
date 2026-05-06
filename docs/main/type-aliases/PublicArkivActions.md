@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../../index.md)
+[**@arkiv-network/sdk v0.6.6**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **PublicArkivActions**\<`transport`, `chain`, `account`\> = `Pick`\<`PublicActions`\<`transport`, `chain`, `account`\>, `"getBalance"` \| `"getBlock"` \| `"getBlockNumber"` \| `"getChainId"` \| `"getLogs"` \| `"getTransaction"` \| `"getTransactionCount"` \| `"getTransactionReceipt"` \| `"waitForTransactionReceipt"` \| `"watchEvent"`\> & `object`
 
-Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/clients/decorators/arkivPublic.ts#L17)
+Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/clients/decorators/arkivPublic.ts#L17)
 
 ## Type Declaration
 
@@ -31,10 +31,10 @@ A QueryBuilder instance for building and executing queries. [QueryBuilder](../..
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const query = client.buildQuery()
@@ -57,10 +57,10 @@ The current block timing. [GetBlockTimingReturnType](GetBlockTimingReturnType.md
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const blockTiming = await client.getBlockTiming()
@@ -97,10 +97,10 @@ The entity with the given key. [Entity](../interfaces/Entity.md)
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const entity = await client.getEntity("0x123")
@@ -126,10 +126,10 @@ The number of entities in the DBChain
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const entityCount = await client.getEntityCount()
@@ -167,10 +167,10 @@ A QueryReturnType instance - [QueryReturnType](QueryReturnType.md)
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const queryResult = client.query('key = value && $owner = 0x123')
@@ -258,10 +258,10 @@ A function to unsubscribe from the events
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const unsubscribe = await client.subscribeEntityEvents({

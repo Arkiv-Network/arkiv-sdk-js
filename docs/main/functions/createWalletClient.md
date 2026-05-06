@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../../index.md)
+[**@arkiv-network/sdk v0.6.6**](../../index.md)
 
 ***
 
@@ -8,13 +8,13 @@
 
 > **createWalletClient**\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`\>(`parameters`): `object`
 
-Defined in: [src/clients/createWalletClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/clients/createWalletClient.ts#L44)
+Defined in: [src/clients/createWalletClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/clients/createWalletClient.ts#L44)
 
 Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
 
 - Docs: https://docs.arkiv.network/ts-sdk/clients/public
 
-A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Kaolin JSON-RPC API](https://kaolin.holesky.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
+A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Braga JSON-RPC API](https://braga.holesky.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
 
 ## Type Parameters
 
@@ -106,10 +106,10 @@ The created entity with transaction hash
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.createEntity({
@@ -158,10 +158,10 @@ The deleted entity with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.deleteEntity({ entityKey: "0x123" })
@@ -206,10 +206,10 @@ The updated entity with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.extendEntity("0x123", {
@@ -256,10 +256,10 @@ The mutation result with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 const { entityKey, txHash } = await client.mutateEntities({
@@ -323,10 +323,10 @@ The updated entity with transaction hash
 
 ```ts
 import { createWalletClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createWalletClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 ```
@@ -335,10 +335,10 @@ const client = createWalletClient({
 
 ```ts
 import { createPublicClient, http } from 'arkiv'
-import { kaolin } from 'arkiv/chains'
+import { braga } from 'arkiv/chains'
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 ```

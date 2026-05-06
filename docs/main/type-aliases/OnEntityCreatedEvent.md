@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../../index.md)
+[**@arkiv-network/sdk v0.6.6**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **OnEntityCreatedEvent** = `object`
 
-Defined in: [src/types/events.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/events.ts#L3)
+Defined in: [src/types/events.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/events.ts#L3)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/events.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **cost**: `bigint`
 
-Defined in: [src/types/events.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/events.ts#L7)
+Defined in: [src/types/events.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/events.ts#L7)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/types/events.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **entityKey**: `Hex`
 
-Defined in: [src/types/events.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/events.ts#L4)
+Defined in: [src/types/events.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/events.ts#L4)
 
 ***
 
@@ -32,7 +32,7 @@ Defined in: [src/types/events.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **expirationBlock**: `number`
 
-Defined in: [src/types/events.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/events.ts#L6)
+Defined in: [src/types/events.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/events.ts#L6)
 
 ***
 
@@ -40,4 +40,4 @@ Defined in: [src/types/events.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-j
 
 > **owner**: `Hex`
 
-Defined in: [src/types/events.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/events.ts#L5)
+Defined in: [src/types/events.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/events.ts#L5)

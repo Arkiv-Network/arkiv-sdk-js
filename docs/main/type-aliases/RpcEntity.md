@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.2**](../../index.md)
+[**@arkiv-network/sdk v0.6.6**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **RpcEntity** = `object`
 
-Defined in: [src/types/rpcSchema.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L4)
+Defined in: [src/types/rpcSchema.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L4)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/rpcSchema.ts:4](https://github.com/Arkiv-Network/arkiv-sd
 
 > **contentType**: [`MimeType`](MimeType.md)
 
-Defined in: [src/types/rpcSchema.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L6)
+Defined in: [src/types/rpcSchema.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L6)
 
 ***
 
@@ -24,7 +24,15 @@ Defined in: [src/types/rpcSchema.ts:6](https://github.com/Arkiv-Network/arkiv-sd
 
 > **createdAtBlock**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L9)
+Defined in: [src/types/rpcSchema.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L9)
+
+***
+
+### creator
+
+> **creator**: `Hex`
+
+Defined in: [src/types/rpcSchema.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L14)
 
 ***
 
@@ -32,7 +40,7 @@ Defined in: [src/types/rpcSchema.ts:9](https://github.com/Arkiv-Network/arkiv-sd
 
 > **expiresAt**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L8)
+Defined in: [src/types/rpcSchema.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L8)
 
 ***
 
@@ -40,7 +48,7 @@ Defined in: [src/types/rpcSchema.ts:8](https://github.com/Arkiv-Network/arkiv-sd
 
 > **key**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L5)
+Defined in: [src/types/rpcSchema.ts:5](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L5)
 
 ***
 
@@ -48,7 +56,7 @@ Defined in: [src/types/rpcSchema.ts:5](https://github.com/Arkiv-Network/arkiv-sd
 
 > **lastModifiedAtBlock**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L10)
+Defined in: [src/types/rpcSchema.ts:10](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L10)
 
 ***
 
@@ -56,7 +64,7 @@ Defined in: [src/types/rpcSchema.ts:10](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **numericAttributes**: \[\{ `key`: `string`; `value`: `Hex`; \}\]
 
-Defined in: [src/types/rpcSchema.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L15)
+Defined in: [src/types/rpcSchema.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L16)
 
 ***
 
@@ -64,7 +72,7 @@ Defined in: [src/types/rpcSchema.ts:15](https://github.com/Arkiv-Network/arkiv-s
 
 > **operationIndexInTransaction**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L12)
+Defined in: [src/types/rpcSchema.ts:12](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L12)
 
 ***
 
@@ -72,7 +80,7 @@ Defined in: [src/types/rpcSchema.ts:12](https://github.com/Arkiv-Network/arkiv-s
 
 > **owner**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L13)
+Defined in: [src/types/rpcSchema.ts:13](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L13)
 
 ***
 
@@ -80,7 +88,7 @@ Defined in: [src/types/rpcSchema.ts:13](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **stringAttributes**: \[\{ `key`: `string`; `value`: `string`; \}\]
 
-Defined in: [src/types/rpcSchema.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L14)
+Defined in: [src/types/rpcSchema.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L15)
 
 ***
 
@@ -88,7 +96,7 @@ Defined in: [src/types/rpcSchema.ts:14](https://github.com/Arkiv-Network/arkiv-s
 
 > **transactionIndexInBlock**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L11)
+Defined in: [src/types/rpcSchema.ts:11](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L11)
 
 ***
 
@@ -96,4 +104,4 @@ Defined in: [src/types/rpcSchema.ts:11](https://github.com/Arkiv-Network/arkiv-s
 
 > **value**: `string`
 
-Defined in: [src/types/rpcSchema.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93d4c0c74e3503d5b045842ef9b11e8553a0c98b/src/types/rpcSchema.ts#L7)
+Defined in: [src/types/rpcSchema.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L7)
