@@ -9,9 +9,10 @@ on:
       chain:
         description: "Chain to test"
         required: false
-        default: "kaolin"
+        default: "braga"
         type: choice
         options:
+          - braga
           - kaolin
           - mendoza
           - rosario
@@ -27,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["kaolin"]') }}
+        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["braga"]') }}
 
     steps:
       - name: Checkout code
