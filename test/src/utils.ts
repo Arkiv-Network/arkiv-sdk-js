@@ -1,56 +1,25 @@
 import type { Hex } from "@arkiv-network/sdk"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
-export async function launchLocalArkivNode(withFundingAccount: Hex | undefined = undefined) {
-  const container = await new GenericContainer("golemnetwork/arkiv-op-geth:latest")
+export async function launchLocalArkivNode(withFundingAddress: Hex | undefined = undefined) {
+  const container = await new GenericContainer("ghcr.io/arkiv-network/arkiv-node-dev:latest")
     .withExposedPorts(8545)
     .withExposedPorts(8546)
-    .withCommand([
-      "--http",
-      "--http.addr",
-      "0.0.0.0",
-      "--http.port",
-      "8545",
-      "--http.api",
-      "eth,net,web3,debug,golembase,arkiv",
-      "--http.corsdomain",
-      "*",
-      "--ws",
-      "--ws.addr",
-      "0.0.0.0",
-      "--ws.port",
-      "8546",
-      "--ws.api",
-      "eth,net,web3,debug,golembase,arkiv",
-      "--ws.origins",
-      "*",
-      "--networkid",
-      "1",
-      "--dev",
-      "--allow-insecure-unlock",
-    ])
-    .withWaitStrategy(Wait.forLogMessage("HTTP server started", 1))
+    .withWaitStrategy(Wait.forLogMessage("Block added to canonical chain", 1))
     .withStartupTimeout(30000)
-    .withEnvironment({
-      WALLET_PASSWORD: "password",
-    })
     .start()
 
   const httpPort = container.getMappedPort(8545)
   const wsPort = container.getMappedPort(8546)
-  const containerID = container.getId()
-
-  if (withFundingAccount) {
+  
+  if (withFundingAddress) {
     await execCommand(container, [
-      "golembase",
-      "account",
-      "import",
-      "--privatekey",
-      withFundingAccount,
+      "fund-account.sh",
+      "--address",
+      withFundingAddress,
+      "--value",
+      "1.0E18" //1 ETH = 1e18 wei
     ])
-    //await container.exec(["golembase", "account", "import", "--privatekey", withFundingAccount])
-
-    await execCommand(container, ["golembase", "account", "fund"])
   }
 
   return { container, httpPort, wsPort }

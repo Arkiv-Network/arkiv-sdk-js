@@ -2,6 +2,9 @@ import {
   type Address,
   type Hex,
   type TransactionReceipt,
+  ContractFunctionExecutionError,
+  ContractFunctionRevertedError,
+  decodeErrorResult,
   encodePacked,
   keccak256,
   parseAbi,
@@ -35,6 +38,31 @@ export const ENTITY_EXECUTE_ABI = parseAbi([
 export const ENTITY_OPERATION_EVENT_ABI = parseAbi([
   "event EntityOperation(bytes32 indexed entityKey, uint8 indexed operationType, address indexed owner, uint32 expiresAt, bytes32 entityHash)",
 ])
+
+export const ENTITY_ERRORS_ABI = parseAbi([
+  "error EmptyBatch()",
+  "error AttributesNotSorted()",
+  "error InvalidValueType(bytes32 name, uint8 valueType)",
+  "error InvalidOpType(uint8 operationType)",
+  "error ExpiryInPast(uint32 expiresAt, uint32 currentBlock)",
+  "error TooManyAttributes(uint256 count, uint256 maxCount)",
+  "error EntityNotFound(bytes32 entityKey)",
+  "error NotOwner(bytes32 entityKey, address caller, address owner)",
+  "error EntityExpired(bytes32 entityKey, uint32 expiresAt)",
+  "error ExpiryNotExtended(bytes32 entityKey, uint32 newExpiresAt, uint32 currentExpiresAt)",
+  "error TransferToZeroAddress(bytes32 entityKey)",
+  "error TransferToSelf(bytes32 entityKey)",
+  "error EntityNotExpired(bytes32 entityKey, uint32 expiresAt)",
+  "error Ident32Empty()",
+  "error Ident32TooLong(uint256 length)",
+  "error Ident32InvalidByte(uint256 position, bytes1 value)",
+  "error MimeEmpty()",
+  "error MimeTooLong(uint256 length, uint256 maxLength)",
+  "error MimeInvalidByte(uint256 position, bytes1 value)",
+  "error MimeIncomplete()",
+])
+
+const EXECUTE_ABI = [...ENTITY_EXECUTE_ABI, ...ENTITY_ERRORS_ABI]
 
 const ENTITY_NONCE_ABI = parseAbi([
   "function nonces(address owner) view returns (uint32)",
@@ -188,7 +216,7 @@ export async function sendArkivTransaction(
   try {
     const txHash = await walletClient.writeContract({
       address: ARKIV_ADDRESS,
-      abi: ENTITY_EXECUTE_ABI,
+      abi: EXECUTE_ABI,
       functionName: "execute",
       args: [operations],
       account: client.account,
@@ -203,7 +231,7 @@ export async function sendArkivTransaction(
       try {
         await walletClient.simulateContract({
           address: ARKIV_ADDRESS,
-          abi: ENTITY_EXECUTE_ABI,
+          abi: EXECUTE_ABI,
           functionName: "execute",
           args: [operations],
           account: client.account,
@@ -227,11 +255,18 @@ export async function sendArkivTransaction(
     let message = "Transaction failed"
     if (error instanceof TransactionExecutionError) {
       message += `: ${error.details}`
+    } else if (error instanceof ContractFunctionExecutionError) {
+      logger("Contract function execution error data:", error.shortMessage)
+      if (error.cause instanceof ContractFunctionRevertedError) {
+        message += `: ${error.cause.message}`
+      } else {
+        message += ": Execution error without revert data"
+      }      
+      logger("%s Detailed error stack: %o", message, error)
     } else if (error instanceof EntityMutationError) {
       throw error
     }
 
-    logger("%s Detailed error stack: %o", message, error)
     throw new EntityMutationError(message)
   }
 }
