@@ -1,4 +1,4 @@
-import { defineChain } from "viem";
+import { defineChain } from "viem"
 
 export const braga = defineChain({
   id: 60138453102,
@@ -23,4 +23,4 @@ export const braga = defineChain({
     },
   },
   testnet: true,
-});
+})
