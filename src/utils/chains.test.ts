@@ -1,9 +1,16 @@
 import { describe, expect, test } from "bun:test"
-import { kaolin, localhost, marketplace, mendoza } from "../chains"
+import { braga, kaolin, localhost, marketplace, mendoza } from "../chains"
 import { chainFromName } from "./chains"
 
 describe("chainFromName", () => {
   describe("valid chain names", () => {
+    test("returns braga chain for 'braga'", () => {
+      const chain = chainFromName("braga")
+      expect(chain).toBe(braga)
+      expect(chain.id).toBe(60138453102)
+      expect(chain.name).toBe("Braga")
+    })
+
     test("returns kaolin chain for 'kaolin'", () => {
       const chain = chainFromName("kaolin")
       expect(chain).toBe(kaolin)
@@ -35,6 +42,7 @@ describe("chainFromName", () => {
 
   describe("case insensitivity", () => {
     test("handles uppercase chain names", () => {
+      expect(chainFromName("BRAGA")).toBe(braga)
       expect(chainFromName("KAOLIN")).toBe(kaolin)
       expect(chainFromName("MENDOZA")).toBe(mendoza)
       expect(chainFromName("LOCALHOST")).toBe(localhost)
@@ -42,10 +50,12 @@ describe("chainFromName", () => {
     })
 
     test("handles mixed case chain names", () => {
+      expect(chainFromName("Braga")).toBe(braga)
       expect(chainFromName("Kaolin")).toBe(kaolin)
       expect(chainFromName("Mendoza")).toBe(mendoza)
       expect(chainFromName("Localhost")).toBe(localhost)
       expect(chainFromName("Marketplace")).toBe(marketplace)
+      expect(chainFromName("bRaGa")).toBe(braga)
       expect(chainFromName("kAoLiN")).toBe(kaolin)
       expect(chainFromName("MeNdOzA")).toBe(mendoza)
     })
