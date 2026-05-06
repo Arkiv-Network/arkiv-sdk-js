@@ -1,8 +1,8 @@
 import { createPublicClient, http } from "@arkiv-network/sdk"
-import { kaolin } from "@arkiv-network/sdk/chains"
+import { braga } from "@arkiv-network/sdk/chains"
 
 const client = createPublicClient({
-  chain: kaolin,
+  chain: braga,
   transport: http(),
 })
 
