@@ -13,7 +13,7 @@ import type { Attribute } from "./attributes"
 
 export class Entity {
   key: Hex
-  contentType: MimeType | undefined
+  contentType: MimeType | `${string}/${string}` | undefined
   owner: Hex | undefined
   creator: Hex | undefined
   expiresAtBlock: bigint | undefined
@@ -26,7 +26,7 @@ export class Entity {
 
   constructor(
     key: Hex,
-    contentType: MimeType | undefined = undefined,
+    contentType: MimeType | `${string}/${string}` | undefined = undefined,
     owner: Hex | undefined = undefined,
     creator: Hex | undefined = undefined,
     expiresAtBlock: bigint | undefined = undefined,

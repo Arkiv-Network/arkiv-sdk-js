@@ -1,13 +1,9 @@
-export enum AttributeValueType {
-  Uint = 1,
-  String = 2,
-  EntityKey = 3,
-}
+import { Hex } from "viem"
 
 /**
  * An entity attribute (key/value pair).
  *
- * Arkiv supports both string and number values. Numeric values **must be
+ * Arkiv supports string, Hex and number values. Numeric values **must be
  * integers** — passing a non-integer number (e.g. `1.5`) throws an
  * {@link InvalidAttributeError} at mutation time. To store a non-integer value:
  * - Scale it to an integer (e.g. `1.5` -> `1500`, dividing by the same factor on
@@ -17,6 +13,5 @@ export enum AttributeValueType {
  */
 export type Attribute = {
   key: string
-  /** Attribute value. A `number` must be an integer (scale non-integers, e.g. `1.5` -> `1500`, or use a string). Throws {@link InvalidAttributeError} otherwise. */
-  value: string | number
+  value: number | string | Hex
 }

@@ -2,7 +2,7 @@ import type { Hex } from "viem"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
 export async function launchLocalArkivNode(withFundingAddress: Hex | undefined = undefined) {
-  const container = await new GenericContainer("ghcr.io/arkiv-network/arkiv-node-dev:293adadf10ce3b54711649390a6a0d8f7b29f7a8")
+  const container = await new GenericContainer("ghcr.io/arkiv-network/arkiv-node-dev:latest-arm64")
     .withExposedPorts(8545)
     .withExposedPorts(8546)
     .withWaitStrategy(Wait.forLogMessage("Block added to canonical chain", 1))
