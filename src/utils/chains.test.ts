@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { braga, kaolin, localhost, marketplace, mendoza } from "../chains"
+import { braga, kaolin, localhost } from "../chains"
 import { chainFromName } from "./chains"
 
 describe("chainFromName", () => {
@@ -18,25 +18,11 @@ describe("chainFromName", () => {
       expect(chain.name).toBe("Kaolin")
     })
 
-    test("returns mendoza chain for 'mendoza'", () => {
-      const chain = chainFromName("mendoza")
-      expect(chain).toBe(mendoza)
-      expect(chain.id).toBe(60138453056)
-      expect(chain.name).toBe("Mendoza")
-    })
-
     test("returns localhost chain for 'localhost'", () => {
       const chain = chainFromName("localhost")
       expect(chain).toBe(localhost)
       expect(chain.id).toBe(1337)
       expect(chain.name).toBe("Localhost")
-    })
-
-    test("returns marketplace chain for 'marketplace'", () => {
-      const chain = chainFromName("marketplace")
-      expect(chain).toBe(marketplace)
-      expect(chain.id).toBe(60138453027)
-      expect(chain.name).toBe("Marketplace")
     })
   })
 
@@ -44,20 +30,15 @@ describe("chainFromName", () => {
     test("handles uppercase chain names", () => {
       expect(chainFromName("BRAGA")).toBe(braga)
       expect(chainFromName("KAOLIN")).toBe(kaolin)
-      expect(chainFromName("MENDOZA")).toBe(mendoza)
       expect(chainFromName("LOCALHOST")).toBe(localhost)
-      expect(chainFromName("MARKETPLACE")).toBe(marketplace)
     })
 
     test("handles mixed case chain names", () => {
       expect(chainFromName("Braga")).toBe(braga)
       expect(chainFromName("Kaolin")).toBe(kaolin)
-      expect(chainFromName("Mendoza")).toBe(mendoza)
       expect(chainFromName("Localhost")).toBe(localhost)
-      expect(chainFromName("Marketplace")).toBe(marketplace)
       expect(chainFromName("bRaGa")).toBe(braga)
       expect(chainFromName("kAoLiN")).toBe(kaolin)
-      expect(chainFromName("MeNdOzA")).toBe(mendoza)
     })
   })
 
@@ -77,7 +58,9 @@ describe("chainFromName", () => {
 
     test("throws error for similar but incorrect chain names", () => {
       expect(() => chainFromName("kaolinn")).toThrow("Unknown chain: kaolinn")
-      expect(() => chainFromName("mendoz")).toThrow("Unknown chain: mendoz")
+      expect(() => chainFromName("mendoza")).toThrow("Unknown chain: mendoza")
+      expect(() => chainFromName("marketplace")).toThrow("Unknown chain: marketplace")
+      expect(() => chainFromName("rosario")).toThrow("Unknown chain: rosario")
       expect(() => chainFromName("local")).toThrow("Unknown chain: local")
     })
   })
@@ -96,7 +79,7 @@ describe("chainFromName", () => {
     })
 
     test("returned chain has rpcUrls configured", () => {
-      const chain = chainFromName("mendoza")
+      const chain = chainFromName("braga")
 
       expect(chain.rpcUrls).toBeDefined()
       expect(chain.rpcUrls.default).toBeDefined()

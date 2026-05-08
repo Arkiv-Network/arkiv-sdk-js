@@ -12,7 +12,7 @@ import {
   NoEntityFoundError,
 } from "@arkiv-network/sdk";
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts";
-import { kaolin, mendoza, rosario, braga } from "@arkiv-network/sdk/chains";
+import { kaolin, braga } from "@arkiv-network/sdk/chains";
 import { and, eq, gt, gte, lt, lte, neq, or } from "@arkiv-network/sdk/query";
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils";
 
@@ -25,7 +25,7 @@ if (!isHex(PRIVATE_KEY)) {
   throw new Error("Malformed PRIVATE_KEY: must be a hex string");
 }
 
-const chains = { kaolin, mendoza, rosario, braga } as const;
+const chains = { kaolin, braga } as const;
 const chainName = (process.env.CHAIN ?? "braga") as keyof typeof chains;
 const chain = chains[chainName];
 if (!chain) {
