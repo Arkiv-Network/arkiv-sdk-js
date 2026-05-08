@@ -1,6 +1,3 @@
 export { braga } from "./braga"
 export { kaolin } from "./kaolin"
 export { localhost } from "./localhost"
-export { marketplace } from "./marketplace"
-export { mendoza } from "./mendoza"
-export { rosario } from "./rosario"
