@@ -1,5 +1,8 @@
 import { defineChain } from "viem"
 
+/**
+ * @deprecated The kaolin network is getting removed on may 15th 2026. Migration guide: https://docs.arkiv.network/networks/migrate-from-kaolin/
+ */
 export const kaolin = defineChain({
   id: 60138453025,
   name: "Kaolin",
