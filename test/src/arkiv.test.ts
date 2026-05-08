@@ -798,6 +798,49 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 20000 },
   )
 
+  test.each(["http", "webSocket"] as const)(
+    "should create and fetch entity with all attribute types (string, number, Hex) using %s",
+    async (transport) => {
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+
+      const stringValue = "hello-world"
+      const numberValue = 42
+      const hexValue = "0xdeadbeef" as Hex
+
+      const { entityKey } = await writeClient.createEntity({
+        payload: jsonToPayload({ test: "all-attr-types" }),
+        contentType: "application/json",
+        attributes: [
+          { key: "hexattr", value: hexValue },
+          { key: "numattr", value: numberValue },
+          { key: "strattr", value: stringValue },
+        ],
+        expiresIn: ExpirationTime.fromBlocks(1000),
+      })
+
+      const entity = await readClient.getEntity(entityKey)
+
+      expect(entity).toBeDefined()
+      expect(entity.attributes).toBeArrayOfSize(3)
+
+      const strAttr = entity.attributes.find((a) => a.key === "strattr")
+      const numAttr = entity.attributes.find((a) => a.key === "numattr")
+      const hexAttr = entity.attributes.find((a) => a.key === "hexattr")
+
+      expect(strAttr?.value).toBe(stringValue)
+      expect(typeof strAttr?.value).toBe("string")
+
+      expect(numAttr?.value).toBe(numberValue)
+      expect(typeof numAttr?.value).toBe("number")
+
+      expect(hexAttr?.value).toBe(hexValue)
+      expect(typeof hexAttr?.value).toBe("string")
+      expect((hexAttr?.value as string).startsWith("0x")).toBe(true)
+    },
+    { timeout: 20000 },
+  )
+
   test.skip.each(["http", "webSocket"] as const)(
     "should order entities by attribute using orderBy() with %s transport",
     async (transport) => {

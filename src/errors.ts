@@ -25,3 +25,12 @@ export class NoEntityFoundError extends Error {
     this.name = "NoEntityFoundError"
   }
 }
+
+export class InvalidContentTypeError extends Error {
+  constructor(contentType: string) {
+    super(
+      `Invalid content type "${contentType}". Must follow RFC 2045 MIME grammar and be lowercase only (e.g. "text/plain").`,
+    )
+    this.name = "InvalidContentTypeError"
+  }
+}

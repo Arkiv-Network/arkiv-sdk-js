@@ -5,6 +5,7 @@ import {
   ContractFunctionExecutionError,
   ContractFunctionRevertedError,
   encodePacked,
+  isHex,
   keccak256,
   parseAbi,
   toBytes,
@@ -19,13 +20,27 @@ import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
-import { EntityMutationError } from "../errors"
+import { EntityMutationError, InvalidContentTypeError } from "../errors"
 import type { TxParams } from "../types"
-import { AttributeValueType } from "../types/attributes"
 import { EntityOperationType } from "../types/entity"
+
+const enum AttributeValueType {
+  Uint = 1,
+  String = 2,
+  EntityKey = 3,
+}
 import { getLogger } from "./logger"
 
 const logger = getLogger("utils:arkiv-transactions")
+
+// RFC 2045 token chars, lowercase only. Rejects uppercase to prevent text/plain vs Text/Plain ambiguity.
+const MIME_REGEX = /^[a-z][a-z0-9!#$&\-^_]*\/[a-z0-9][a-z0-9!#$&\-^_.+]*$/
+
+function validateContentType(contentType: string): void {
+  if (!MIME_REGEX.test(contentType)) {
+    throw new InvalidContentTypeError(contentType)
+  }
+}
 
 // Mime128 = struct { bytes32[4] data }  (128-byte fixed MIME type container)
 // Attribute = struct { bytes32 name, uint8 valueType, bytes32[4] value }
@@ -88,11 +103,17 @@ function encodeMime128(contentType: string): { data: readonly [Hex, Hex, Hex, He
   return { data: contentType ? encodeBytes128(toBytes(contentType)) : EMPTY_BYTES128 }
 }
 
-function encodeAttribute(attr: { key: string; value: string | number | bigint | boolean }) {
-  // Ident32 name: string key encoded as left-aligned bytes32
+function encodeAttribute(attr: { key: string; value: Hex | string | number | bigint }) {
   const name = toHex(attr.key, { size: 32 })
 
   if (typeof attr.value === "string") {
+    if (isHex(attr.value)) {
+      return {
+        name,
+        valueType: AttributeValueType.EntityKey,
+        value: [toHex(toBytes(attr.value), { size: 32 }), ZERO_32, ZERO_32, ZERO_32] as const,
+      }
+    }
     return {
       name,
       valueType: AttributeValueType.String,
@@ -100,11 +121,10 @@ function encodeAttribute(attr: { key: string; value: string | number | bigint | 
     }
   }
 
-  const numVal = typeof attr.value === "boolean" ? (attr.value ? 1n : 0n) : BigInt(attr.value)
   return {
     name,
     valueType: AttributeValueType.Uint,
-    value: [toHex(numVal, { size: 32 }), ZERO_32, ZERO_32, ZERO_32] as const,
+    value: [toHex(BigInt(attr.value), { size: 32 }), ZERO_32, ZERO_32, ZERO_32] as const,
   }
 }
 
@@ -159,6 +179,9 @@ export async function sendArkivTransaction(
   const createdEntityKeys: Hex[] = (creates ?? []).map((_, i) =>
     deriveEntityKey(client.chain!.id, owner, ownerNonce + BigInt(i)),
   )
+
+  for (const item of creates ?? []) validateContentType(item.contentType)
+  for (const item of updates ?? []) validateContentType(item.contentType)
 
   const operations = [
     ...(creates ?? []).map((item, i) => ({

@@ -2,7 +2,7 @@ import type { Hex } from "@arkiv-network/sdk"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
 export async function launchLocalArkivNode(withFundingAddress: Hex | undefined = undefined) {
-  const container = await new GenericContainer("ghcr.io/arkiv-network/arkiv-node-dev:latest")
+  const container = await new GenericContainer("ghcr.io/arkiv-network/arkiv-node-dev:latest-arm64")
     .withExposedPorts(8545)
     .withExposedPorts(8546)
     .withWaitStrategy(Wait.forLogMessage("Block added to canonical chain", 1))
