@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.6**](../../index.md)
+[**@arkiv-network/sdk v0.6.7**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **MutateEntitiesParameters** = `object`
 
-Defined in: [src/actions/wallet/mutateEntities.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L22)
+Defined in: [src/actions/wallet/mutateEntities.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L22)
 
 Parameters for the mutateEntities function.
 - creates: The creates to perform.
@@ -22,7 +22,7 @@ Parameters for the mutateEntities function.
 
 > `optional` **creates**: [`CreateEntityParameters`](CreateEntityParameters.md)[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L23)
+Defined in: [src/actions/wallet/mutateEntities.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L23)
 
 ***
 
@@ -30,7 +30,7 @@ Defined in: [src/actions/wallet/mutateEntities.ts:23](https://github.com/Arkiv-N
 
 > `optional` **deletes**: [`DeleteEntityParameters`](DeleteEntityParameters.md)[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L25)
+Defined in: [src/actions/wallet/mutateEntities.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L25)
 
 ***
 
@@ -38,7 +38,7 @@ Defined in: [src/actions/wallet/mutateEntities.ts:25](https://github.com/Arkiv-N
 
 > `optional` **extensions**: [`ExtendEntityParameters`](ExtendEntityParameters.md)[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:26](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L26)
+Defined in: [src/actions/wallet/mutateEntities.ts:26](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L26)
 
 ***
 
@@ -46,7 +46,7 @@ Defined in: [src/actions/wallet/mutateEntities.ts:26](https://github.com/Arkiv-N
 
 > `optional` **ownershipChanges**: [`ChangeOwnershipParameters`](ChangeOwnershipParameters.md)[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:27](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L27)
+Defined in: [src/actions/wallet/mutateEntities.ts:27](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L27)
 
 ***
 
@@ -54,4 +54,4 @@ Defined in: [src/actions/wallet/mutateEntities.ts:27](https://github.com/Arkiv-N
 
 > `optional` **updates**: [`UpdateEntityParameters`](UpdateEntityParameters.md)[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L24)
+Defined in: [src/actions/wallet/mutateEntities.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L24)

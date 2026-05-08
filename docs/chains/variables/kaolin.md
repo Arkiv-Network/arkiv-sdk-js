@@ -1,18 +1,18 @@
-[**@arkiv-network/sdk v0.6.6**](../../index.md)
+[**@arkiv-network/sdk v0.6.7**](../../index.md)
 
 ***
 
 [@arkiv-network/sdk](../../index.md) / [chains](../index.md) / kaolin
 
-# Variable: kaolin
+# ~~Variable: kaolin~~
 
 > `const` **kaolin**: `object`
 
-Defined in: [src/chains/kaolin.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/chains/kaolin.ts#L3)
+Defined in: [src/chains/kaolin.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/chains/kaolin.ts#L6)
 
 ## Type Declaration
 
-### blockExplorers
+### ~~blockExplorers~~
 
 > **blockExplorers**: `object`
 
@@ -34,19 +34,19 @@ Collection of block explorers
 
 > `readonly` **url**: `"https://explorer.kaolin.hoodi.arkiv.network"` = `"https://explorer.kaolin.hoodi.arkiv.network"`
 
-### id
+### ~~id~~
 
 > **id**: `60138453025`
 
 ID in number form
 
-### name
+### ~~name~~
 
 > **name**: `"Kaolin"`
 
 Human-readable name
 
-### nativeCurrency
+### ~~nativeCurrency~~
 
 > **nativeCurrency**: `object`
 
@@ -64,11 +64,11 @@ Currency used by chain
 
 > `readonly` **symbol**: `"ETH"` = `"ETH"`
 
-### network
+### ~~network~~
 
 > `readonly` **network**: `"kaolin"` = `"kaolin"`
 
-### rpcUrls
+### ~~rpcUrls~~
 
 > **rpcUrls**: `object`
 
@@ -86,8 +86,12 @@ Collection of RPC endpoints
 
 > `readonly` **webSocket**: readonly \[`"wss://kaolin.hoodi.arkiv.network/rpc/ws"`\]
 
-### testnet
+### ~~testnet~~
 
 > **testnet**: `true`
 
 Flag for test networks
+
+## Deprecated
+
+The kaolin network is getting removed on may 15th 2026. Migration guide: https://docs.arkiv.network/networks/migrate-from-kaolin/

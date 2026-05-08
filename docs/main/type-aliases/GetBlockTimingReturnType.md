@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.6**](../../index.md)
+[**@arkiv-network/sdk v0.6.7**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **GetBlockTimingReturnType** = `object`
 
-Defined in: [src/actions/public/getBlockTiming.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/public/getBlockTiming.ts#L6)
+Defined in: [src/actions/public/getBlockTiming.ts:6](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/getBlockTiming.ts#L6)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/actions/public/getBlockTiming.ts:6](https://github.com/Arkiv-Ne
 
 > **blockDuration**: `number`
 
-Defined in: [src/actions/public/getBlockTiming.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/public/getBlockTiming.ts#L9)
+Defined in: [src/actions/public/getBlockTiming.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/getBlockTiming.ts#L9)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/actions/public/getBlockTiming.ts:9](https://github.com/Arkiv-Ne
 
 > **currentBlock**: `bigint`
 
-Defined in: [src/actions/public/getBlockTiming.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/public/getBlockTiming.ts#L7)
+Defined in: [src/actions/public/getBlockTiming.ts:7](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/getBlockTiming.ts#L7)
 
 ***
 
@@ -32,4 +32,4 @@ Defined in: [src/actions/public/getBlockTiming.ts:7](https://github.com/Arkiv-Ne
 
 > **currentBlockTime**: `number`
 
-Defined in: [src/actions/public/getBlockTiming.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/public/getBlockTiming.ts#L8)
+Defined in: [src/actions/public/getBlockTiming.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/getBlockTiming.ts#L8)

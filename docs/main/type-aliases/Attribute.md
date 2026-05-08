@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.6**](../../index.md)
+[**@arkiv-network/sdk v0.6.7**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **Attribute** = `object`
 
-Defined in: [src/types/attributes.ts:1](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/attributes.ts#L1)
+Defined in: [src/types/attributes.ts:1](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/attributes.ts#L1)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/attributes.ts:1](https://github.com/Arkiv-Network/arkiv-s
 
 > **key**: `string`
 
-Defined in: [src/types/attributes.ts:2](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/attributes.ts#L2)
+Defined in: [src/types/attributes.ts:2](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/attributes.ts#L2)
 
 ***
 
@@ -24,4 +24,4 @@ Defined in: [src/types/attributes.ts:2](https://github.com/Arkiv-Network/arkiv-s
 
 > **value**: `string` \| `number`
 
-Defined in: [src/types/attributes.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/attributes.ts#L3)
+Defined in: [src/types/attributes.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/attributes.ts#L3)

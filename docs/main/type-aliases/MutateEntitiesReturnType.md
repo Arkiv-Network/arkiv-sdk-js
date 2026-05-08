@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.6**](../../index.md)
+[**@arkiv-network/sdk v0.6.7**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **MutateEntitiesReturnType** = `object`
 
-Defined in: [src/actions/wallet/mutateEntities.ts:72](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L72)
+Defined in: [src/actions/wallet/mutateEntities.ts:72](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L72)
 
 Return type for the mutateEntities function.
 - txHash: The transaction hash.
@@ -24,7 +24,7 @@ Return type for the mutateEntities function.
 
 > **createdEntities**: `Hex`[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:74](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L74)
+Defined in: [src/actions/wallet/mutateEntities.ts:74](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L74)
 
 ***
 
@@ -32,7 +32,7 @@ Defined in: [src/actions/wallet/mutateEntities.ts:74](https://github.com/Arkiv-N
 
 > **deletedEntities**: `Hex`[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:76](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L76)
+Defined in: [src/actions/wallet/mutateEntities.ts:76](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L76)
 
 ***
 
@@ -40,7 +40,7 @@ Defined in: [src/actions/wallet/mutateEntities.ts:76](https://github.com/Arkiv-N
 
 > **extendedEntities**: `Hex`[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:77](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L77)
+Defined in: [src/actions/wallet/mutateEntities.ts:77](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L77)
 
 ***
 
@@ -48,7 +48,7 @@ Defined in: [src/actions/wallet/mutateEntities.ts:77](https://github.com/Arkiv-N
 
 > **ownershipChanges**: `Hex`[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:78](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L78)
+Defined in: [src/actions/wallet/mutateEntities.ts:78](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L78)
 
 ***
 
@@ -56,7 +56,7 @@ Defined in: [src/actions/wallet/mutateEntities.ts:78](https://github.com/Arkiv-N
 
 > **txHash**: `Hash`
 
-Defined in: [src/actions/wallet/mutateEntities.ts:73](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L73)
+Defined in: [src/actions/wallet/mutateEntities.ts:73](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L73)
 
 ***
 
@@ -64,4 +64,4 @@ Defined in: [src/actions/wallet/mutateEntities.ts:73](https://github.com/Arkiv-N
 
 > **updatedEntities**: `Hex`[]
 
-Defined in: [src/actions/wallet/mutateEntities.ts:75](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/actions/wallet/mutateEntities.ts#L75)
+Defined in: [src/actions/wallet/mutateEntities.ts:75](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/mutateEntities.ts#L75)

@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.6**](../../index.md)
+[**@arkiv-network/sdk v0.6.7**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **RpcIncludeData** = `object`
 
-Defined in: [src/types/rpcSchema.ts:33](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L33)
+Defined in: [src/types/rpcSchema.ts:33](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L33)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/rpcSchema.ts:33](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **attributes**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:35](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L35)
+Defined in: [src/types/rpcSchema.ts:35](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L35)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/types/rpcSchema.ts:35](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **contentType**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:37](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L37)
+Defined in: [src/types/rpcSchema.ts:37](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L37)
 
 ***
 
@@ -32,7 +32,7 @@ Defined in: [src/types/rpcSchema.ts:37](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **createdAtBlock**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:41](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L41)
+Defined in: [src/types/rpcSchema.ts:41](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L41)
 
 ***
 
@@ -40,7 +40,7 @@ Defined in: [src/types/rpcSchema.ts:41](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **creator**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:40](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L40)
+Defined in: [src/types/rpcSchema.ts:40](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L40)
 
 ***
 
@@ -48,7 +48,7 @@ Defined in: [src/types/rpcSchema.ts:40](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **expiration**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:38](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L38)
+Defined in: [src/types/rpcSchema.ts:38](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L38)
 
 ***
 
@@ -56,7 +56,7 @@ Defined in: [src/types/rpcSchema.ts:38](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **key**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L34)
+Defined in: [src/types/rpcSchema.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L34)
 
 ***
 
@@ -64,7 +64,7 @@ Defined in: [src/types/rpcSchema.ts:34](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **lastModifiedAtBlock**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:42](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L42)
+Defined in: [src/types/rpcSchema.ts:42](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L42)
 
 ***
 
@@ -72,7 +72,7 @@ Defined in: [src/types/rpcSchema.ts:42](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **operationIndexInTransaction**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L44)
+Defined in: [src/types/rpcSchema.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L44)
 
 ***
 
@@ -80,7 +80,7 @@ Defined in: [src/types/rpcSchema.ts:44](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **owner**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:39](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L39)
+Defined in: [src/types/rpcSchema.ts:39](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L39)
 
 ***
 
@@ -88,7 +88,7 @@ Defined in: [src/types/rpcSchema.ts:39](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **payload**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:36](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L36)
+Defined in: [src/types/rpcSchema.ts:36](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L36)
 
 ***
 
@@ -96,4 +96,4 @@ Defined in: [src/types/rpcSchema.ts:36](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **transactionIndexInBlock**: `boolean`
 
-Defined in: [src/types/rpcSchema.ts:43](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/f1df6a3246e47d0aee10852c916765440d17dc25/src/types/rpcSchema.ts#L43)
+Defined in: [src/types/rpcSchema.ts:43](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L43)
