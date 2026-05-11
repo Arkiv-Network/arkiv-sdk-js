@@ -16,7 +16,7 @@ export async function getBlockTiming(client: ArkivClient) {
   })
   logger("Block timing %o", blockTiming)
   return {
-    currentBlock: blockTiming.current_block,
+    currentBlock: BigInt(blockTiming.current_block),
     currentBlockTime: blockTiming.current_block_time,
     blockDuration: blockTiming.duration,
   }
