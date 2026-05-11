@@ -50,7 +50,7 @@ export type ArkivRpcSchema = [
     Parameters?: [query: string, queryOptions?: RpcQueryOptions]
     ReturnType: {
       data: RpcEntity[]
-      blockNumber: bigint
+      blockNumber: Hex
       cursor: string
     }
   },

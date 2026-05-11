@@ -160,6 +160,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(blockTiming).toBeDefined()
       expect(blockTiming.currentBlock).toBeDefined()
       expect(blockTiming.currentBlock).toBeGreaterThan(0n)
+      expect(typeof blockTiming.currentBlock).toBe("bigint")
       expect(blockTiming.currentBlockTime).toBeDefined()
       expect(blockTiming.currentBlockTime).toBeGreaterThan(0)
       expect(blockTiming.blockDuration).toBeDefined()

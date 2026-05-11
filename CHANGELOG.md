@@ -1,3 +1,15 @@
+## [0.6.3] - 2026-05-11
+
+### Fixed
+- Type mismatch in getBlockTiming https://github.com/Arkiv-Network/arkiv-sdk-js/issues/62
+
+
+## [0.6.6] - 2026-05-06
+
+### Added
+- Braga testnet
+
+
 ## [0.6.3] - 2026-03-09
 
 ### Added
