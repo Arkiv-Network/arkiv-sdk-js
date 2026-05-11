@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.6.8**](../../index.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: QueryBuilder
 
-Defined in: [src/query/queryBuilder.ts:54](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L54)
+Defined in: [src/query/queryBuilder.ts:54](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L54)
 
 QueryBuilder is a helper class to build queries to the Arkiv DBChains.
 It can be used to fetch entities from the Arkiv DBChains. It follows the Builder pattern allowing chaining of methods.
@@ -21,7 +21,7 @@ The Arkiv client
 
 > **new QueryBuilder**(`client`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:67](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L67)
+Defined in: [src/query/queryBuilder.ts:67](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L67)
 
 #### Parameters
 
@@ -39,7 +39,7 @@ Defined in: [src/query/queryBuilder.ts:67](https://github.com/Arkiv-Network/arki
 
 > **count**(): `Promise`\<`number`\>
 
-Defined in: [src/query/queryBuilder.ts:316](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L316)
+Defined in: [src/query/queryBuilder.ts:316](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L316)
 
 Counts the entities from the query.
 
@@ -63,7 +63,7 @@ const result = await builder.where(eq("name", "John")).count()
 
 > **createdBy**(`createdBy`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:95](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L95)
+Defined in: [src/query/queryBuilder.ts:95](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L95)
 
 Sets the createdBy filter
 
@@ -94,7 +94,7 @@ builder.createdBy("0x1234567890123456789012345678901234567890")
 
 > **cursor**(`cursor`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:228](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L228)
+Defined in: [src/query/queryBuilder.ts:228](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L228)
 
 Sets the cursor for the query - it is advances setting which rather shouldn't be used manually but it is provided from query result if limit is used (pagination).
 
@@ -125,7 +125,7 @@ builder.offset(10)
 
 > **fetch**(): `Promise`\<[`QueryResult`](QueryResult.md)\>
 
-Defined in: [src/query/queryBuilder.ts:283](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L283)
+Defined in: [src/query/queryBuilder.ts:283](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L283)
 
 Fetches the entities from the query. Re
 It will return a QueryResult instance which can be used to fetch the next and previous pages.
@@ -150,7 +150,7 @@ const result = await builder.where(eq("name", "John")).fetch()
 
 > **limit**(`limit`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:214](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L214)
+Defined in: [src/query/queryBuilder.ts:214](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L214)
 
 Sets the limit for the query
 
@@ -183,7 +183,7 @@ builder.limit(10)
 
 > **orderBy**(`attributeName`, `attributeType`, `order?`): `this`
 
-Defined in: [src/query/queryBuilder.ts:116](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L116)
+Defined in: [src/query/queryBuilder.ts:116](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L116)
 
 Sets the orderBy for the query.
 It can be called multiple times to order by multiple attributes.
@@ -229,7 +229,7 @@ builder.orderBy(desc("name", "string"))
 
 > **orderBy**(`orderByAttribute`): `this`
 
-Defined in: [src/query/queryBuilder.ts:129](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L129)
+Defined in: [src/query/queryBuilder.ts:129](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L129)
 
 Sets the orderBy for the query.
 This method takes the OrderByAttribute object as an argument and is mainly
@@ -263,7 +263,7 @@ builder.orderBy(desc("name", "string"))
 
 > **ownedBy**(`ownedBy`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:81](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L81)
+Defined in: [src/query/queryBuilder.ts:81](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L81)
 
 Sets the ownedBy filter
 
@@ -294,7 +294,7 @@ builder.ownedBy("0x1234567890123456789012345678901234567890")
 
 > **validAtBlock**(`validAtBlock`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:243](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L243)
+Defined in: [src/query/queryBuilder.ts:243](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L243)
 
 Sets the validAtBlock for the query which tells at which block height the state we are intested.
 If not set, the latest block is  used.
@@ -326,7 +326,7 @@ builder.validAtBlock(10000)
 
 > **where**(`predicates`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:264](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L264)
+Defined in: [src/query/queryBuilder.ts:264](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L264)
 
 Sets the predicates for the query limiting the results. It can be a single predicate or an array of predicates combined with 'and'.
 Predicates can be nested using 'or' and 'and' predicates.
@@ -364,7 +364,7 @@ builder.where([eq("name", "John"), and([eq("age", 30), or([eq("age", 31), and([e
 
 > **withAttributes**(`withAttributes`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:172](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L172)
+Defined in: [src/query/queryBuilder.ts:172](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L172)
 
 Sets the withAttributes flag which will return the attributes for the entities if true
 
@@ -395,7 +395,7 @@ builder.withAttributes(true)
 
 > **withMetadata**(`withMetadata`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:186](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L186)
+Defined in: [src/query/queryBuilder.ts:186](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L186)
 
 Sets the withMetadata flag which will return the metadata (like owner, expiredAt, etc.) for the entities if true
 
@@ -426,7 +426,7 @@ builder.withMetadata(true)
 
 > **withPayload**(`withPayload`): `QueryBuilder`
 
-Defined in: [src/query/queryBuilder.ts:200](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/queryBuilder.ts#L200)
+Defined in: [src/query/queryBuilder.ts:200](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L200)
 
 Sets the withPayload flag which will return the payload for the entities if true
 

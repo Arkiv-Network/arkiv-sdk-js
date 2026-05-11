@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.6.8**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **OnEntityOwnerChangedEvent** = `object`
 
-Defined in: [src/types/events.ts:36](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/events.ts#L36)
+Defined in: [src/types/events.ts:36](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/types/events.ts#L36)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/events.ts:36](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **entityKey**: `Hex`
 
-Defined in: [src/types/events.ts:37](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/events.ts#L37)
+Defined in: [src/types/events.ts:37](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/types/events.ts#L37)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/types/events.ts:37](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **newOwner**: `Hex`
 
-Defined in: [src/types/events.ts:39](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/events.ts#L39)
+Defined in: [src/types/events.ts:39](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/types/events.ts#L39)
 
 ***
 
@@ -32,4 +32,4 @@ Defined in: [src/types/events.ts:39](https://github.com/Arkiv-Network/arkiv-sdk-
 
 > **oldOwner**: `Hex`
 
-Defined in: [src/types/events.ts:38](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/events.ts#L38)
+Defined in: [src/types/events.ts:38](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/types/events.ts#L38)

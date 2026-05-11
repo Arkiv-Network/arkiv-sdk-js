@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.6.8**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **PublicArkivActions**\<`transport`, `chain`, `account`\> = `Pick`\<`PublicActions`\<`transport`, `chain`, `account`\>, `"getBalance"` \| `"getBlock"` \| `"getBlockNumber"` \| `"getChainId"` \| `"getLogs"` \| `"getTransaction"` \| `"getTransactionCount"` \| `"getTransactionReceipt"` \| `"waitForTransactionReceipt"` \| `"watchEvent"`\> & `object`
 
-Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/clients/decorators/arkivPublic.ts#L17)
+Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/clients/decorators/arkivPublic.ts#L17)
 
 ## Type Declaration
 

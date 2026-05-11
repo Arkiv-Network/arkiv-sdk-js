@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.6.8**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **createWalletClient**\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`\>(`parameters`): `object`
 
-Defined in: [src/clients/createWalletClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/clients/createWalletClient.ts#L44)
+Defined in: [src/clients/createWalletClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/clients/createWalletClient.ts#L44)
 
 Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
 

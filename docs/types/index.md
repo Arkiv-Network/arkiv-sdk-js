@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../index.md)
+[**@arkiv-network/sdk v0.6.8**](../index.md)
 
 ***
 

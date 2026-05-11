@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.6.8**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **localhost**: `object`
 
-Defined in: [src/chains/localhost.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/chains/localhost.ts#L3)
+Defined in: [src/chains/localhost.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/chains/localhost.ts#L3)
 
 ## Type Declaration
 

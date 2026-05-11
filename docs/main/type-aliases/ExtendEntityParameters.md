@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.6.8**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **ExtendEntityParameters** = `object`
 
-Defined in: [src/actions/wallet/extendEntity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/extendEntity.ts#L14)
+Defined in: [src/actions/wallet/extendEntity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/extendEntity.ts#L14)
 
 Parameters for the extendEntity function.
 - entityKey: The key of the entity to extend.
@@ -20,7 +20,7 @@ Parameters for the extendEntity function.
 
 > **entityKey**: `Hex`
 
-Defined in: [src/actions/wallet/extendEntity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/extendEntity.ts#L15)
+Defined in: [src/actions/wallet/extendEntity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/extendEntity.ts#L15)
 
 ***
 
@@ -28,4 +28,4 @@ Defined in: [src/actions/wallet/extendEntity.ts:15](https://github.com/Arkiv-Net
 
 > **expiresIn**: `number`
 
-Defined in: [src/actions/wallet/extendEntity.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/wallet/extendEntity.ts#L16)
+Defined in: [src/actions/wallet/extendEntity.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/extendEntity.ts#L16)
