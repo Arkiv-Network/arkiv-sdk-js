@@ -4,7 +4,6 @@ import {
   type TransactionReceipt,
   ContractFunctionExecutionError,
   ContractFunctionRevertedError,
-  decodeErrorResult,
   encodePacked,
   keccak256,
   parseAbi,
@@ -109,8 +108,8 @@ function encodeAttribute(attr: { key: string; value: string | number | bigint | 
   }
 }
 
-function toExpiryBlock(expiresIn: number, currentBlock: bigint): number {
-  return Number(currentBlock) + Math.ceil(expiresIn / BLOCK_TIME)
+function toBTL(expiresIn: number): number {
+  return Math.ceil(expiresIn / BLOCK_TIME)
 }
 
 // entityKey = keccak256(chainId || registryAddress || ownerAddress || nonce)
@@ -146,8 +145,6 @@ export async function sendArkivTransaction(
   const { creates, updates, deletes, extensions, ownershipChanges } = ops
   const owner = client.account.address as Address
 
-  const currentBlock = await walletClient.getBlockNumber()
-
   const ownerNonce: bigint = creates?.length
     ? BigInt(
         await walletClient.readContract({
@@ -170,7 +167,7 @@ export async function sendArkivTransaction(
       payload: toHex(item.payload),
       contentType: encodeMime128(item.contentType),
       attributes: item.attributes.map(encodeAttribute),
-      expiresAt: toExpiryBlock(item.expiresIn, currentBlock),
+      expiresAt: toBTL(item.expiresIn),
       newOwner: ZERO_ADDRESS,
     })),
     ...(updates ?? []).map((item) => ({
@@ -197,7 +194,7 @@ export async function sendArkivTransaction(
       payload: "0x" as Hex,
       contentType: encodeMime128(""),
       attributes: [] as never[],
-      expiresAt: toExpiryBlock(item.expiresIn, currentBlock),
+      expiresAt: toBTL(item.expiresIn),
       newOwner: ZERO_ADDRESS,
     })),
     ...(ownershipChanges ?? []).map((item) => ({
@@ -211,7 +208,7 @@ export async function sendArkivTransaction(
     })),
   ]
 
-  logger("Sending execute with %d operations %o", operations.length, operations)
+  logger("Sending execute with %d operations %s", operations.length, JSON.stringify(operations))
 
   try {
     const txHash = await walletClient.writeContract({
