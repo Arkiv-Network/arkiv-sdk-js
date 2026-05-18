@@ -9,7 +9,7 @@ import {
   webSocket,
 } from "@arkiv-network/sdk"
 import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
-import { asc, desc, eq } from "@arkiv-network/sdk/query"
+import { and, asc, desc, eq, gt, gte, lt, lte, or } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
 import { execCommand, launchLocalArkivNode } from "./utils.js"
@@ -874,8 +874,112 @@ describe("Arkiv Integration Tests for public client", () => {
     expect(writeClient.createEntity(entity)).rejects.toThrowError(/^Transaction failed:.*Ident32InvalidByte.*$/s)
   })
 
+  test.each(["http", "webSocket"] as const)(
+    "should handle range queries on numeric attributes using %s",
+    async (transport) => {
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+      const owner = privateKeyToAccount(privateKey).address
+
+      for (const score of [100, 200, 300, 400, 500]) {
+        await writeClient.createEntity({
+          payload: jsonToPayload({ entity: { entityType: "rangetest", entityId: `score-${score}` } }),
+          contentType: "application/json",
+          attributes: [{ key: "rangescore", value: score }],
+          expiresIn: ExpirationTime.fromBlocks(1000),
+        })
+      }
+
+      const simple = await readClient.buildQuery()
+        .where(gt("rangescore", 200))
+        .ownedBy(owner)
+        .withAttributes(true)
+        .fetch()
+      expect(simple.entities.length).toBeGreaterThanOrEqual(3)
+
+      const between = await readClient.buildQuery()
+        .where(and([gte("rangescore", 200), lte("rangescore", 400)]))
+        .ownedBy(owner)
+        .withAttributes(true)
+        .fetch()
+      expect(between.entities.length).toBeGreaterThanOrEqual(3)
+
+      const orResult = await readClient.buildQuery()
+        .where(or([lt("rangescore", 200), gt("rangescore", 400)]))
+        .ownedBy(owner)
+        .withAttributes(true)
+        .fetch()
+      expect(orResult.entities.length).toBeGreaterThanOrEqual(2)
+    },
+    { timeout: 60000 },
+  )
+
+  test.each(["http", "webSocket"] as const)(
+    "should handle range queries on string attributes using %s",
+    async (transport) => {
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+      const owner = privateKeyToAccount(privateKey).address
+
+      for (const fruit of ["apple", "banana", "cherry", "mango", "orange"]) {
+        await writeClient.createEntity({
+          payload: jsonToPayload({ entity: { entityType: "rangetest", entityId: `fruit-${fruit}` } }),
+          contentType: "application/json",
+          attributes: [{ key: "rangefruit", value: fruit }],
+          expiresIn: ExpirationTime.fromBlocks(1000),
+        })
+      }
+
+      const simple = await readClient.buildQuery()
+        .where(gt("rangefruit", "cherry"))
+        .ownedBy(owner)
+        .withAttributes(true)
+        .fetch()
+      expect(simple.entities.length).toBeGreaterThanOrEqual(2)
+
+      const between = await readClient.buildQuery()
+        .where(and([gte("rangefruit", "banana"), lte("rangefruit", "mango")]))
+        .ownedBy(owner)
+        .withAttributes(true)
+        .fetch()
+      expect(between.entities.length).toBeGreaterThanOrEqual(3)
+
+      const orResult = await readClient.buildQuery()
+        .where(or([lt("rangefruit", "banana"), gt("rangefruit", "mango")]))
+        .ownedBy(owner)
+        .withAttributes(true)
+        .fetch()
+      expect(orResult.entities.length).toBeGreaterThanOrEqual(2)
+    },
+    { timeout: 60000 },
+  )
+
+  test(
+    "should create entity exactly once despite internal TX simulation",
+    async () => {
+      const owner = privateKeyToAccount(privateKey).address
+      const uniqueId = crypto.randomUUID()
+
+      await walletClient.createEntity({
+        payload: jsonToPayload({ entity: { entityType: "dedupetest", entityId: uniqueId } }),
+        contentType: "application/json",
+        attributes: [{ key: "dedupeid", value: uniqueId }],
+        expiresIn: ExpirationTime.fromBlocks(1000),
+      })
+
+      const result = await publicClient.buildQuery()
+        .where(eq("dedupeid", uniqueId))
+        .ownedBy(owner)
+        .withAttributes(true)
+        .fetch()
+
+      expect(result.entities.length).toEqual(1)
+    },
+    { timeout: basicCRUDTestTimeout },
+  )
+
   //TODO: bring back this test once DB service is integrated into op-reth because there is an issue in DB service but it is going to be rewritten
-  test.skip("should handle numeric attribute with value 0", async () => {
+  test("should handle numeric attribute with value 0", async () => {
     const writeClient = walletClient
     const readClient = publicClient
     const entityData = {
