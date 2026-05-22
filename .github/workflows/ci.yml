@@ -255,3 +255,15 @@ jobs:
             https://www.npmjs.com/package/@arkiv-network/sdk/v/${{ steps.get_latest_tag.outputs.version }}
           draft: ${{ github.ref == 'refs/heads/develop' }}
           prerelease: false
+
+      - name: Trigger docs stage deploy
+        if: github.ref == 'refs/heads/develop'
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+        run: gh workflow run deploy-stage.yml --repo Arkiv-Network/arkiv-starlight-docs --ref develop
+
+      - name: Trigger docs prod deploy
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.DOCS_DISPATCH_TOKEN }}
+        run: gh workflow run deploy-prod.yml --repo Arkiv-Network/arkiv-starlight-docs --ref main
