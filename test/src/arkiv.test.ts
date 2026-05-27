@@ -101,10 +101,10 @@ describe("Arkiv Integration Tests for public client", () => {
     const payload = options.payload ?? "Hello world"
 
     if (arkivNode) {
-      const command = ["arkiv-cli", "--private-key", privateKey, "create", "--payload", payload]
+      const command = ["arkiv-cli", "--private-key", privateKey, "create", "--payload", payload, "--btl", 1000]
 
       if (options.attribute) {
-        command.push("--attributes", `${options.attribute.key}:string=${options.attribute.value}`, "--expires-in", "1000sec")
+        command.push("--attributes", `${options.attribute.key}:string=${options.attribute.value}`)
       }
 
       const result = await execCommand(arkivNode, command)
