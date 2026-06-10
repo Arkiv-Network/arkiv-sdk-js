@@ -2,7 +2,6 @@ export type { GetBlockTimingReturnType } from "../actions/public/getBlockTiming"
 export type {
   QueryOptions,
   QueryOptionsIncludeData,
-  QueryOptionsOrderBy,
   QueryReturnType,
 } from "../actions/public/query"
 export type {
@@ -32,7 +31,6 @@ export type {
   ArkivRpcSchema,
   RpcEntity,
   RpcIncludeData,
-  RpcOrderByAttribute,
   RpcQueryOptions,
 } from "./rpcSchema"
 export type { TxParams } from "./txParams"

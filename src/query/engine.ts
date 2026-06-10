@@ -1,7 +1,7 @@
 import type { Hex } from "viem"
 import { hexToNumber, numberToHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
-import type { RpcIncludeData, RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
+import type { RpcIncludeData, RpcQueryOptions } from "../types/rpcSchema"
 import { getLogger } from "../utils/logger"
 import type { Predicate } from "./predicate"
 
@@ -50,7 +50,6 @@ export async function processQuery(
     cursor: string | undefined
     ownedBy: Hex | undefined
     createdBy: Hex | undefined
-    orderBy: RpcOrderByAttribute[] | undefined
     validAtBlock?: bigint | undefined
     withAttributes?: boolean | undefined
     withMetadata?: boolean | undefined
@@ -63,7 +62,6 @@ export async function processQuery(
     cursor,
     ownedBy,
     createdBy,
-    orderBy,
     validAtBlock,
     withAttributes,
     withMetadata,
@@ -76,7 +74,6 @@ export async function processQuery(
     limit,
     ownedBy,
     createdBy,
-    orderBy,
     validAtBlock,
     withAttributes,
     withMetadata,
@@ -122,14 +119,10 @@ export async function processQuery(
   if (cursor !== undefined) {
     queryOptions.cursor = cursor
   }
-  if (orderBy !== undefined) {
-    queryOptions.orderBy = orderBy
-  }
 
   logger("Built query to send %s %o", query, {
     includeData: queryOptions.includeData,
     atBlock: queryOptions.atBlock ? hexToNumber(queryOptions.atBlock) : undefined,
-    orderBy: queryOptions.orderBy,
     resultsPerPage: queryOptions.resultsPerPage,
     cursor: queryOptions.cursor,
   })

@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../index.md)
+[**@arkiv-network/sdk v0.7.0-dev.0**](../index.md)
 
 ***
 
@@ -146,12 +146,6 @@ Re-exports [QueryOptionsIncludeData](../main/type-aliases/QueryOptionsIncludeDat
 
 ***
 
-### QueryOptionsOrderBy
-
-Re-exports [QueryOptionsOrderBy](../main/type-aliases/QueryOptionsOrderBy.md)
-
-***
-
 ### QueryReturnType
 
 Re-exports [QueryReturnType](../main/type-aliases/QueryReturnType.md)
@@ -167,12 +161,6 @@ Re-exports [RpcEntity](../main/type-aliases/RpcEntity.md)
 ### RpcIncludeData
 
 Re-exports [RpcIncludeData](../main/type-aliases/RpcIncludeData.md)
-
-***
-
-### RpcOrderByAttribute
-
-Re-exports [RpcOrderByAttribute](../main/type-aliases/RpcOrderByAttribute.md)
 
 ***
 

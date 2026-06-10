@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.7.0-dev.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **QueryReturnType** = `object`
 
-Defined in: [src/actions/public/query.ts:26](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/query.ts#L26)
+Defined in: [src/actions/public/query.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/actions/public/query.ts#L19)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/actions/public/query.ts:26](https://github.com/Arkiv-Network/ar
 
 > **blockNumber**: `bigint` \| `undefined`
 
-Defined in: [src/actions/public/query.ts:29](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/query.ts#L29)
+Defined in: [src/actions/public/query.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/actions/public/query.ts#L22)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/actions/public/query.ts:29](https://github.com/Arkiv-Network/ar
 
 > **cursor**: `string` \| `undefined`
 
-Defined in: [src/actions/public/query.ts:28](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/query.ts#L28)
+Defined in: [src/actions/public/query.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/actions/public/query.ts#L21)
 
 ***
 
@@ -32,4 +32,4 @@ Defined in: [src/actions/public/query.ts:28](https://github.com/Arkiv-Network/ar
 
 > **entities**: [`Entity`](../interfaces/Entity.md)[]
 
-Defined in: [src/actions/public/query.ts:27](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/actions/public/query.ts#L27)
+Defined in: [src/actions/public/query.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/actions/public/query.ts#L20)

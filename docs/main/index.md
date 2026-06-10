@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../index.md)
+[**@arkiv-network/sdk v0.7.0-dev.0**](../index.md)
 
 ***
 
@@ -44,11 +44,9 @@
 - [PublicArkivClient](type-aliases/PublicArkivClient.md)
 - [QueryOptions](type-aliases/QueryOptions.md)
 - [QueryOptionsIncludeData](type-aliases/QueryOptionsIncludeData.md)
-- [QueryOptionsOrderBy](type-aliases/QueryOptionsOrderBy.md)
 - [QueryReturnType](type-aliases/QueryReturnType.md)
 - [RpcEntity](type-aliases/RpcEntity.md)
 - [RpcIncludeData](type-aliases/RpcIncludeData.md)
-- [RpcOrderByAttribute](type-aliases/RpcOrderByAttribute.md)
 - [RpcQueryOptions](type-aliases/RpcQueryOptions.md)
 - [TxParams](type-aliases/TxParams.md)
 - [UpdateEntityParameters](type-aliases/UpdateEntityParameters.md)

@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../index.md)
+[**@arkiv-network/sdk v0.7.0-dev.0**](../index.md)
 
 ***
 
@@ -13,7 +13,6 @@
 
 ## Type Aliases
 
-- [OrderByAttribute](type-aliases/OrderByAttribute.md)
 - [Predicate](type-aliases/Predicate.md)
 - [PredicateContainerType](type-aliases/PredicateContainerType.md)
 - [PredicateType](type-aliases/PredicateType.md)
@@ -21,8 +20,6 @@
 ## Functions
 
 - [and](functions/and.md)
-- [asc](functions/asc.md)
-- [desc](functions/desc.md)
 - [eq](functions/eq.md)
 - [gt](functions/gt.md)
 - [gte](functions/gte.md)

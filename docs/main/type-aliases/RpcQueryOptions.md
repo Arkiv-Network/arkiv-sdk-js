@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.7.0-dev.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **RpcQueryOptions** = `object`
 
-Defined in: [src/types/rpcSchema.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L25)
+Defined in: [src/types/rpcSchema.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/types/rpcSchema.ts#L19)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/types/rpcSchema.ts:25](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **atBlock**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:26](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L26)
+Defined in: [src/types/rpcSchema.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/types/rpcSchema.ts#L20)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/types/rpcSchema.ts:26](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **cursor**: `string`
 
-Defined in: [src/types/rpcSchema.ts:30](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L30)
+Defined in: [src/types/rpcSchema.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/types/rpcSchema.ts#L23)
 
 ***
 
@@ -32,15 +32,7 @@ Defined in: [src/types/rpcSchema.ts:30](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **includeData**: [`RpcIncludeData`](RpcIncludeData.md)
 
-Defined in: [src/types/rpcSchema.ts:27](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L27)
-
-***
-
-### orderBy?
-
-> `optional` **orderBy**: [`RpcOrderByAttribute`](RpcOrderByAttribute.md)[]
-
-Defined in: [src/types/rpcSchema.ts:28](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L28)
+Defined in: [src/types/rpcSchema.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/types/rpcSchema.ts#L21)
 
 ***
 
@@ -48,4 +40,4 @@ Defined in: [src/types/rpcSchema.ts:28](https://github.com/Arkiv-Network/arkiv-s
 
 > `optional` **resultsPerPage**: `Hex`
 
-Defined in: [src/types/rpcSchema.ts:29](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/types/rpcSchema.ts#L29)
+Defined in: [src/types/rpcSchema.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/types/rpcSchema.ts#L22)

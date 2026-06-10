@@ -1,3 +1,9 @@
+## [0.7.0] - 2026-06-10
+
+### Removed
+- **Breaking:** `orderBy` query support (`QueryBuilder.orderBy()`, `asc`, `desc`, `QueryOptionsOrderBy`, `RpcOrderByAttribute`) — non-functional since the query layer moved to roaring bitmaps https://github.com/Arkiv-Network/arkiv-sdk-js/issues/68. Sort fetched results in JS instead; replacement design tracked in https://github.com/Arkiv-Network/arkiv-sdk-js/issues/69
+
+
 ## [0.6.3] - 2026-05-11
 
 ### Fixed

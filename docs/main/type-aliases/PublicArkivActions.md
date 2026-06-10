@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.7.0-dev.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **PublicArkivActions**\<`transport`, `chain`, `account`\> = `Pick`\<`PublicActions`\<`transport`, `chain`, `account`\>, `"getBalance"` \| `"getBlock"` \| `"getBlockNumber"` \| `"getChainId"` \| `"getLogs"` \| `"getTransaction"` \| `"getTransactionCount"` \| `"getTransactionReceipt"` \| `"waitForTransactionReceipt"` \| `"watchEvent"`\> & `object`
 
-Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/clients/decorators/arkivPublic.ts#L17)
+Defined in: [src/clients/decorators/arkivPublic.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/clients/decorators/arkivPublic.ts#L17)
 
 ## Type Declaration
 
@@ -181,7 +181,6 @@ const queryResultWithOptions = client.query('key = value && $owner = 0x123', {
     payload: true,
     metadata: true,
   },
-  orderBy: [{ name: "key", type: "string", desc: "asc" }],
   resultsPerPage: 10,
   cursor: undefined,
   atBlock: undefined,

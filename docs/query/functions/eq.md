@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.7**](../../index.md)
+[**@arkiv-network/sdk v0.7.0-dev.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **eq**(`key`, `value`): [`Predicate`](../type-aliases/Predicate.md)
 
-Defined in: [src/query/predicate.ts:55](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/43e079f620d2ee06236e15bdaccf1497199dca0b/src/query/predicate.ts#L55)
+Defined in: [src/query/predicate.ts:55](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/93f71e95a1695ad42eaf88334075c9818f1413e3/src/query/predicate.ts#L55)
 
 Creates an equality predicate
 

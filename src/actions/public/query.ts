@@ -9,16 +9,9 @@ export type QueryOptionsIncludeData = {
   payload?: boolean
   metadata?: boolean
 }
-export type QueryOptionsOrderBy = {
-  name: string
-  type: "string" | "numeric"
-  desc: "asc" | "desc"
-}
-
 export type QueryOptions = {
   includeData?: QueryOptionsIncludeData
   atBlock?: bigint
-  orderBy?: QueryOptionsOrderBy[]
   resultsPerPage?: number | undefined
   cursor?: string | undefined
 }
@@ -45,13 +38,6 @@ export async function query(client: ArkivClient, query: string, queryOptions?: Q
       operationIndexInTransaction: queryOptions?.includeData?.metadata ?? false,
     },
     ...(queryOptions?.atBlock !== undefined && { atBlock: numberToHex(queryOptions.atBlock) }),
-    ...(queryOptions?.orderBy && {
-      orderBy: queryOptions?.orderBy.map((order) => ({
-        name: order.name,
-        type: order.type,
-        desc: order.desc === "desc",
-      })),
-    }),
     ...(queryOptions?.resultsPerPage !== undefined && {
       resultsPerPage: numberToHex(queryOptions.resultsPerPage),
     }),
