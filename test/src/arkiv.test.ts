@@ -1,17 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import type { Hex, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
-import {
-  createPublicClient,
-  createWalletClient,
-  http,
-  NoEntityFoundError,
-  toBytes,
-  webSocket,
-} from "@arkiv-network/sdk"
-import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
+import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
+import { createPublicClient, createWalletClient, NoEntityFoundError } from "@arkiv-network/sdk"
 import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
+import { type Hex, http, toBytes, webSocket } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
 import { execCommand, launchLocalArkivNode } from "./utils.js"
 
 

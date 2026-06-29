@@ -15,12 +15,6 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
-    "./accounts": {
-      "bun": "./src/accounts/index.ts",
-      "import": "./dist/accounts/index.js",
-      "require": "./dist/accounts/index.cjs",
-      "default": "./dist/accounts/index.js"
-    },
     "./chains": {
       "bun": "./src/chains/index.ts",
       "import": "./dist/chains/index.js",
@@ -51,9 +45,6 @@
     "*": {
       "chains": [
         "./dist/_types/chains/index.d.ts"
-      ],
-      "accounts": [
-        "./dist/_types/accounts/index.d.ts"
       ],
       "utils": [
         "./dist/_types/utils/index.d.ts"
@@ -90,13 +81,19 @@
     "@types/bun": "latest",
     "rimraf": "^6.0.1",
     "tsdown": "^0.16.0",
-    "typedoc": "^0.28.14"
+    "typedoc": "^0.28.14",
+    "typedoc-plugin-markdown": "^4.9.0",
+    "viem": "^2.38.2"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "viem": "^2.0.0"
   },
   "peerDependenciesMeta": {
     "typescript": {
+      "optional": false
+    },
+    "viem": {
       "optional": false
     }
   },
@@ -118,8 +115,6 @@
   },
   "homepage": "https://arkiv.network",
   "dependencies": {
-    "brotli-wasm": "^3.0.1",
-    "typedoc-plugin-markdown": "^4.9.0",
-    "viem": "^2.38.2"
+    "brotli-wasm": "^3.0.1"
   }
 }

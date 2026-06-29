@@ -1,6 +1,7 @@
-import { createPublicClient, http } from "@arkiv-network/sdk"
+import { createPublicClient } from "@arkiv-network/sdk"
 import { braga } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
+import { http } from "viem"
 
 // Create a public client
 const publicClient = createPublicClient({
