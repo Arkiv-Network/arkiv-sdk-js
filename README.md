@@ -3,7 +3,7 @@
 A TypeScript client library for Arkiv's blockchains interactions.
 The Arkiv SDK builds strongly on the [Viem](https://github.com/wevm/viem) library - it extends Viem's clients with Arkiv's chain-specific features.
 
-[`viem`](https://viem.sh) is a **peer dependency**: install it alongside the SDK and import viem's own helpers (`http`, `webSocket`, `privateKeyToAccount`, types such as `Hex`/`Address`, etc.) directly from `viem`. The SDK no longer re-exports viem's internals, which keeps a single shared copy of viem in your project so types line up with tools like Wagmi/RainbowKit.
+[`viem`](https://viem.sh) is a **peer dependency**: install it alongside the SDK.
 
 ## Installation
 
