@@ -1,18 +1,20 @@
 # arkivjs
 
 A TypeScript client library for Arkiv's blockchains interactions.
-The Arkiv SDK base strongly on Viem (Viem)[https://github.com/wevm/viem] library - it can be treated as Viem replacement extended of Arkiv's chains specific features.
+The Arkiv SDK builds strongly on the [Viem](https://github.com/wevm/viem) library - it extends Viem's clients with Arkiv's chain-specific features.
+
+[`viem`](https://viem.sh) is a **peer dependency**: install it alongside the SDK.
 
 ## Installation
 
 ```bash
-npm install @arkiv-network/sdk
+npm install @arkiv-network/sdk viem
 # or
-pnpm install @arkiv-network/sdk
+pnpm install @arkiv-network/sdk viem
 # or
-bun add @arkiv-network/sdk
+bun add @arkiv-network/sdk viem
 # or
-yarn add @arkiv-network/sdk
+yarn add @arkiv-network/sdk viem
 ```
 
 ## Usage
@@ -76,14 +78,15 @@ Modify the `"main"` entry to `"read_example.ts"` and set `"type"` to `"module"` 
 }
 ```
 
-Install `@arkiv-network/sdk` using your preferred package manager:
+Install `@arkiv-network/sdk` along with its `viem` peer dependency using your preferred package manager:
 ```bash
-npm install @arkiv-network/sdk
+npm install @arkiv-network/sdk viem
 ```
 This command will update your `package.json` with a section like:
 ```json
 "dependencies": {
-  "@arkiv-network/sdk": "^0.6.0"
+  "@arkiv-network/sdk": "^0.6.0",
+  "viem": "^2.38.2"
 }
 ```
 It will also create a `node_modules` directory with all dependencies installed.
@@ -93,9 +96,10 @@ It will also create a `node_modules` directory with all dependencies installed.
 You can now use Arkiv's public client to query data. Paste the following in `read_example.ts`:
 
 ```typescript
-import { createPublicClient, http } from "@arkiv-network/sdk"
+import { createPublicClient } from "@arkiv-network/sdk"
 import { braga } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
+import { http } from "viem"
 
 const publicClient = createPublicClient({
   chain: braga, // "braga" is Arkiv's testnet
@@ -170,10 +174,11 @@ Now let's add storage (write) functionality.
 Create a file named `write_example.ts` with the following content:
 
 ```typescript
-import { createPublicClient, createWalletClient, http } from "@arkiv-network/sdk"
-import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
+import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
 import { braga } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
+import { http } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
 
 // Create a public client
 const publicClient = createPublicClient({

@@ -1,20 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import type {
-  Hex,
-  PublicArkivClient,
-  WalletArkivClient,
-} from "@arkiv-network/sdk";
+import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk";
 import {
   createPublicClient,
   createWalletClient,
-  http,
-  isHex,
   NoEntityFoundError,
 } from "@arkiv-network/sdk";
-import { privateKeyToAccount } from "@arkiv-network/sdk/accounts";
 import { kaolin, braga } from "@arkiv-network/sdk/chains";
 import { and, eq, gt, gte, lt, lte, neq, or } from "@arkiv-network/sdk/query";
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils";
+import { type Hex, http, isHex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 if (!PRIVATE_KEY) {
