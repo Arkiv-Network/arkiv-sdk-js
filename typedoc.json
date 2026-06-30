@@ -15,6 +15,7 @@
   "excludeProtected": true,
   "excludeInternal": true,
   "excludeExternals": true,
+  "intentionallyNotExported": ["AtLeastOne", "DataKey", "AllSelected"],
   "theme": "default",
   "outputs": [
     {
