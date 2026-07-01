@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
-import { createPublicClient, createWalletClient, NoEntityFoundError } from "@arkiv-network/sdk"
+import {
+  createPublicClient,
+  createWalletClient,
+  InvalidExpirationError,
+  NoEntityFoundError,
+} from "@arkiv-network/sdk"
 import { asc, desc, eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
@@ -441,15 +446,14 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(extendedEntityKey).toBeDefined()
       expect(extendedTxHash).toBeDefined()
 
-      // extend entity with odd number of seconds
-      const { entityKey: extendedEntityKey2, txHash: extendedTxHash2 } =
-        await writeClient.extendEntity({
+      // extending with an odd number of seconds is rejected client-side before
+      // hitting the chain (expiration must be a multiple of the 2s block time)
+      expect(
+        writeClient.extendEntity({
           entityKey: updatedEntityKey,
           expiresIn: 999,
-        })
-      console.log("result from extendEntity", { extendedEntityKey2, extendedTxHash2 })
-      expect(extendedEntityKey2).toBeDefined()
-      expect(extendedTxHash2).toBeDefined()
+        }),
+      ).rejects.toThrowError(InvalidExpirationError)
 
       // delete entity
       const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await writeClient.deleteEntity(
