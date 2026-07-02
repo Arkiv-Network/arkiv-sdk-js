@@ -244,6 +244,27 @@ describe("Predicate Factory Functions", () => {
       })
     })
 
+    test("creates or predicate from varargs", () => {
+      const result = or(eq("type", "admin"), eq("type", "moderator"))
+
+      expect(result).toEqual({
+        type: "or",
+        predicates: [
+          { type: "eq", key: "type", value: "admin" },
+          { type: "eq", key: "type", value: "moderator" },
+        ],
+      })
+    })
+
+    test("creates or predicate with no arguments", () => {
+      const result = or()
+
+      expect(result).toEqual({
+        type: "or",
+        predicates: [],
+      })
+    })
+
     test("creates or predicate with nested and", () => {
       const nestedAnd = and([eq("verified", 1), gte("age", 18)])
       const predicates = [eq("status", "premium"), nestedAnd]
@@ -307,6 +328,28 @@ describe("Predicate Factory Functions", () => {
     test("creates and predicate with empty array", () => {
       const predicates: Predicate[] = []
       const result = and(predicates)
+
+      expect(result).toEqual({
+        type: "and",
+        predicates: [],
+      })
+    })
+
+    test("creates and predicate from varargs", () => {
+      const result = and(eq("status", "active"), gte("age", 18), not("deleted"))
+
+      expect(result).toEqual({
+        type: "and",
+        predicates: [
+          { type: "eq", key: "status", value: "active" },
+          { type: "gte", key: "age", value: 18 },
+          { type: "not", key: "deleted", value: "" },
+        ],
+      })
+    })
+
+    test("creates and predicate with no arguments", () => {
+      const result = and()
 
       expect(result).toEqual({
         type: "and",

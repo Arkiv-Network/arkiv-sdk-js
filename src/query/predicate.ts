@@ -14,32 +14,36 @@ export type Predicate =
 
 /**
  * Creates an OR predicate
- * @param predicates - The predicates to combine
+ * @param predicates - The predicates to combine, either as a single array or as separate arguments
  * @returns The OR predicate
  *
  * @example
- * const predicates = [eq("name", "John"), eq("age", 30)]
- * const result = or(predicates)
+ * const result = or(eq("name", "John"), eq("age", 30))
+ * // or equivalently: or([eq("name", "John"), eq("age", 30)])
  * // result = { type: "or", predicates: [eq("name", "John"), eq("age", 30)] }
  *
  */
-export function or(predicates: Predicate[]): Predicate {
-  return { type: "or", predicates }
+export function or(predicates: Predicate[]): Predicate
+export function or(...predicates: Predicate[]): Predicate
+export function or(...predicates: (Predicate | Predicate[])[]): Predicate {
+  return { type: "or", predicates: predicates.flat() }
 }
 
 /**
  * Creates an AND predicate
- * @param predicates - The predicates to combine
+ * @param predicates - The predicates to combine, either as a single array or as separate arguments
  * @returns The AND predicate
  *
  * @example
- * const predicates = [eq("name", "John"), eq("age", 30)]
- * const result = and(predicates)
+ * const result = and(eq("name", "John"), eq("age", 30))
+ * // or equivalently: and([eq("name", "John"), eq("age", 30)])
  * // result = { type: "and", predicates: [eq("name", "John"), eq("age", 30)] }
  *
  */
-export function and(predicates: Predicate[]): Predicate {
-  return { type: "and", predicates }
+export function and(predicates: Predicate[]): Predicate
+export function and(...predicates: Predicate[]): Predicate
+export function and(...predicates: (Predicate | Predicate[])[]): Predicate {
+  return { type: "and", predicates: predicates.flat() }
 }
 
 /**
