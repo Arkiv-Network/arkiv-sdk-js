@@ -20,6 +20,8 @@ test("creates", () => {
   expect(typeof client.getEntity).toBe("function")
   expect(client.buildQuery).toBeDefined()
   expect(typeof client.buildQuery).toBe("function")
+  expect(client.select).toBeDefined()
+  expect(typeof client.select).toBe("function")
   expect(client.query).toBeDefined()
   expect(typeof client.query).toBe("function")
   expect(client.getEntityCount).toBeDefined()
