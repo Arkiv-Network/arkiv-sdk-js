@@ -114,13 +114,11 @@ console.log('Chain ID:', chainId);
 const entity = await publicClient.getEntity('0xcadb830a3414251d65e5c92cd28ecb648d9e73d85f2203eff631839d5421f9d7');
 console.log('Entity:', entity);
 
-// Build and execute a query using QueryBuilder
-const query = publicClient.buildQuery();
-const result = await query
+// Build and execute a query using select()
+const result = await publicClient
+  .select({ owner: true, attributes: true, payload: true })
   .where(eq('category', 'documentation'))
   .ownedBy('0x6186B0DbA9652262942d5A465d49686eb560834C')
-  .withAttributes(true)
-  .withPayload(true)
   .limit(10)
   .fetch();
 
@@ -132,6 +130,39 @@ if (result.hasNextPage()) {
   console.log('Next page:', result.entities);
 }
 ```
+
+#### Selecting fields with `select()`
+
+Pass nothing (or `"*"`) to fetch everything, or pass an object to fetch only specific fields:
+
+```typescript
+// All fields
+await publicClient.select().where(eq("category", "docs")).fetch();
+
+// Only the fields you need
+await publicClient.select({ key: true, owner: true, payload: true }).where(eq("category", "docs")).fetch();
+```
+
+**Select only what you need.** Every selected field is fetched over the network, so requesting
+data you won't use makes queries slower. Narrowing the selection keeps responses small and fast.
+
+The result type is inferred from your selection: reading a field you didn't select is a compile error. The `toText()` / `toJson()` payload
+helpers are available only when you select `payload`.
+
+```typescript
+const [entity] = (await publicClient.select({ owner: true, payload: true }).fetch()).entities;
+entity.owner;     // ✅ Hex
+entity.toJson();  // ✅ payload was selected
+entity.creator;   // ❌ compile error — not selected
+```
+
+> **Footgun:** pass the selection inline. A selection stored in a variable widens its `true` values
+> to `boolean`, so the result type can't be narrowed (you get `{}` and a compile error on every
+> field). If you need to reuse one, annotate it `as const`:
+> ```typescript
+> const fields = { owner: true, payload: true } as const;
+> await publicClient.select(fields).where(eq("category", "docs")).fetch();
+> ```
 
 ### Running the Example
 

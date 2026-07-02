@@ -1,20 +1,26 @@
 import { NoCursorOrLimitError, NoMoreResultsError } from "../errors"
 import type { Entity } from "../types/entity"
 import { getLogger } from "../utils/logger"
-import type { QueryBuilder } from "./queryBuilder"
+import type { BaseQueryBuilder } from "./queryBuilder"
 
 const logger = getLogger("query:result")
 
-export class QueryResult {
-  entities: Entity[]
+/**
+ * The result of a query. Holds the fetched entities and supports cursor-based pagination.
+ *
+ * @typeParam TEntity - The shape of each entity, inferred from the query builder
+ *   (a full {@link Entity}, or a projected object inferred from a `select()` selection).
+ */
+export class QueryResult<TEntity = Entity> {
+  entities: TEntity[]
   private _endOfIteration: boolean
   private _cursor: string | undefined
   private _limit: number | undefined
   private _validAtBlock: bigint | undefined
-  private _queryBuilder: QueryBuilder
+  private _queryBuilder: BaseQueryBuilder<TEntity>
 
   // Public getters for internal state
-  get queryBuilder(): QueryBuilder {
+  get queryBuilder(): BaseQueryBuilder<TEntity> {
     return this._queryBuilder
   }
 
@@ -23,8 +29,8 @@ export class QueryResult {
   }
 
   constructor(
-    entities: Entity[],
-    queryBuilder: QueryBuilder,
+    entities: TEntity[],
+    queryBuilder: BaseQueryBuilder<TEntity>,
     cursor: string | undefined,
     limit: number | undefined,
     validAtBlock: bigint | undefined,
