@@ -89,7 +89,12 @@ export type WalletArkivActions<
     ) => Promise<CreateEntityReturnType>
 
     /**
-     * Updates the entity with the given key.
+     * Updates the entity with the given key. This is a **full replace, not a
+     * patch**: the entity's new state is exactly the provided parameters —
+     * the payload, content type and expiration are overwritten, and the
+     * attribute set becomes exactly the provided list, removing any attribute
+     * not listed. To change only some fields and keep the rest, use
+     * patchEntity.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/updateEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
@@ -270,6 +275,9 @@ export type WalletArkivActions<
      * @param data - The mutation parameters (creates, updates, patches, deletes, extensions)
      * @param txParams - Optional transaction parameters
      * @returns The mutation result with transaction hash
+     *
+     * Each update is a **full replace**, not a patch: the entity's new state
+     * is exactly the update's parameters (see updateEntity).
      *
      * Patches are resolved into full updates by fetching each entity's current
      * state first (see patchEntity); their keys are reported in

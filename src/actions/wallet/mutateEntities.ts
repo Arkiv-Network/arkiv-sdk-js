@@ -16,7 +16,9 @@ import type { UpdateEntityParameters } from "./updateEntity"
 /**
  * Parameters for the mutateEntities function.
  * - creates: The creates to perform.
- * - updates: The updates to perform.
+ * - updates: The updates to perform. Each update is a **full replace**, not a
+ *   patch: the entity's new state is exactly the update's parameters (see
+ *   updateEntity).
  * - patches: The patches to perform. Each patch is resolved into a full update
  *   by fetching the entity's current state first (see patchEntity). Several
  *   patches for the same entity key are applied in order and folded into a

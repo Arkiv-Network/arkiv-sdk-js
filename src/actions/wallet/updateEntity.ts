@@ -7,28 +7,36 @@ import { getLogger } from "../../utils/logger"
 const logger = getLogger("actions:wallet:update-entity")
 
 /**
- * Parameters for the updateEntity function.
+ * Parameters for the updateEntity function. An update is a **full replace**,
+ * not a patch: the entity's new state is exactly what is passed here, so every
+ * field is required. To change only some fields and keep the rest, use
+ * patchEntity instead.
  * - entityKey: The key of the entity to update.
- * - payload: The payload of the entity.
- * - attributes: The attributes of the entity. Attribute values may be strings
- *   or numbers, but numeric values **must be integers**. To store a non-integer,
- *   scale it to an integer (e.g. `1.5` -> `1500`) to preserve numeric ordering,
- *   or pass it as a string (e.g. `"1.5"`). A non-integer numeric value throws an
- *   {@link InvalidAttributeError}.
- * - contentType: The content type of the entity.
- * - expiresIn: How long until the entity expires, in seconds. Because Arkiv
- *   measures expiration in blocks (1 block = 2 seconds), this **must be a
- *   positive integer and a multiple of the block time (2 seconds)**.
- *   Invalid values throw an {@link InvalidExpirationError}.
+ * - payload: The new payload of the entity, replacing the current one.
+ * - attributes: The new attributes of the entity, replacing **all** current
+ *   ones — any attribute not listed here is removed. Attribute values may be
+ *   strings or numbers, but numeric values **must be integers**. To store a
+ *   non-integer, scale it to an integer (e.g. `1.5` -> `1500`) to preserve
+ *   numeric ordering, or pass it as a string (e.g. `"1.5"`). A non-integer
+ *   numeric value throws an {@link InvalidAttributeError}.
+ * - contentType: The new content type of the entity.
+ * - expiresIn: How long until the entity expires, in seconds, replacing the
+ *   current expiration. Because Arkiv measures expiration in blocks (1 block =
+ *   2 seconds), this **must be a positive integer and a multiple of the block
+ *   time (2 seconds)**. Invalid values throw an {@link InvalidExpirationError}.
  */
 export type UpdateEntityParameters = {
   entityKey: Hex
+  /** New payload, replacing the current one. */
   payload: Uint8Array
-  /** Entity attributes. Numeric values must be integers (scale non-integers, e.g. `1.5` -> `1500`, or use a string). Throws {@link InvalidAttributeError} otherwise. */
+  /** New attributes, replacing **all** current ones — attributes not listed here are
+   * removed. Numeric values must be integers (scale non-integers, e.g. `1.5` -> `1500`,
+   * or use a string). Throws {@link InvalidAttributeError} otherwise. */
   attributes: Attribute[]
+  /** New content type, replacing the current one. */
   contentType: MimeType | string
-  /** Seconds until expiry. Must be a positive integer and a multiple of the 2s block time.
-   * Throws {@link InvalidExpirationError} otherwise. */
+  /** Seconds until expiry, replacing the current expiration. Must be a positive integer
+   * and a multiple of the 2s block time. Throws {@link InvalidExpirationError} otherwise. */
   expiresIn: number
 }
 
@@ -42,6 +50,13 @@ export type UpdateEntityReturnType = {
   txHash: Hash
 }
 
+/**
+ * Replaces an entity's state wholesale with the provided parameters. This is
+ * a **full replace, not a patch**: the payload, content type and expiration
+ * are overwritten, and the attribute set becomes exactly the provided list —
+ * attributes not listed are removed. To change only some fields and keep the
+ * rest, use patchEntity.
+ */
 export async function updateEntity(
   client: ArkivClient,
   data: UpdateEntityParameters,
