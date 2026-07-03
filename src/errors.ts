@@ -23,6 +23,22 @@ export class InvalidAttributeError extends Error {
   }
 }
 
+export class CannotPreserveExpirationError extends Error {
+  constructor(entityKey: string, reason: string) {
+    super(`Cannot preserve expiration of entity ${entityKey}: ${reason} Pass expiresIn explicitly.`)
+    this.name = "CannotPreserveExpirationError"
+  }
+}
+
+export class UnsafeNumericAttributeError extends Error {
+  constructor(entityKey: string, key: string, value: number) {
+    super(
+      `Cannot patch entity ${entityKey}: its numeric attribute "${key}" was read back as ${String(value)}, which exceeds Number.MAX_SAFE_INTEGER and may have lost precision, so writing it back could corrupt the stored value. Include "${key}" in the patch attributes (with a new value, or null to remove it) to patch this entity.`,
+    )
+    this.name = "UnsafeNumericAttributeError"
+  }
+}
+
 export class NoMoreResultsError extends Error {
   constructor() {
     super("No more results")

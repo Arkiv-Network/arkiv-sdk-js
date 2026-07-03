@@ -485,6 +485,92 @@ describe("Arkiv Integration Tests for public client", () => {
   )
 
   test.each(["http", "webSocket"] as const)(
+    "should handle patchEntity using %s",
+    async (transport) => {
+      const writeClient = transport === "http" ? walletClient : walletClientWS
+      const readClient = transport === "http" ? publicClient : publicClientWS
+
+      // create entity
+      const { entityKey } = await writeClient.createEntity({
+        payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
+        contentType: "application/json",
+        attributes: [
+          { key: "keepKey", value: "keepValue" },
+          { key: "replaceKey", value: "oldValue" },
+        ],
+        expiresIn: ExpirationTime.fromBlocks(1000),
+      })
+      const createdEntity = await readClient.getEntity(entityKey)
+
+      // patch payload and append a new attribute; everything else is kept
+      const { entityKey: patchedEntityKey, txHash: patchedTxHash } = await writeClient.patchEntity({
+        entityKey,
+        payload: jsonToPayload({ entity: { entityType: "patched", entityId: "patched" } }),
+        attributes: [{ key: "newAttr", value: "newVal" }],
+      })
+      console.log("result from patchEntity", { patchedEntityKey, patchedTxHash })
+      expect(patchedEntityKey).toEqual(entityKey)
+
+      const patchedEntity = await readClient.getEntity(entityKey)
+      expect(patchedEntity.payload).toEqual(
+        jsonToPayload({ entity: { entityType: "patched", entityId: "patched" } }),
+      )
+      expect(patchedEntity.contentType).toEqual("application/json")
+      expect(patchedEntity.attributes).toContainEqual({ key: "keepKey", value: "keepValue" })
+      expect(patchedEntity.attributes).toContainEqual({ key: "replaceKey", value: "oldValue" })
+      expect(patchedEntity.attributes).toContainEqual({ key: "newAttr", value: "newVal" })
+      expect(patchedEntity.attributes.length).toEqual(3)
+      // remaining lifetime is approximately preserved (a few blocks pass
+      // between the read and the update landing)
+      expect(patchedEntity.expiresAtBlock).toBeDefined()
+      const expirationDriftBlocks =
+        (patchedEntity.expiresAtBlock as bigint) - (createdEntity.expiresAtBlock as bigint)
+      expect(expirationDriftBlocks).toBeGreaterThanOrEqual(0n)
+      expect(expirationDriftBlocks).toBeLessThanOrEqual(30n)
+
+      // patch an existing attribute's value; payload is kept
+      await writeClient.patchEntity({
+        entityKey,
+        attributes: [{ key: "replaceKey", value: "newValue" }],
+      })
+      const repatchedEntity = await readClient.getEntity(entityKey)
+      expect(repatchedEntity.payload).toEqual(
+        jsonToPayload({ entity: { entityType: "patched", entityId: "patched" } }),
+      )
+      expect(repatchedEntity.attributes).toContainEqual({ key: "replaceKey", value: "newValue" })
+      expect(repatchedEntity.attributes.length).toEqual(3)
+
+      // patches are also supported in mutateEntities and reported as updates
+      const mutateResult = await writeClient.mutateEntities({
+        patches: [
+          {
+            entityKey,
+            attributes: [{ key: "mutatedAttr", value: "mutatedVal" }],
+          },
+        ],
+      })
+      console.log("result from mutateEntities with patches", mutateResult)
+      expect(mutateResult.updatedEntities).toEqual([entityKey])
+      const mutatedEntity = await readClient.getEntity(entityKey)
+      expect(mutatedEntity.attributes).toContainEqual({ key: "mutatedAttr", value: "mutatedVal" })
+      expect(mutatedEntity.attributes.length).toEqual(4)
+
+      // a null value removes the attribute
+      await writeClient.patchEntity({
+        entityKey,
+        attributes: [{ key: "newAttr", value: null }],
+      })
+      const prunedEntity = await readClient.getEntity(entityKey)
+      expect(prunedEntity.attributes).not.toContainEqual({ key: "newAttr", value: "newVal" })
+      expect(prunedEntity.attributes.length).toEqual(3)
+
+      // cleanup
+      await writeClient.deleteEntity({ entityKey })
+    },
+    { timeout: basicCRUDTestTimeout },
+  )
+
+  test.each(["http", "webSocket"] as const)(
     "should handle mutateEntities using %s",
     async (transport) => {
       const newOwner = "0x6186b0dba9652262942d5a465d49686eb560834c" as Hex

@@ -24,6 +24,8 @@ import type {
   MutateEntitiesReturnType,
 } from "../../actions/wallet/mutateEntities"
 import { mutateEntities } from "../../actions/wallet/mutateEntities"
+import type { PatchEntityParameters, PatchEntityReturnType } from "../../actions/wallet/patchEntity"
+import { patchEntity } from "../../actions/wallet/patchEntity"
 import type {
   UpdateEntityParameters,
   UpdateEntityReturnType,
@@ -116,6 +118,68 @@ export type WalletArkivActions<
     ) => Promise<UpdateEntityReturnType>
 
     /**
+     * Partially updates the entity with the given key. Unlike updateEntity,
+     * which replaces the whole entity, patchEntity fetches the entity's
+     * current state, overlays the provided fields onto it and sends a full
+     * update. Omitted fields keep their current value; attributes are merged:
+     * attributes with new keys are appended, attributes with existing keys of
+     * the same value type (string or numeric) have their value replaced, a
+     * value of `null` removes both the string and the numeric attribute with
+     * that key, and the entity's other attributes are kept. If expiresIn is
+     * omitted, the entity's remaining lifetime is preserved as measured at
+     * read time — each such patch can lengthen the lifetime by the blocks
+     * mined until the update lands on chain, so pass expiresIn explicitly
+     * when the exact expiration matters.
+     *
+     * **This operation is not atomic.** It is syntax sugar over getEntity
+     * followed by updateEntity. If the entity is modified by someone else
+     * between the read and the update transaction landing on chain, those
+     * concurrent changes are silently overwritten and lost.
+     *
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/patchEntity
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
+     *
+     * @param data - The entity patch parameters
+     * @param txParams - Optional transaction parameters
+     * @returns The patched entity key with transaction hash
+     *
+     * @throws {NoEntityFoundError} If no entity exists under the given key.
+     * @throws {InvalidExpirationError} If `expiresIn` is provided and is not a
+     * positive integer that is a multiple of the block time (2 seconds).
+     * @throws {InvalidAttributeError} If a numeric attribute value is not an
+     * integer.
+     * @throws {CannotPreserveExpirationError} If `expiresIn` is omitted and
+     * the entity has no expiration block or has already expired.
+     * @throws {UnsafeNumericAttributeError} If an untouched numeric attribute
+     * read back from the entity exceeds Number.MAX_SAFE_INTEGER and so cannot
+     * be written back without risking corruption.
+     *
+     * @example
+     * import { createWalletClient, http } from 'arkiv'
+     * import { braga } from 'arkiv/chains'
+     *
+     * const client = createWalletClient({
+     *   chain: braga,
+     *   transport: http(),
+     * })
+     * // replaces the payload, appends/updates the "newAttr" attribute and
+     * // removes the "oldAttr" attribute, keeping all other attributes, the
+     * // content type and the expiration
+     * const { entityKey, txHash } = await client.patchEntity({
+     *   entityKey: "0x123",
+     *   payload: stringToPayload("new payload"),
+     *   attributes: [
+     *     { key: "newAttr", value: "newVal" },
+     *     { key: "oldAttr", value: null },
+     *   ],
+     * })
+     */
+    patchEntity: (
+      data: PatchEntityParameters,
+      txParams?: TxParams,
+    ) => Promise<PatchEntityReturnType>
+
+    /**
      * Deletes the entity with the given key.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/deleteEntity
@@ -203,14 +267,28 @@ export type WalletArkivActions<
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/mutateEntities
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param data - The mutation parameters (creates, updates, deletes, extensions)
+     * @param data - The mutation parameters (creates, updates, patches, deletes, extensions)
      * @param txParams - Optional transaction parameters
      * @returns The mutation result with transaction hash
+     *
+     * Patches are resolved into full updates by fetching each entity's current
+     * state first (see patchEntity); their keys are reported in
+     * updatedEntities (once per entity — several patches for the same entity
+     * key are applied in order and folded into a single update). **Patches
+     * are not atomic**: changes made to an entity between that read and the
+     * mutation transaction landing on chain are silently overwritten and lost.
      *
      * @throws {InvalidExpirationError} If any create/update/extension `expiresIn`
      * is not a positive integer that is a multiple of the block time (2 seconds).
      * @throws {InvalidAttributeError} If a numeric attribute value is not an
      * integer.
+     * @throws {NoEntityFoundError} If a patch targets an entity that does not
+     * exist.
+     * @throws {CannotPreserveExpirationError} If a patch omits `expiresIn` and
+     * the entity has no expiration block or has already expired.
+     * @throws {UnsafeNumericAttributeError} If a patched entity has an
+     * untouched numeric attribute above Number.MAX_SAFE_INTEGER that cannot be
+     * written back without risking corruption.
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
@@ -231,6 +309,10 @@ export type WalletArkivActions<
      *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
      *     attributes: [{ key: "testKey", value: "testValue" }],
      *     expiresIn: 1000,
+     *   }],
+     *   patches: [{
+     *     entityKey: "0x456",
+     *     attributes: [{ key: "newAttr", value: "newVal" }],
      *   }],
      *   deletes: [{
      *     entityKey: "0x321",
@@ -263,6 +345,8 @@ export function walletArkivActions<
       createEntity(client, data, txParams),
     updateEntity: (data: UpdateEntityParameters, txParams?: TxParams) =>
       updateEntity(client, data, txParams),
+    patchEntity: (data: PatchEntityParameters, txParams?: TxParams) =>
+      patchEntity(client, data, txParams),
     deleteEntity: (data: DeleteEntityParameters, txParams?: TxParams) =>
       deleteEntity(client, data, txParams),
     extendEntity: (data: ExtendEntityParameters, txParams?: TxParams) =>

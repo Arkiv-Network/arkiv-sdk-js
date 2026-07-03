@@ -55,6 +55,7 @@ export async function updateEntity(
 
   return {
     txHash: receipt.transactionHash as Hash,
-    entityKey: receipt.logs[0].topics[1] as Hex,
+    // fall back to the requested key when the receipt carries no parseable log
+    entityKey: (receipt.logs[0]?.topics[1] as Hex | undefined) ?? data.entityKey,
   }
 }

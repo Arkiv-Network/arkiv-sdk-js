@@ -23,6 +23,8 @@ test("creates", () => {
   expect(typeof client.createEntity).toBe("function")
   expect(client.updateEntity).toBeDefined()
   expect(typeof client.updateEntity).toBe("function")
+  expect(client.patchEntity).toBeDefined()
+  expect(typeof client.patchEntity).toBe("function")
   expect(client.deleteEntity).toBeDefined()
   expect(typeof client.deleteEntity).toBe("function")
   expect(client.extendEntity).toBeDefined()

@@ -16,6 +16,11 @@ export type {
   MutateEntitiesParameters,
   MutateEntitiesReturnType,
 } from "../actions/wallet/mutateEntities"
+export type {
+  PatchAttribute,
+  PatchEntityParameters,
+  PatchEntityReturnType,
+} from "../actions/wallet/patchEntity"
 export type { UpdateEntityParameters, UpdateEntityReturnType } from "../actions/wallet/updateEntity"
 export type { Attribute } from "./attributes"
 export type { Entity } from "./entity"
