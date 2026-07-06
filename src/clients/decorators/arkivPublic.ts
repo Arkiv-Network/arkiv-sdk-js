@@ -165,7 +165,6 @@ export type PublicArkivActions<
    *     payload: true,
    *     metadata: true,
    *   },
-   *   orderBy: [{ name: "key", type: "string", desc: "asc" }],
    *   resultsPerPage: 10,
    *   cursor: undefined,
    *   atBlock: undefined,
