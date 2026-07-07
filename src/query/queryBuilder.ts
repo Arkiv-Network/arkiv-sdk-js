@@ -8,6 +8,11 @@ import type { Predicate } from "./predicate"
 import { QueryResult } from "./queryResult"
 import { type SelectArg, selectionToIncludeData } from "./selection"
 
+/**
+ * @deprecated Server-side ordering is not supported by the network. Sort the fetched
+ * entities in JavaScript instead (e.g. `entities.sort(...)`). This type will be removed
+ * in a future release.
+ */
 export type OrderByAttribute = {
   name: string
   type: "string" | "number"
@@ -19,6 +24,10 @@ export type OrderByAttribute = {
  * @param attributeName - The name of the attribute to order by
  * @param attributeType - The type of the attribute to order by (string or number)
  * @returns Input for orderBy method
+ *
+ * @deprecated Server-side ordering is not supported by the network, so `orderBy` (and this
+ * helper) have no effect on the returned order. Sort the fetched entities in JavaScript
+ * instead (e.g. `entities.sort(...)`). This function will be removed in a future release.
  *
  * @example
  * const ascAttribute = asc("name", "string")
@@ -36,6 +45,10 @@ export function asc(attributeName: string, attributeType: "string" | "number"): 
  * @param attributeName - The name of the attribute to order by
  * @param attributeType - The type of the attribute to order by (string or number)
  * @returns Input for orderBy method
+ *
+ * @deprecated Server-side ordering is not supported by the network, so `orderBy` (and this
+ * helper) have no effect on the returned order. Sort the fetched entities in JavaScript
+ * instead (e.g. `entities.sort(...)`). This function will be removed in a future release.
  *
  * @example
  * const descAttribute = desc("name", "string")
@@ -122,6 +135,10 @@ export abstract class BaseQueryBuilder<TEntity> {
    * @param order - The order to set the order by (asc or desc)
    * @returns The query builder instance
    *
+   * @deprecated Server-side ordering is not supported by the network, so this method has no
+   * effect on the returned order. Sort the fetched entities in JavaScript instead, e.g.
+   * `result.entities.sort((a, b) => ...)`. This method will be removed in a future release.
+   *
    * @example
    * const builder = client.select()
    * builder.orderBy("name", "string", "desc")
@@ -135,6 +152,10 @@ export abstract class BaseQueryBuilder<TEntity> {
    * used to use the helper functions asc() and desc() to create the OrderByAttribute instances.
    * @param orderByAttribute - The OrderByAttribute instance to set
    * @returns The query builder instance
+   *
+   * @deprecated Server-side ordering is not supported by the network, so this method has no
+   * effect on the returned order. Sort the fetched entities in JavaScript instead, e.g.
+   * `result.entities.sort((a, b) => ...)`. This method will be removed in a future release.
    *
    * @example
    * const builder = client.select()
