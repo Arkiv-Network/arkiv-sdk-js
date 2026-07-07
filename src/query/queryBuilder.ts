@@ -240,27 +240,26 @@ export abstract class BaseQueryBuilder<TEntity> {
   }
 
   /**
-   * Sets the predicates for the query limiting the results. It can be a single predicate or an array of predicates combined with 'and'.
+   * Sets the predicates for the query limiting the results. It can be a single predicate,
+   * multiple predicates passed as separate arguments, or an array of predicates - all combined with 'and'.
    * Predicates can be nested using 'or' and 'and' predicates.
-   * @param predicates - The predicates to set
+   * @param predicates - The predicates to set, either as a single array or as separate arguments
    * @returns The query builder instance
    *
    * @example
    * const builder = client.select()
    * builder.where(eq("name", "John"))
+   * builder.where(eq("name", "John"), eq("age", 30))
    * builder.where([eq("name", "John"), eq("age", 30)])
-   * builder.where([eq("name", "John"), or([eq("age", 30), eq("age", 31)])])
-   * builder.where([eq("name", "John"), and([eq("age", 30), eq("age", 31)])])
-   * builder.where([eq("name", "John"), or([eq("age", 30), and([eq("age", 31), eq("age", 32)])])])
-   * builder.where([eq("name", "John"), and([eq("age", 30), or([eq("age", 31), eq("age", 32)])])])
-   * builder.where([eq("name", "John"), and([eq("age", 30), or([eq("age", 31), and([eq("age", 32), eq("age", 33)])])])])
+   * builder.where(eq("name", "John"), or(eq("age", 30), eq("age", 31)))
+   * builder.where(eq("name", "John"), and(eq("age", 30), eq("age", 31)))
+   * builder.where(eq("name", "John"), or(eq("age", 30), and(eq("age", 31), eq("age", 32))))
+   * builder.where(eq("name", "John"), and(eq("age", 30), or(eq("age", 31), eq("age", 32))))
    */
-  where(predicates: Predicate[] | Predicate): this {
-    if (Array.isArray(predicates)) {
-      this._predicates.push(...predicates)
-    } else {
-      this._predicates.push(predicates)
-    }
+  where(predicates: Predicate[]): this
+  where(...predicates: Predicate[]): this
+  where(...predicates: (Predicate | Predicate[])[]) {
+    this._predicates.push(...predicates.flat())
     return this
   }
 
