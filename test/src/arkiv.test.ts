@@ -1,21 +1,32 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import type { Hex, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
+import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
 import {
   createPublicClient,
   createWalletClient,
-  http,
+  InvalidExpirationError,
   NoEntityFoundError,
-  toBytes,
-  webSocket,
 } from "@arkiv-network/sdk"
-import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
 import { eq } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
+import { type Hex, http, toBytes, webSocket } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
 import { execCommand, launchLocalArkivNode } from "./utils.js"
 
 
 const basicCRUDTestTimeout: number = parseInt(process.env.ARKIV_SDK_TEST_CRUD_TIMEOUT || "20000")
+
+// All metadata fields, selected flat (there is no `metadata` grouping).
+const allMetadata = {
+  contentType: true,
+  owner: true,
+  creator: true,
+  expiresAtBlock: true,
+  createdAtBlock: true,
+  lastModifiedAtBlock: true,
+  transactionIndexInBlock: true,
+  operationIndexInTransaction: true,
+} as const
 
 describe("Arkiv Integration Tests for public client", () => {
   let arkivNode: StartedTestContainer | undefined
@@ -220,7 +231,7 @@ describe("Arkiv Integration Tests for public client", () => {
     expect(testKey).toBeDefined()
 
     // build query
-    const query = client.buildQuery()
+    const query = client.select({ key: true })
     const entities = await query
       .where(eq("key", "value"))
       .ownedBy(privateKeyToAccount(privateKey).address)
@@ -256,7 +267,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
     // query at specific block
     const queryAtBlock = await client
-      .buildQuery()
+      .select({ key: true })
       .where(eq("key", "value"))
       .validAtBlock(1n)
       .fetch()
@@ -293,7 +304,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // query using the createdBy filter (maps to $creator)
       const queryResult = await readClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("createdByTestKey", "createdByTestValue"))
         .createdBy(creatorAddress)
         .fetch()
@@ -302,7 +313,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // query combining both ownedBy and createdBy
       const combinedResult = await readClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("createdByTestKey", "createdByTestValue"))
         .ownedBy(creatorAddress)
         .createdBy(creatorAddress)
@@ -312,7 +323,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // query with a non-matching creator should return no results
       const noResults = await readClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("createdByTestKey", "createdByTestValue"))
         .createdBy("0x0000000000000000000000000000000000000000")
         .fetch()
@@ -332,16 +343,19 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(testKey).toBeDefined()
 
       // build query
-      const query = client.buildQuery()
+      const query = client.select(allMetadata)
       const entities = await query
         .where(eq("key", "value"))
         .ownedBy(privateKeyToAccount(privateKey).address)
-        .withMetadata()
         .fetch()
       expect(entities).toBeDefined()
       expect(entities.entities.length).toBeGreaterThanOrEqual(1)
+      // @ts-expect-error payload was not selected
       expect(entities.entities[0].payload).toBeUndefined()
-      expect(entities.entities[0].attributes).toBeArray()
+      // Attributes are absent from the projected type (compile error). At runtime, Entity always
+      // materializes attributes to an empty array rather than undefined.
+      // @ts-expect-error attributes were not selected
+      expect(entities.entities[0].attributes).toEqual([])
       expect(entities.entities[0].contentType).toBeDefined()
       expect(entities.entities[0].expiresAtBlock).toBeDefined()
       expect(entities.entities[0].createdAtBlock).toBeDefined()
@@ -447,15 +461,14 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(extendedEntityKey).toBeDefined()
       expect(extendedTxHash).toBeDefined()
 
-      // extend entity with odd number of seconds
-      const { entityKey: extendedEntityKey2, txHash: extendedTxHash2 } =
-        await writeClient.extendEntity({
+      // extending with an odd number of seconds is rejected client-side before
+      // hitting the chain (expiration must be a multiple of the 2s block time)
+      expect(
+        writeClient.extendEntity({
           entityKey: updatedEntityKey,
           expiresIn: 999,
-        })
-      console.log("result from extendEntity", { extendedEntityKey2, extendedTxHash2 })
-      expect(extendedEntityKey2).toBeDefined()
-      expect(extendedTxHash2).toBeDefined()
+        }),
+      ).rejects.toThrowError(InvalidExpirationError)
 
       // delete entity
       const { entityKey: deletedEntityKey, txHash: deletedTxHash } = await writeClient.deleteEntity(
@@ -598,7 +611,7 @@ describe("Arkiv Integration Tests for public client", () => {
       }
 
       // query with pagination - irregular number of entities (6,4)
-      const query = readClient.buildQuery()
+      const query = readClient.select({ key: true })
       const queryResult = await query
         .where(eq("testKey", value))
         .limit(6)
@@ -617,7 +630,7 @@ describe("Arkiv Integration Tests for public client", () => {
       await expect(queryResult.next()).rejects.toThrow()
 
       // query with pagination - irregular number of entities (5,5)
-      const query2 = readClient.buildQuery()
+      const query2 = readClient.select({ key: true })
       const queryResult2 = await query2
         .where(eq("testKey", value))
         .limit(5)
@@ -638,7 +651,7 @@ describe("Arkiv Integration Tests for public client", () => {
     { timeout: 60000 },
   )
   test.each(["http", "webSocket"] as const)(
-    "Query with various projections using withAttributes, withMetadata, withPayload",
+    "Query with various projections using select",
     async (transport) => {
       const writeClient = transport === "http" ? walletClient : walletClientWS
       const readClient = transport === "http" ? publicClient : publicClientWS
@@ -655,67 +668,81 @@ describe("Arkiv Integration Tests for public client", () => {
         expiresIn: ExpirationTime.fromBlocks(1000),
       })
 
-      // query with no data fetched - just key (it is always fetched)
-      let queryResult = await readClient.buildQuery().where(eq("testKey", "testValue")).fetch()
-      expect(queryResult).toBeDefined()
-      expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
-      expect(queryResult.entities[0].owner).toBeUndefined()
-      expect(queryResult.entities[0].creator).toBeUndefined()
-      expect(queryResult.entities[0].payload).toBeUndefined()
-      expect(queryResult.entities[0].attributes).toHaveLength(0)
-      expect(queryResult.entities[0].expiresAtBlock).toBeUndefined()
-      expect(queryResult.entities[0].createdAtBlock).toBeUndefined()
-      expect(queryResult.entities[0].lastModifiedAtBlock).toBeUndefined()
-      expect(queryResult.entities[0].transactionIndexInBlock).toBeUndefined()
-      expect(queryResult.entities[0].operationIndexInTransaction).toBeUndefined()
+      // query with just the key — the result type is narrowed to exactly { key }
+      const keyOnly = await readClient
+        .select({ key: true })
+        .where(eq("testKey", "testValue"))
+        .fetch()
+      expect(keyOnly.entities.length).toBeGreaterThanOrEqual(1)
+      expect(keyOnly.entities[0].key).toBeDefined()
+      // unselected fields are absent from the type (compile error) and undefined at runtime
+      // @ts-expect-error owner was not selected
+      expect(keyOnly.entities[0].owner).toBeUndefined()
+      // attributes are the exception: absent from the type, but Entity always materializes them
+      // to an empty array at runtime rather than undefined
+      // @ts-expect-error attributes were not selected
+      expect(keyOnly.entities[0].attributes).toEqual([])
+      // @ts-expect-error payload was not selected
+      expect(keyOnly.entities[0].payload).toBeUndefined()
+      // unselected metadata must actually be omitted by the RPC, not just typed out — this is the
+      // over-fetch guarantee select() exists to provide, so assert it at runtime
+      // @ts-expect-error contentType was not selected
+      expect(keyOnly.entities[0].contentType).toBeUndefined()
+      // @ts-expect-error creator was not selected
+      expect(keyOnly.entities[0].creator).toBeUndefined()
+      // @ts-expect-error expiresAtBlock was not selected
+      expect(keyOnly.entities[0].expiresAtBlock).toBeUndefined()
+      // @ts-expect-error createdAtBlock was not selected
+      expect(keyOnly.entities[0].createdAtBlock).toBeUndefined()
+      // @ts-expect-error lastModifiedAtBlock was not selected
+      expect(keyOnly.entities[0].lastModifiedAtBlock).toBeUndefined()
+      // @ts-expect-error transactionIndexInBlock was not selected
+      expect(keyOnly.entities[0].transactionIndexInBlock).toBeUndefined()
+      // @ts-expect-error operationIndexInTransaction was not selected
+      expect(keyOnly.entities[0].operationIndexInTransaction).toBeUndefined()
 
       // query with payload only
-      queryResult = await readClient
-        .buildQuery()
+      const payloadOnly = await readClient
+        .select({ payload: true })
         .where(eq("testKey", "testValue"))
-        .withAttributes(false)
-        .withMetadata(false)
-        .withPayload(true)
         .fetch()
-      expect(queryResult).toBeDefined()
-      expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
-      expect(queryResult.entities[0].payload?.length).toBeGreaterThan(0)
+      expect(payloadOnly.entities.length).toBeGreaterThanOrEqual(1)
+      expect(payloadOnly.entities[0].payload.length).toBeGreaterThan(0)
 
-      // query with metadata only
-      queryResult = await readClient
-        .buildQuery()
+      // query with metadata only — metadata fields are flattened onto the result
+      const metadataOnly = await readClient
+        .select(allMetadata)
         .where(eq("testKey", "testValue"))
-        .withAttributes(false)
-        .withMetadata(true)
-        .withPayload(false)
         .fetch()
+      expect(metadataOnly.entities.length).toBeGreaterThanOrEqual(1)
+      expect(metadataOnly.entities[0].owner).toBeDefined()
+      expect(metadataOnly.entities[0].creator).toBeDefined()
+      expect(metadataOnly.entities[0].contentType).toBeDefined()
+      expect(metadataOnly.entities[0].expiresAtBlock).toBeDefined()
+      expect(metadataOnly.entities[0].createdAtBlock).toBeDefined()
+      expect(metadataOnly.entities[0].lastModifiedAtBlock).toBeDefined()
+      expect(metadataOnly.entities[0].transactionIndexInBlock).toBeDefined()
+      expect(metadataOnly.entities[0].operationIndexInTransaction).toBeDefined()
 
-      expect(queryResult).toBeDefined()
-      expect(queryResult.entities.length).toBeGreaterThanOrEqual(1)
-      console.log("queryResult.entities[0]", queryResult.entities[0])
-      expect(queryResult.entities[0].owner).toBeDefined()
-      expect(queryResult.entities[0].creator).toBeDefined()
-      expect(queryResult.entities[0].expiresAtBlock).toBeDefined()
-      expect(queryResult.entities[0].createdAtBlock).toBeDefined()
-      expect(queryResult.entities[0].lastModifiedAtBlock).toBeDefined()
-      expect(queryResult.entities[0].transactionIndexInBlock).toBeDefined()
-      expect(queryResult.entities[0].operationIndexInTransaction).toBeDefined()
-
-      // query with annotations only
-      queryResult = await readClient
-        .buildQuery()
+      // query with attributes only
+      const attributesOnly = await readClient
+        .select({ attributes: true })
         .where(eq("testKey", "testValue"))
-        .withAttributes(true)
-        .withMetadata(false)
-        .withPayload(false)
         .fetch()
-      expect(queryResult).toBeDefined()
-      expect(queryResult.entities[0].attributes.length).toBeGreaterThanOrEqual(1)
-      expect(queryResult.entities[0].createdAtBlock).toBeUndefined()
-      expect(queryResult.entities[0].lastModifiedAtBlock).toBeUndefined()
-      expect(queryResult.entities[0].transactionIndexInBlock).toBeUndefined()
-      expect(queryResult.entities[0].operationIndexInTransaction).toBeUndefined()
-      expect(queryResult.entities[0].payload).toBeUndefined()
+      expect(attributesOnly.entities[0].attributes.length).toBeGreaterThanOrEqual(1)
+      // @ts-expect-error owner was not selected
+      expect(attributesOnly.entities[0].owner).toBeUndefined()
+      // @ts-expect-error payload was not selected
+      expect(attributesOnly.entities[0].payload).toBeUndefined()
+      // unselected metadata is omitted by the RPC (over-fetch guarantee), not just typed out
+      // @ts-expect-error key was not selected
+      expect(attributesOnly.entities[0].key).toBeUndefined()
+      // @ts-expect-error creator was not selected
+      expect(attributesOnly.entities[0].creator).toBeUndefined()
+      // @ts-expect-error createdAtBlock was not selected
+      expect(attributesOnly.entities[0].createdAtBlock).toBeUndefined()
+      // @ts-expect-error operationIndexInTransaction was not selected
+      expect(attributesOnly.entities[0].operationIndexInTransaction).toBeUndefined()
     },
     { timeout: 20000 },
   )
@@ -774,11 +801,8 @@ describe("Arkiv Integration Tests for public client", () => {
       const tx = await readClient.getTransactionReceipt({ hash: txHash })
 
       const result = await readClient
-        .buildQuery()
+        .select({ ...allMetadata, attributes: true })
         .where(eq("$key", entityKey))
-        .withAttributes(true)
-        .withMetadata()
-        .withMetadata(true)
         .fetch()
 
       console.log("Entity attributes", result.entities[0].attributes)

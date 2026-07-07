@@ -2,9 +2,6 @@
  * @module main
  */
 
-// Re-export all viem stuff
-export * from "viem"
-
 // export main arkiv stuff
 export type { ArkivClient } from "./clients/baseClient"
 export type { PublicArkivClient } from "./clients/createPublicClient"

@@ -11,6 +11,7 @@ import { EntityMutationError } from "../errors"
 import type { TxParams } from "../types"
 import { compress } from "./compression"
 import { getLogger } from "./logger"
+import { validateAttribute, validateExpiresIn } from "./validation"
 
 const logger = getLogger("utils:arkiv-transactions")
 
@@ -39,37 +40,45 @@ export function opsToTxData({
 
   const payload = [
     //creates
-    (creates ?? []).map((item) => [
-      toHex(Math.ceil(item.expiresIn / BLOCK_TIME)),
-      toHex(item.contentType),
-      toHex(item.payload),
-      item.attributes
-        .filter((attribute) => typeof attribute.value === "string")
-        .map(formatAttributes),
-      item.attributes
-        .filter((attribute) => typeof attribute.value === "number")
-        .map(formatAttributes),
-    ]),
+    (creates ?? []).map((item) => {
+      validateExpiresIn(item.expiresIn)
+      item.attributes.forEach(validateAttribute)
+      return [
+        toHex(item.expiresIn / BLOCK_TIME),
+        toHex(item.contentType),
+        toHex(item.payload),
+        item.attributes
+          .filter((attribute) => typeof attribute.value === "string")
+          .map(formatAttributes),
+        item.attributes
+          .filter((attribute) => typeof attribute.value === "number")
+          .map(formatAttributes),
+      ]
+    }),
     //updates
-    (updates ?? []).map((item) => [
-      item.entityKey,
-      toHex(item.contentType),
-      toHex(Math.ceil(item.expiresIn / BLOCK_TIME)),
-      toHex(item.payload),
-      item.attributes
-        .filter((attribute) => typeof attribute.value === "string")
-        .map(formatAttributes),
-      item.attributes
-        .filter((attribute) => typeof attribute.value === "number")
-        .map(formatAttributes),
-    ]),
+    (updates ?? []).map((item) => {
+      validateExpiresIn(item.expiresIn)
+      item.attributes.forEach(validateAttribute)
+      return [
+        item.entityKey,
+        toHex(item.contentType),
+        toHex(item.expiresIn / BLOCK_TIME),
+        toHex(item.payload),
+        item.attributes
+          .filter((attribute) => typeof attribute.value === "string")
+          .map(formatAttributes),
+        item.attributes
+          .filter((attribute) => typeof attribute.value === "number")
+          .map(formatAttributes),
+      ]
+    }),
     //deletes
     (deletes ?? []).map((item) => item.entityKey),
     //extends
-    (extensions ?? []).map((item) => [
-      item.entityKey,
-      toHex(Math.ceil(item.expiresIn / BLOCK_TIME)),
-    ]),
+    (extensions ?? []).map((item) => {
+      validateExpiresIn(item.expiresIn)
+      return [item.entityKey, toHex(item.expiresIn / BLOCK_TIME)]
+    }),
     //ownershipChanges TODO
     (ownershipChanges ?? []).map((item) => [item.entityKey, item.newOwner]),
   ]

@@ -1,20 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import type {
-  Hex,
-  PublicArkivClient,
-  WalletArkivClient,
-} from "@arkiv-network/sdk";
+import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk";
 import {
   createPublicClient,
   createWalletClient,
-  http,
-  isHex,
   NoEntityFoundError,
 } from "@arkiv-network/sdk";
-import { privateKeyToAccount } from "@arkiv-network/sdk/accounts";
 import { kaolin, braga } from "@arkiv-network/sdk/chains";
 import { and, eq, gt, gte, lt, lte, neq, or } from "@arkiv-network/sdk/query";
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils";
+import { type Hex, http, isHex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 if (!PRIVATE_KEY) {
@@ -108,11 +103,9 @@ describe(`Network health check (${chain.name})`, () => {
 
       // QUERY
       const queryResult = await publicClient
-        .buildQuery()
+        .select({ key: true, attributes: true, payload: true })
         .where(eq("tag", tag))
         .ownedBy(account.address)
-        .withPayload(true)
-        .withAttributes(true)
         .fetch();
 
       expect(queryResult.entities.length).toBe(1);
@@ -264,7 +257,10 @@ describe(`Network health check (${chain.name})`, () => {
       const { entityKey } = await walletClient.createEntity({
         payload: jsonToPayload({ ownershipTest: true }),
         contentType: "application/json",
-        attributes: [{ key: "purpose", value: "ownership_test" }, { key: "tag", value: tag }],
+        attributes: [
+          { key: "purpose", value: "ownership_test" },
+          { key: "tag", value: tag },
+        ],
         expiresIn: ExpirationTime.fromHours(1),
       });
 
@@ -272,11 +268,13 @@ describe(`Network health check (${chain.name})`, () => {
       const before = await publicClient.getEntity(entityKey);
       expect(before.owner?.toLowerCase()).toBe(account.address.toLowerCase());
       expect(before.creator?.toLowerCase()).toBe(account.address.toLowerCase());
-      console.log(`  OWNER   before=${before.owner}  creator=${before.creator}`);
+      console.log(
+        `  OWNER   before=${before.owner}  creator=${before.creator}`,
+      );
 
       // createdBy query should find the entity before transfer
       const createdByBefore = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("tag", tag))
         .createdBy(account.address)
         .fetch();
@@ -298,7 +296,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       // after ownership transfer, createdBy should still return the entity
       const createdByAfter = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("tag", tag))
         .createdBy(account.address)
         .fetch();
@@ -308,16 +306,18 @@ describe(`Network health check (${chain.name})`, () => {
 
       // ownedBy with the original owner should no longer return the entity
       const ownedByOriginal = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("tag", tag))
         .ownedBy(account.address)
         .fetch();
       expect(ownedByOriginal.entities.length).toBe(0);
-      console.log(`  QUERY   ownedBy original owner correctly returns 0 after transfer`);
+      console.log(
+        `  QUERY   ownedBy original owner correctly returns 0 after transfer`,
+      );
 
       // ownedBy with the new owner should return the entity
       const ownedByNew = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("tag", tag))
         .ownedBy(newOwner)
         .fetch();
@@ -463,72 +463,64 @@ describe(`Network health check (${chain.name})`, () => {
 
       // eq – only score=30
       const eqResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), eq("score", 30)])
-        .withAttributes(true)
         .fetch();
       expect(eqResult.entities).toHaveLength(1);
       console.log(`  FILTER  eq: found ${eqResult.entities.length}`);
 
       // neq – everything except score=30 → 4 entities
       const neqResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), neq("score", 30)])
-        .withAttributes(true)
         .fetch();
       expect(neqResult.entities).toHaveLength(4);
       console.log(`  FILTER  neq: found ${neqResult.entities.length}`);
 
       // gt – score > 30 → 40, 50
       const gtResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), gt("score", 30)])
-        .withAttributes(true)
         .fetch();
       expect(gtResult.entities).toHaveLength(2);
       console.log(`  FILTER  gt: found ${gtResult.entities.length}`);
 
       // gte – score >= 30 → 30, 40, 50
       const gteResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), gte("score", 30)])
-        .withAttributes(true)
         .fetch();
       expect(gteResult.entities).toHaveLength(3);
       console.log(`  FILTER  gte: found ${gteResult.entities.length}`);
 
       // lt – score < 30 → 10, 20
       const ltResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), lt("score", 30)])
-        .withAttributes(true)
         .fetch();
       expect(ltResult.entities).toHaveLength(2);
       console.log(`  FILTER  lt: found ${ltResult.entities.length}`);
 
       // lte – score <= 30 → 10, 20, 30
       const lteResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), lte("score", 30)])
-        .withAttributes(true)
         .fetch();
       expect(lteResult.entities).toHaveLength(3);
       console.log(`  FILTER  lte: found ${lteResult.entities.length}`);
 
       // or – score=10 OR score=50 → 2
       const orResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), or([eq("score", 10), eq("score", 50)])])
-        .withAttributes(true)
         .fetch();
       expect(orResult.entities).toHaveLength(2);
       console.log(`  FILTER  or: found ${orResult.entities.length}`);
 
       // and – score > 10 AND score < 50 → 20, 30, 40
       const andResult = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where([eq("group", group), and([gt("score", 10), lt("score", 50)])])
-        .withAttributes(true)
         .fetch();
       expect(andResult.entities).toHaveLength(3);
       console.log(`  FILTER  and: found ${andResult.entities.length}`);
@@ -537,7 +529,7 @@ describe(`Network health check (${chain.name})`, () => {
   );
 
   test(
-    "query projections: withAttributes, withMetadata, withPayload",
+    "query projections via select",
     async () => {
       const tag = `proj-${Date.now()}`;
 
@@ -551,38 +543,52 @@ describe(`Network health check (${chain.name})`, () => {
         expiresIn: ExpirationTime.fromHours(1),
       });
 
-      // default (no projections) – only key
+      // key only – the result type is narrowed to exactly { key }
       const defaultResult = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("tag", tag))
         .fetch();
       const e0 = defaultResult.entities[0];
       expect(e0.key).toBeDefined();
+      // @ts-expect-error payload was not selected
       expect(e0.payload).toBeUndefined();
-      expect(e0.attributes).toHaveLength(0);
-      expect(e0.expiresAtBlock).toBeUndefined();
-      console.log(`  PROJ    default: key-only`);
+      // attributes are absent from the type, but Entity always materializes them to an empty
+      // array at runtime rather than undefined
+      // @ts-expect-error attributes were not selected
+      expect(e0.attributes).toEqual([]);
+      // unselected metadata is omitted by the RPC at runtime, not just typed out (over-fetch guard)
+      // @ts-expect-error owner was not selected
+      expect(e0.owner).toBeUndefined();
+      // @ts-expect-error createdAtBlock was not selected
+      expect(e0.createdAtBlock).toBeUndefined();
+      // @ts-expect-error operationIndexInTransaction was not selected
+      expect(e0.operationIndexInTransaction).toBeUndefined();
+      console.log(`  PROJ    key-only`);
 
       // payload only
       const payloadOnly = await publicClient
-        .buildQuery()
+        .select({ payload: true })
         .where(eq("tag", tag))
-        .withPayload(true)
-        .withAttributes(false)
-        .withMetadata(false)
         .fetch();
       const e1 = payloadOnly.entities[0];
-      expect(e1.payload?.length).toBeGreaterThan(0);
-      expect(e1.expiresAtBlock).toBeUndefined();
+      expect(e1.payload.length).toBeGreaterThan(0);
+      // @ts-expect-error owner was not selected
+      expect(e1.owner).toBeUndefined();
       console.log(`  PROJ    payload-only`);
 
-      // metadata only
+      // metadata only – metadata fields are flattened onto the result
       const metadataOnly = await publicClient
-        .buildQuery()
+        .select({
+          contentType: true,
+          owner: true,
+          creator: true,
+          expiresAtBlock: true,
+          createdAtBlock: true,
+          lastModifiedAtBlock: true,
+          transactionIndexInBlock: true,
+          operationIndexInTransaction: true,
+        })
         .where(eq("tag", tag))
-        .withMetadata(true)
-        .withPayload(false)
-        .withAttributes(false)
         .fetch();
       const e2 = metadataOnly.entities[0];
       expect(e2.owner).toBeDefined();
@@ -590,33 +596,33 @@ describe(`Network health check (${chain.name})`, () => {
       expect(e2.expiresAtBlock).toBeDefined();
       expect(e2.createdAtBlock).toBeDefined();
       expect(e2.lastModifiedAtBlock).toBeDefined();
+      expect(e2.transactionIndexInBlock).toBeDefined();
+      expect(e2.operationIndexInTransaction).toBeDefined();
+      expect(e2.contentType).toBeDefined();
+      // @ts-expect-error payload was not selected
       expect(e2.payload).toBeUndefined();
       console.log(`  PROJ    metadata-only`);
 
       // attributes only
       const attrsOnly = await publicClient
-        .buildQuery()
+        .select({ attributes: true })
         .where(eq("tag", tag))
-        .withAttributes(true)
-        .withPayload(false)
-        .withMetadata(false)
         .fetch();
       const e3 = attrsOnly.entities[0];
       expect(e3.attributes.length).toBeGreaterThanOrEqual(1);
+      // @ts-expect-error payload was not selected
       expect(e3.payload).toBeUndefined();
-      expect(e3.expiresAtBlock).toBeUndefined();
+      // @ts-expect-error owner was not selected
+      expect(e3.owner).toBeUndefined();
       console.log(`  PROJ    attributes-only`);
 
       // all projections
       const allProjections = await publicClient
-        .buildQuery()
+        .select("*")
         .where(eq("tag", tag))
-        .withAttributes(true)
-        .withMetadata(true)
-        .withPayload(true)
         .fetch();
       const e4 = allProjections.entities[0];
-      expect(e4.payload?.length).toBeGreaterThan(0);
+      expect(e4.payload.length).toBeGreaterThan(0);
       expect(e4.attributes.length).toBeGreaterThanOrEqual(1);
       expect(e4.owner).toBeDefined();
       expect(e4.creator).toBeDefined();
@@ -643,7 +649,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       // fetch page 1 (limit 3)
       const page1 = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("group", group))
         .limit(3)
         .fetch();
@@ -683,7 +689,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       // query with correct owner
       const ownedResult = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("tag", tag))
         .ownedBy(account.address)
         .fetch();
@@ -696,7 +702,7 @@ describe(`Network health check (${chain.name})`, () => {
       // query with wrong owner – should find nothing
       const wrongOwner = "0x0000000000000000000000000000000000000001" as Hex;
       const notOwnedResult = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where(eq("tag", tag))
         .ownedBy(wrongOwner)
         .fetch();
@@ -738,7 +744,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       // query by numeric attribute
       const numQuery = await publicClient
-        .buildQuery()
+        .select({ key: true })
         .where([eq("tag", tag), eq("numAttr", 42)])
         .fetch();
       expect(numQuery.entities).toHaveLength(1);

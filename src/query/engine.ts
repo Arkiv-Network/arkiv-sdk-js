@@ -54,6 +54,11 @@ export async function processQuery(
     withAttributes?: boolean | undefined
     withMetadata?: boolean | undefined
     withPayload?: boolean | undefined
+    /**
+     * Fully-resolved include-data for fine-grained selection. When provided it takes
+     * precedence over the `withAttributes`/`withMetadata`/`withPayload` booleans.
+     */
+    includeData?: RpcIncludeData | undefined
   },
 ) {
   const {
@@ -66,6 +71,7 @@ export async function processQuery(
     withAttributes,
     withMetadata,
     withPayload,
+    includeData,
   } = queryParams
 
   logger("Processing query with params %o", {
@@ -78,6 +84,7 @@ export async function processQuery(
     withAttributes,
     withMetadata,
     withPayload,
+    includeData,
   })
 
   let query = processPredicates(predicates)
@@ -95,19 +102,21 @@ export async function processQuery(
   }
 
   const queryOptions: RpcQueryOptions = {
-    includeData: {
-      key: true,
-      attributes: withAttributes ?? false,
-      payload: withPayload ?? false,
-      contentType: withMetadata ?? false,
-      expiration: withMetadata ?? false,
-      owner: withMetadata ?? false,
-      creator: withMetadata ?? false,
-      createdAtBlock: withMetadata ?? false,
-      lastModifiedAtBlock: withMetadata ?? false,
-      transactionIndexInBlock: withMetadata ?? false,
-      operationIndexInTransaction: withMetadata ?? false,
-    } as RpcIncludeData,
+    includeData:
+      includeData ??
+      ({
+        key: true,
+        attributes: withAttributes ?? false,
+        payload: withPayload ?? false,
+        contentType: withMetadata ?? false,
+        expiration: withMetadata ?? false,
+        owner: withMetadata ?? false,
+        creator: withMetadata ?? false,
+        createdAtBlock: withMetadata ?? false,
+        lastModifiedAtBlock: withMetadata ?? false,
+        transactionIndexInBlock: withMetadata ?? false,
+        operationIndexInTransaction: withMetadata ?? false,
+      } as RpcIncludeData),
   }
 
   if (validAtBlock !== undefined) {

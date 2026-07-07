@@ -4,7 +4,8 @@ import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
 import { type QueryOptions, type QueryReturnType, query } from "../../actions/public/query"
 import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
-import { QueryBuilder } from "../../query/queryBuilder"
+import { QueryBuilder, SelectQueryBuilder } from "../../query/queryBuilder"
+import type { EntitySelection, FullEntity, ProjectedEntity, SelectArg } from "../../query/selection"
 import type { Entity } from "../../types/entity"
 import type {
   OnEntityCreatedEvent,
@@ -56,10 +57,74 @@ export type PublicArkivActions<
   getEntity: (key: Hex) => Promise<Entity>
 
   /**
+   * Returns a SelectQueryBuilder for building and executing queries — the recommended way to
+   * read entities. You declare up front which parts of an entity you want returned, so results
+   * always contain exactly the data you asked for.
+   *
+   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/query
+   *
+   * @param selection - What to include in the results. Omit it (or pass `"*"`) to select everything,
+   *   or pass an object to select specific parts (at least one field is required). Every part is
+   *   opt-in, including the `key`. The selection is flat — each field maps to an entity field.
+   *   {@link SelectArg}
+   * @returns A SelectQueryBuilder instance for building and executing queries. {@link SelectQueryBuilder}
+   *
+   * @example
+   * import { createPublicClient, http } from 'arkiv'
+   * import { braga } from 'arkiv/chains'
+   * import { eq } from 'arkiv/query'
+   *
+   * const client = createPublicClient({
+   *   chain: braga,
+   *   transport: http(),
+   * })
+   * // select everything
+   * await client.select().where(eq("category", "docs")).fetch()
+   * await client.select("*").where(eq("category", "docs")).fetch()
+   * // only the key
+   * await client.select({ key: true }).where(eq("category", "docs")).fetch()
+   * // select specific fields — result typed { owner: Hex; attributes: Attribute[] }
+   * await client.select({ owner: true, attributes: true }).fetch()
+   * // a single field — result typed { owner: Hex }
+   * await client.select({ owner: true }).fetch()
+   */
+  select: {
+    /** Select every field. Pass nothing or `"*"`; the returned entities contain all fields. */
+    (selection?: "*"): SelectQueryBuilder<FullEntity>
+    /**
+     * Pick the entity fields to return. Set the ones you want to `true` (at least one is required);
+     * the result is typed to exactly those fields, so reading anything else is a compile error.
+     *
+     * Available fields: `key`, `owner`, `creator`, `contentType`, `payload`, `attributes`,
+     * `expiresAtBlock`, `createdAtBlock`, `lastModifiedAtBlock`, `transactionIndexInBlock`,
+     * `operationIndexInTransaction`.
+     *
+     * Pass the selection inline so its fields stay literal `true`. A selection stored in a `let`/
+     * `const` variable widens to `boolean` and the result type can no longer be narrowed — annotate
+     * it `as const` (e.g. `const sel = { owner: true } as const`) in that case.
+     *
+     * @example
+     * client.select({ owner: true, attributes: true }) // entities typed { owner, attributes }
+     * client.select({ key: true, payload: true })       // includes payload → toText()/toJson() too
+     */
+    <const S extends EntitySelection>(selection: S): SelectQueryBuilder<ProjectedEntity<S>>
+    /**
+     * Dynamic selection: accepts a value typed {@link SelectArg} (e.g. built at runtime). The
+     * result cannot be narrowed in this case, so the entities are typed as the full entity.
+     */
+    (selection: SelectArg): SelectQueryBuilder<FullEntity>
+  }
+
+  /**
    * Returns a QueryBuilder instance for building and executing queries.
    * The QueryBuilder object follows the Builder pattern, allowing you to chain methods to build a query and then execute it.
    *
    * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/query
+   *
+   * @deprecated Use {@link select} instead. `buildQuery()` returns only the entity `key` unless
+   * you remember to opt in to data with `withAttributes()`/`withMetadata()`/`withPayload()`, which
+   * is an easy mistake. `select()` makes the selection explicit. This method remains for backwards
+   * compatibility and will be removed in a future release.
    *
    * @returns A QueryBuilder instance for building and executing queries. {@link QueryBuilder}
    *
@@ -199,6 +264,7 @@ export function publicArkivActions<
     getEntity: (key: Hex) => getEntity(client, key),
     query: (rawQuery: string, queryOptions?: QueryOptions) => query(client, rawQuery, queryOptions),
     buildQuery: () => new QueryBuilder(client),
+    select: (selection?: SelectArg) => new SelectQueryBuilder(client, selection),
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),
     subscribeEntityEvents: (
