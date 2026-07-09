@@ -1,3 +1,17 @@
+## [0.7.0] - 2026-07-09
+
+### Added
+- `select()` API on the public client for building queries that fetch only the fields you need. The result type is inferred from the selection
+- Query builder predicates (`and`, `or`) now accept varargs in addition to the array syntax
+- Invalid inputs are now rejected client-side with descriptive errors instead of failing during RPC communication
+
+### Changed
+- **Breaking:** `viem` is now a peer dependency and must be installed alongside the SDK (`npm install @arkiv-network/sdk viem`). The SDK no longer re-exports viem's internals (`http`, `privateKeyToAccount`, `Hex`, etc.)
+- Relaxed the TypeScript peer dependency to `>=5.0.0` and made it optional
+
+### Deprecated
+- `orderBy` on the query builder, the `orderBy` query option, and the `asc`/`desc` helpers. Server-side ordering is not supported by the network, so these have no effect - sort the fetched entities in JavaScript instead.
+
 ## [0.6.3] - 2026-05-11
 
 ### Fixed
