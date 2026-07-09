@@ -9,6 +9,11 @@ export type QueryOptionsIncludeData = {
   payload?: boolean
   metadata?: boolean
 }
+/**
+ * @deprecated Server-side ordering is not supported by the network. Sort the fetched
+ * entities in JavaScript instead (e.g. `entities.sort(...)`). This type will be removed
+ * in a future release.
+ */
 export type QueryOptionsOrderBy = {
   name: string
   type: "string" | "numeric"
@@ -18,6 +23,11 @@ export type QueryOptionsOrderBy = {
 export type QueryOptions = {
   includeData?: QueryOptionsIncludeData
   atBlock?: bigint
+  /**
+   * @deprecated Server-side ordering is not supported by the network, so this option has no
+   * effect on the returned order. Sort the fetched entities in JavaScript instead
+   * (e.g. `entities.sort(...)`). This option will be removed in a future release.
+   */
   orderBy?: QueryOptionsOrderBy[]
   resultsPerPage?: number | undefined
   cursor?: string | undefined

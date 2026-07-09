@@ -1,6 +1,7 @@
-import { createPublicClient, http } from "@arkiv-network/sdk"
+import { createPublicClient } from "@arkiv-network/sdk"
 import { braga } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
+import { http } from "viem"
 
 // Create a public client
 const publicClient = createPublicClient({
@@ -18,13 +19,14 @@ const entity = await publicClient.getEntity(
 )
 console.log("Entity:", entity)
 
-// Build and execute a query using QueryBuilder
-const query = publicClient.buildQuery()
-const result = await query
+// Build and execute a query using select().
+// select() declares up front what to return: select() / select("*") returns everything,
+// or pass an object to pick specific fields. The selection is flat and the result type is
+// narrowed to exactly the selected fields.
+const result = await publicClient
+  .select({ key: true, owner: true, attributes: true, payload: true })
   .where(eq("category", "documentation"))
   .ownedBy("0xF46E23f6a6F6336D4C64D5D1c95599bF77a536f0")
-  .withAttributes(true)
-  .withPayload(true)
   .limit(10)
   .fetch()
 

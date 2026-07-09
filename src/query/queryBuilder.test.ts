@@ -78,6 +78,28 @@ describe("QueryBuilder", () => {
       })
     })
 
+    test("adds multiple predicates as varargs", async () => {
+      mockProcessQuery.mockResolvedValue({
+        data: [],
+      })
+
+      const builder = new QueryBuilder(mockClient)
+      await builder.where(eq("name", "test"), gt("age", 18), neq("status", "inactive")).fetch()
+
+      expect(mockProcessQuery).toHaveBeenCalledWith(mockClient, {
+        predicates: [eq("name", "test"), gt("age", 18), neq("status", "inactive")],
+        limit: undefined,
+        offset: undefined,
+        ownedBy: undefined,
+        createdBy: undefined,
+        orderBy: undefined,
+        validBeforeBlock: undefined,
+        withAttributes: undefined,
+        withMetadata: undefined,
+        withPayload: undefined,
+      })
+    })
+
     test("chains multiple where() calls", async () => {
       mockProcessQuery.mockResolvedValue({
         data: [],

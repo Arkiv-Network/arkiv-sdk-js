@@ -56,6 +56,11 @@ export type WalletArkivActions<
      * @param txParams - Optional transaction parameters
      * @returns The created entity with transaction hash
      *
+     * @throws {InvalidExpirationError} If `expiresIn` is not a positive integer
+     * that is a multiple of the block time (2 seconds).
+     * @throws {InvalidAttributeError} If a numeric attribute value is not an
+     * integer.
+     *
      * @example
      * import { createPublicClient, http } from 'arkiv'
      * import { braga } from 'arkiv/chains'
@@ -90,6 +95,11 @@ export type WalletArkivActions<
      * @param data - The entity update parameters
      * @param txParams - Optional transaction parameters
      * @returns The updated entity with transaction hash
+     *
+     * @throws {InvalidExpirationError} If `expiresIn` is not a positive integer
+     * that is a multiple of the block time (2 seconds).
+     * @throws {InvalidAttributeError} If a numeric attribute value is not an
+     * integer.
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'
@@ -146,6 +156,9 @@ export type WalletArkivActions<
      * @param txParams - Optional transaction parameters
      * @returns The updated entity with transaction hash
      *
+     * @throws {InvalidExpirationError} If `expiresIn` is not a positive integer
+     * that is a multiple of the block time (2 seconds).
+     *
      * @example
      * import { createWalletClient, http } from 'arkiv'
      * import { braga } from 'arkiv/chains'
@@ -193,6 +206,11 @@ export type WalletArkivActions<
      * @param data - The mutation parameters (creates, updates, deletes, extensions)
      * @param txParams - Optional transaction parameters
      * @returns The mutation result with transaction hash
+     *
+     * @throws {InvalidExpirationError} If any create/update/extension `expiresIn`
+     * is not a positive integer that is a multiple of the block time (2 seconds).
+     * @throws {InvalidAttributeError} If a numeric attribute value is not an
+     * integer.
      *
      * @example
      * import { createWalletClient, http } from 'arkiv'

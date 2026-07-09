@@ -1,7 +1,8 @@
-import { createPublicClient, createWalletClient, http } from "@arkiv-network/sdk"
-import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
+import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
 import { braga } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
+import { http } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
 
 // Create a public client
 const publicClient = createPublicClient({

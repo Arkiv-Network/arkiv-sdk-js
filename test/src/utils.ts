@@ -1,4 +1,4 @@
-import type { Hex } from "@arkiv-network/sdk"
+import type { Hex } from "viem"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
 
 export async function launchLocalArkivNode(withFundingAccount: Hex | undefined = undefined) {
