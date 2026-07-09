@@ -23,12 +23,9 @@ import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
 import { EntityMutationError, InvalidContentTypeError } from "../errors"
 import type { TxParams } from "../types"
 import { EntityOperationType } from "../types/entity"
+import { RpcAttributeValueType as AttributeValueType } from "../types/rpcSchema"
 
-const enum AttributeValueType {
-  Uint = 1,
-  String = 2,
-  EntityKey = 3,
-}
+
 import { getLogger } from "./logger"
 import { validateAttribute, validateExpiresIn } from "./validation"
 

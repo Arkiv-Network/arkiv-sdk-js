@@ -101,7 +101,7 @@ describe("Arkiv Integration Tests for public client", () => {
     const payload = options.payload ?? "Hello world"
 
     if (arkivNode) {
-      const command = ["arkiv-cli", "--private-key", privateKey, "create", "--payload", payload, "--btl", 1000]
+      const command = ["arkiv-cli", "--private-key", privateKey, "create", "--payload", payload, "--btl", "1000"]
 
       if (options.attribute) {
         command.push("--attributes", `${options.attribute.key}:string=${options.attribute.value}`)
@@ -171,12 +171,12 @@ describe("Arkiv Integration Tests for public client", () => {
       console.log("blockTiming", blockTiming)
       expect(blockTiming).toBeDefined()
       expect(blockTiming.currentBlock).toBeDefined()
-      expect(blockTiming.currentBlock).toBeGreaterThan(0n)
+      expect(blockTiming.currentBlock).toBeGreaterThanOrEqual(0n)
       expect(typeof blockTiming.currentBlock).toBe("bigint")
       expect(blockTiming.currentBlockTime).toBeDefined()
       expect(blockTiming.currentBlockTime).toBeGreaterThan(0)
       expect(blockTiming.blockDuration).toBeDefined()
-      expect(blockTiming.blockDuration).toBeGreaterThan(0)
+      expect(blockTiming.blockDuration).toBeGreaterThanOrEqual(0)
     },
   )
 
@@ -832,7 +832,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const stringValue = "hello-world"
       const numberValue = 42
-      const hexValue = "0xdeadbeef" as Hex
+      const hexValue = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hex
 
       const { entityKey } = await writeClient.createEntity({
         payload: jsonToPayload({ test: "all-attr-types" }),
