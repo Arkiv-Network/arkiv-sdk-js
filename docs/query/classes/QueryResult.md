@@ -1,30 +1,41 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
 [@arkiv-network/sdk](../../index.md) / [query](../index.md) / QueryResult
 
-# Class: QueryResult
+# Class: QueryResult\<TEntity\>
 
-Defined in: [src/query/queryResult.ts:8](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryResult.ts#L8)
+Defined in: [src/query/queryResult.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryResult.ts#L14)
+
+The result of a query. Holds the fetched entities and supports cursor-based pagination.
+
+## Type Parameters
+
+### TEntity
+
+`TEntity` = [`Entity`](../../main/interfaces/Entity.md)
+
+The shape of each entity, inferred from the query builder
+  (a full [Entity](../../main/interfaces/Entity.md), or a projected object inferred from a `select()` selection).
 
 ## Constructors
 
 ### Constructor
 
-> **new QueryResult**(`entities`, `queryBuilder`, `cursor`, `limit`, `validAtBlock`): `QueryResult`
+> **new QueryResult**\<`TEntity`\>(`entities`, `queryBuilder`, `cursor`, `limit`, `validAtBlock`): `QueryResult`\<`TEntity`\>
 
-Defined in: [src/query/queryResult.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryResult.ts#L25)
+Defined in: [src/query/queryResult.ts:31](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryResult.ts#L31)
 
 #### Parameters
 
 ##### entities
 
-[`Entity`](../../main/interfaces/Entity.md)[]
+`TEntity`[]
 
 ##### queryBuilder
 
-[`QueryBuilder`](QueryBuilder.md)
+[`BaseQueryBuilder`](BaseQueryBuilder.md)\<`TEntity`\>
 
 ##### cursor
 
@@ -40,15 +51,15 @@ Defined in: [src/query/queryResult.ts:25](https://github.com/Arkiv-Network/arkiv
 
 #### Returns
 
-`QueryResult`
+`QueryResult`\<`TEntity`\>
 
 ## Properties
 
 ### entities
 
-> **entities**: [`Entity`](../../main/interfaces/Entity.md)[]
+> **entities**: `TEntity`[]
 
-Defined in: [src/query/queryResult.ts:9](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryResult.ts#L9)
+Defined in: [src/query/queryResult.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryResult.ts#L15)
 
 ## Accessors
 
@@ -58,7 +69,7 @@ Defined in: [src/query/queryResult.ts:9](https://github.com/Arkiv-Network/arkiv-
 
 > **get** **cursor**(): `string` \| `undefined`
 
-Defined in: [src/query/queryResult.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryResult.ts#L21)
+Defined in: [src/query/queryResult.ts:27](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryResult.ts#L27)
 
 ##### Returns
 
@@ -70,13 +81,13 @@ Defined in: [src/query/queryResult.ts:21](https://github.com/Arkiv-Network/arkiv
 
 #### Get Signature
 
-> **get** **queryBuilder**(): [`QueryBuilder`](QueryBuilder.md)
+> **get** **queryBuilder**(): [`BaseQueryBuilder`](BaseQueryBuilder.md)\<`TEntity`\>
 
-Defined in: [src/query/queryResult.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryResult.ts#L17)
+Defined in: [src/query/queryResult.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryResult.ts#L23)
 
 ##### Returns
 
-[`QueryBuilder`](QueryBuilder.md)
+[`BaseQueryBuilder`](BaseQueryBuilder.md)\<`TEntity`\>
 
 ## Methods
 
@@ -84,7 +95,7 @@ Defined in: [src/query/queryResult.ts:17](https://github.com/Arkiv-Network/arkiv
 
 > **hasNextPage**(): `boolean`
 
-Defined in: [src/query/queryResult.ts:61](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryResult.ts#L61)
+Defined in: [src/query/queryResult.ts:67](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryResult.ts#L67)
 
 #### Returns
 
@@ -96,7 +107,7 @@ Defined in: [src/query/queryResult.ts:61](https://github.com/Arkiv-Network/arkiv
 
 > **next**(): `Promise`\<`void`\>
 
-Defined in: [src/query/queryResult.ts:40](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryResult.ts#L40)
+Defined in: [src/query/queryResult.ts:46](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryResult.ts#L46)
 
 #### Returns
 

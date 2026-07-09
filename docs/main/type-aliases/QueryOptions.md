@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **QueryOptions** = `object`
 
-Defined in: [src/actions/public/query.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/public/query.ts#L18)
+Defined in: [src/actions/public/query.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/public/query.ts#L23)
 
 ## Properties
 
@@ -16,7 +16,7 @@ Defined in: [src/actions/public/query.ts:18](https://github.com/Arkiv-Network/ar
 
 > `optional` **atBlock**: `bigint`
 
-Defined in: [src/actions/public/query.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/public/query.ts#L20)
+Defined in: [src/actions/public/query.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/public/query.ts#L25)
 
 ***
 
@@ -24,7 +24,7 @@ Defined in: [src/actions/public/query.ts:20](https://github.com/Arkiv-Network/ar
 
 > `optional` **cursor**: `string`
 
-Defined in: [src/actions/public/query.ts:23](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/public/query.ts#L23)
+Defined in: [src/actions/public/query.ts:33](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/public/query.ts#L33)
 
 ***
 
@@ -32,15 +32,21 @@ Defined in: [src/actions/public/query.ts:23](https://github.com/Arkiv-Network/ar
 
 > `optional` **includeData**: [`QueryOptionsIncludeData`](QueryOptionsIncludeData.md)
 
-Defined in: [src/actions/public/query.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/public/query.ts#L19)
+Defined in: [src/actions/public/query.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/public/query.ts#L24)
 
 ***
 
-### orderBy?
+### ~~orderBy?~~
 
 > `optional` **orderBy**: [`QueryOptionsOrderBy`](QueryOptionsOrderBy.md)[]
 
-Defined in: [src/actions/public/query.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/public/query.ts#L21)
+Defined in: [src/actions/public/query.ts:31](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/public/query.ts#L31)
+
+#### Deprecated
+
+Server-side ordering is not supported by the network, so this option has no
+effect on the returned order. Sort the fetched entities in JavaScript instead
+(e.g. `entities.sort(...)`). This option will be removed in a future release.
 
 ***
 
@@ -48,4 +54,4 @@ Defined in: [src/actions/public/query.ts:21](https://github.com/Arkiv-Network/ar
 
 > `optional` **resultsPerPage**: `number`
 
-Defined in: [src/actions/public/query.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/public/query.ts#L22)
+Defined in: [src/actions/public/query.ts:32](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/public/query.ts#L32)

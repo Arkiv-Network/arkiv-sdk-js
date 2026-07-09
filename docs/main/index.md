@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../index.md)
+[**@arkiv-network/sdk v0.7.0**](../index.md)
 
 ***
 
@@ -9,6 +9,8 @@
 ## Classes
 
 - [EntityMutationError](classes/EntityMutationError.md)
+- [InvalidAttributeError](classes/InvalidAttributeError.md)
+- [InvalidExpirationError](classes/InvalidExpirationError.md)
 - [NoCursorOrLimitError](classes/NoCursorOrLimitError.md)
 - [NoEntityFoundError](classes/NoEntityFoundError.md)
 - [NoMoreResultsError](classes/NoMoreResultsError.md)
@@ -44,7 +46,7 @@
 - [PublicArkivClient](type-aliases/PublicArkivClient.md)
 - [QueryOptions](type-aliases/QueryOptions.md)
 - [QueryOptionsIncludeData](type-aliases/QueryOptionsIncludeData.md)
-- [QueryOptionsOrderBy](type-aliases/QueryOptionsOrderBy.md)
+- [~~QueryOptionsOrderBy~~](type-aliases/QueryOptionsOrderBy.md)
 - [QueryReturnType](type-aliases/QueryReturnType.md)
 - [RpcEntity](type-aliases/RpcEntity.md)
 - [RpcIncludeData](type-aliases/RpcIncludeData.md)

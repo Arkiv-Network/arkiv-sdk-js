@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
@@ -8,14 +8,21 @@
 
 > **UpdateEntityParameters** = `object`
 
-Defined in: [src/actions/wallet/updateEntity.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L17)
+Defined in: [src/actions/wallet/updateEntity.ts:24](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L24)
 
 Parameters for the updateEntity function.
 - entityKey: The key of the entity to update.
 - payload: The payload of the entity.
-- attributes: The attributes of the entity.
+- attributes: The attributes of the entity. Attribute values may be strings
+  or numbers, but numeric values **must be integers**. To store a non-integer,
+  scale it to an integer (e.g. `1.5` -> `1500`) to preserve numeric ordering,
+  or pass it as a string (e.g. `"1.5"`). A non-integer numeric value throws an
+  [InvalidAttributeError](../classes/InvalidAttributeError.md).
 - contentType: The content type of the entity.
-- expiresIn: The expires in of the entity in seconds.
+- expiresIn: How long until the entity expires, in seconds. Because Arkiv
+  measures expiration in blocks (1 block = 2 seconds), this **must be a
+  positive integer and a multiple of the block time (2 seconds)**.
+  Invalid values throw an [InvalidExpirationError](../classes/InvalidExpirationError.md).
 
 ## Properties
 
@@ -23,7 +30,9 @@ Parameters for the updateEntity function.
 
 > **attributes**: [`Attribute`](Attribute.md)[]
 
-Defined in: [src/actions/wallet/updateEntity.ts:20](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L20)
+Defined in: [src/actions/wallet/updateEntity.ts:28](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L28)
+
+Entity attributes. Numeric values must be integers (scale non-integers, e.g. `1.5` -> `1500`, or use a string). Throws [InvalidAttributeError](../classes/InvalidAttributeError.md) otherwise.
 
 ***
 
@@ -31,7 +40,7 @@ Defined in: [src/actions/wallet/updateEntity.ts:20](https://github.com/Arkiv-Net
 
 > **contentType**: [`MimeType`](MimeType.md) \| `string`
 
-Defined in: [src/actions/wallet/updateEntity.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L21)
+Defined in: [src/actions/wallet/updateEntity.ts:29](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L29)
 
 ***
 
@@ -39,7 +48,7 @@ Defined in: [src/actions/wallet/updateEntity.ts:21](https://github.com/Arkiv-Net
 
 > **entityKey**: `Hex`
 
-Defined in: [src/actions/wallet/updateEntity.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L18)
+Defined in: [src/actions/wallet/updateEntity.ts:25](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L25)
 
 ***
 
@@ -47,7 +56,10 @@ Defined in: [src/actions/wallet/updateEntity.ts:18](https://github.com/Arkiv-Net
 
 > **expiresIn**: `number`
 
-Defined in: [src/actions/wallet/updateEntity.ts:22](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L22)
+Defined in: [src/actions/wallet/updateEntity.ts:32](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L32)
+
+Seconds until expiry. Must be a positive integer and a multiple of the 2s block time.
+Throws [InvalidExpirationError](../classes/InvalidExpirationError.md) otherwise.
 
 ***
 
@@ -55,4 +67,4 @@ Defined in: [src/actions/wallet/updateEntity.ts:22](https://github.com/Arkiv-Net
 
 > **payload**: `Uint8Array`
 
-Defined in: [src/actions/wallet/updateEntity.ts:19](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L19)
+Defined in: [src/actions/wallet/updateEntity.ts:26](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L26)

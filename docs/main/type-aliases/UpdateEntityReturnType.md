@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **UpdateEntityReturnType** = `object`
 
-Defined in: [src/actions/wallet/updateEntity.ts:30](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L30)
+Defined in: [src/actions/wallet/updateEntity.ts:40](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L40)
 
 Return type for the updateEntity function.
 - entityKey: The key of the entity.
@@ -20,7 +20,7 @@ Return type for the updateEntity function.
 
 > **entityKey**: `Hex`
 
-Defined in: [src/actions/wallet/updateEntity.ts:31](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L31)
+Defined in: [src/actions/wallet/updateEntity.ts:41](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L41)
 
 ***
 
@@ -28,4 +28,4 @@ Defined in: [src/actions/wallet/updateEntity.ts:31](https://github.com/Arkiv-Net
 
 > **txHash**: `Hash`
 
-Defined in: [src/actions/wallet/updateEntity.ts:32](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/updateEntity.ts#L32)
+Defined in: [src/actions/wallet/updateEntity.ts:42](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/updateEntity.ts#L42)

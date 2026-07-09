@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: EntityMutationError
 
-Defined in: [src/errors.ts:1](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/errors.ts#L1)
+Defined in: [src/errors.ts:3](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/errors.ts#L3)
 
 ## Extends
 
@@ -18,7 +18,7 @@ Defined in: [src/errors.ts:1](https://github.com/Arkiv-Network/arkiv-sdk-js/blob
 
 > **new EntityMutationError**(`message`): `EntityMutationError`
 
-Defined in: [src/errors.ts:2](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/errors.ts#L2)
+Defined in: [src/errors.ts:4](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/errors.ts#L4)
 
 #### Parameters
 

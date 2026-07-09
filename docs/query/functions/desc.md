@@ -1,14 +1,14 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
 [@arkiv-network/sdk](../../index.md) / [query](../index.md) / desc
 
-# Function: desc()
+# ~~Function: desc()~~
 
 > **desc**(`attributeName`, `attributeType`): [`OrderByAttribute`](../type-aliases/OrderByAttribute.md)
 
-Defined in: [src/query/queryBuilder.ts:41](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/query/queryBuilder.ts#L41)
+Defined in: [src/query/queryBuilder.ts:56](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L56)
 
 Helper function to create a descending order by attribute
 
@@ -31,6 +31,12 @@ The type of the attribute to order by (string or number)
 [`OrderByAttribute`](../type-aliases/OrderByAttribute.md)
 
 Input for orderBy method
+
+## Deprecated
+
+Server-side ordering is not supported by the network, so `orderBy` (and this
+helper) have no effect on the returned order. Sort the fetched entities in JavaScript
+instead (e.g. `entities.sort(...)`). This function will be removed in a future release.
 
 ## Example
 

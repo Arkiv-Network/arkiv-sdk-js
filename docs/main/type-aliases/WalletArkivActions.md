@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **WalletArkivActions**\<`transport`, `chain`, `account`\> = `Pick`\<`PublicActions`\<`transport`, `chain`, `account`\>, `"waitForTransactionReceipt"` \| `"call"`\> & `Pick`\<`WalletActions`\<`chain`, `account`\>, `"addChain"` \| `"sendCalls"` \| `"waitForCallsStatus"` \| `"sendTransaction"` \| `"sendRawTransaction"` \| `"signMessage"` \| `"signTransaction"`\> & `object`
 
-Defined in: [src/clients/decorators/arkivWallet.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/clients/decorators/arkivWallet.ts#L34)
+Defined in: [src/clients/decorators/arkivWallet.ts:34](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/clients/decorators/arkivWallet.ts#L34)
 
 ## Type Declaration
 
@@ -69,6 +69,16 @@ Optional transaction parameters
 `Promise`\<[`CreateEntityReturnType`](CreateEntityReturnType.md)\>
 
 The created entity with transaction hash
+
+#### Throws
+
+If `expiresIn` is not a positive integer
+that is a multiple of the block time (2 seconds).
+
+#### Throws
+
+If a numeric attribute value is not an
+integer.
 
 #### Example
 
@@ -170,6 +180,11 @@ Optional transaction parameters
 
 The updated entity with transaction hash
 
+#### Throws
+
+If `expiresIn` is not a positive integer
+that is a multiple of the block time (2 seconds).
+
 #### Example
 
 ```ts
@@ -219,6 +234,16 @@ Optional transaction parameters
 `Promise`\<[`MutateEntitiesReturnType`](MutateEntitiesReturnType.md)\>
 
 The mutation result with transaction hash
+
+#### Throws
+
+If any create/update/extension `expiresIn`
+is not a positive integer that is a multiple of the block time (2 seconds).
+
+#### Throws
+
+If a numeric attribute value is not an
+integer.
 
 #### Example
 
@@ -286,6 +311,16 @@ Optional transaction parameters
 `Promise`\<[`UpdateEntityReturnType`](UpdateEntityReturnType.md)\>
 
 The updated entity with transaction hash
+
+#### Throws
+
+If `expiresIn` is not a positive integer
+that is a multiple of the block time (2 seconds).
+
+#### Throws
+
+If a numeric attribute value is not an
+integer.
 
 #### Example
 

@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
@@ -8,11 +8,14 @@
 
 > **ExtendEntityParameters** = `object`
 
-Defined in: [src/actions/wallet/extendEntity.ts:14](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/extendEntity.ts#L14)
+Defined in: [src/actions/wallet/extendEntity.ts:17](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/extendEntity.ts#L17)
 
 Parameters for the extendEntity function.
 - entityKey: The key of the entity to extend.
-- expiresIn: The expires in of the entity in seconds.
+- expiresIn: How long to extend the entity by, in seconds. Because Arkiv
+  measures expiration in blocks (1 block = 2 seconds), this **must be a
+  positive integer and a multiple of the block time (2 seconds)**.
+  Invalid values throw an [InvalidExpirationError](../classes/InvalidExpirationError.md).
 
 ## Properties
 
@@ -20,7 +23,7 @@ Parameters for the extendEntity function.
 
 > **entityKey**: `Hex`
 
-Defined in: [src/actions/wallet/extendEntity.ts:15](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/extendEntity.ts#L15)
+Defined in: [src/actions/wallet/extendEntity.ts:18](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/extendEntity.ts#L18)
 
 ***
 
@@ -28,4 +31,7 @@ Defined in: [src/actions/wallet/extendEntity.ts:15](https://github.com/Arkiv-Net
 
 > **expiresIn**: `number`
 
-Defined in: [src/actions/wallet/extendEntity.ts:16](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/actions/wallet/extendEntity.ts#L16)
+Defined in: [src/actions/wallet/extendEntity.ts:21](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/actions/wallet/extendEntity.ts#L21)
+
+Seconds to extend by. Must be a positive integer and a multiple of the 2s block time.
+Throws [InvalidExpirationError](../classes/InvalidExpirationError.md) otherwise.

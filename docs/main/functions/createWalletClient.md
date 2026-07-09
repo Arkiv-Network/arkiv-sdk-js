@@ -1,4 +1,4 @@
-[**@arkiv-network/sdk v0.6.8**](../../index.md)
+[**@arkiv-network/sdk v0.7.0**](../../index.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **createWalletClient**\<`transport`, `chain`, `accountOrAddress`, `rpcSchema`\>(`parameters`): `object`
 
-Defined in: [src/clients/createWalletClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/2902fdd21dc0b3f3905f4884a01f3e2b155af948/src/clients/createWalletClient.ts#L44)
+Defined in: [src/clients/createWalletClient.ts:44](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/clients/createWalletClient.ts#L44)
 
 Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
 
@@ -101,6 +101,16 @@ Optional transaction parameters
 `Promise`\<[`CreateEntityReturnType`](../type-aliases/CreateEntityReturnType.md)\>
 
 The created entity with transaction hash
+
+#### Throws
+
+If `expiresIn` is not a positive integer
+that is a multiple of the block time (2 seconds).
+
+#### Throws
+
+If a numeric attribute value is not an
+integer.
 
 #### Example
 
@@ -202,6 +212,11 @@ Optional transaction parameters
 
 The updated entity with transaction hash
 
+#### Throws
+
+If `expiresIn` is not a positive integer
+that is a multiple of the block time (2 seconds).
+
 #### Example
 
 ```ts
@@ -251,6 +266,16 @@ Optional transaction parameters
 `Promise`\<[`MutateEntitiesReturnType`](../type-aliases/MutateEntitiesReturnType.md)\>
 
 The mutation result with transaction hash
+
+#### Throws
+
+If any create/update/extension `expiresIn`
+is not a positive integer that is a multiple of the block time (2 seconds).
+
+#### Throws
+
+If a numeric attribute value is not an
+integer.
 
 #### Example
 
@@ -318,6 +343,16 @@ Optional transaction parameters
 `Promise`\<[`UpdateEntityReturnType`](../type-aliases/UpdateEntityReturnType.md)\>
 
 The updated entity with transaction hash
+
+#### Throws
+
+If `expiresIn` is not a positive integer
+that is a multiple of the block time (2 seconds).
+
+#### Throws
+
+If a numeric attribute value is not an
+integer.
 
 #### Example
 

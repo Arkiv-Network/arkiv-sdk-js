@@ -2,40 +2,51 @@
 
 ***
 
-[@arkiv-network/sdk](../../index.md) / [query](../index.md) / QueryBuilder
+[@arkiv-network/sdk](../../index.md) / [query](../index.md) / SelectQueryBuilder
 
-# ~~Class: QueryBuilder~~
+# Class: SelectQueryBuilder\<TEntity\>
 
-Defined in: [src/query/queryBuilder.ts:350](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L350)
+Defined in: [src/query/queryBuilder.ts:430](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L430)
 
-QueryBuilder is a helper class to build queries to the Arkiv DBChains.
-It can be used to fetch entities from the Arkiv DBChains. It follows the Builder pattern allowing chaining of methods.
+SelectQueryBuilder is the recommended query builder. It requires the selection to be declared
+up front, so results always contain exactly the data you asked for — and the type of each
+returned entity is narrowed to exactly the selected fields.
 
-By default the result includes only the entity `key`. Additional data is opt-in through
-`withAttributes()`, `withMetadata()` and `withPayload()`.
+The selection is fixed at construction time and is flat — each field maps to an entity field.
+Create one via `client.select(...)` rather than constructing it directly, so the result type is
+inferred from the selection.
 
-## Deprecated
+## Example
 
-Use [SelectQueryBuilder](SelectQueryBuilder.md) via `client.select()` instead. Declaring the
-selection up front avoids the common mistake of forgetting to opt in to data and getting back
-entities with only their `key` populated. This class remains for backwards compatibility and
-will be removed in a future release.
-
-## Param
-
-The Arkiv client
+```ts
+// everything
+await client.select().where(eq("name", "John")).fetch()
+await client.select("*").where(eq("name", "John")).fetch()
+// specific fields
+await client.select({ owner: true, attributes: true }).fetch()
+// a single field — result is typed (flat) { owner: Hex }
+await client.select({ owner: true }).fetch()
+```
 
 ## Extends
 
-- [`BaseQueryBuilder`](BaseQueryBuilder.md)\<[`Entity`](../../main/interfaces/Entity.md)\>
+- [`BaseQueryBuilder`](BaseQueryBuilder.md)\<`TEntity`\>
+
+## Type Parameters
+
+### TEntity
+
+`TEntity`
+
+The projected entity shape, inferred from the selection by `client.select()`.
 
 ## Constructors
 
 ### Constructor
 
-> **new QueryBuilder**(`client`): `QueryBuilder`
+> **new SelectQueryBuilder**\<`TEntity`\>(`client`, `selection?`): `SelectQueryBuilder`\<`TEntity`\>
 
-Defined in: [src/query/queryBuilder.ts:95](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L95)
+Defined in: [src/query/queryBuilder.ts:433](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L433)
 
 #### Parameters
 
@@ -43,17 +54,21 @@ Defined in: [src/query/queryBuilder.ts:95](https://github.com/Arkiv-Network/arki
 
 [`ArkivClient`](../../main/type-aliases/ArkivClient.md)
 
+##### selection?
+
+`"*"` | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"key"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"key"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"contentType"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"contentType"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"owner"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"owner"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"creator"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"creator"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"expiresAtBlock"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"expiresAtBlock"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"createdAtBlock"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"createdAtBlock"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"lastModifiedAtBlock"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"lastModifiedAtBlock"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"transactionIndexInBlock"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"transactionIndexInBlock"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"operationIndexInTransaction"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"operationIndexInTransaction"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"attributes"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"attributes"`\>\> | `Required`\<`Pick`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"payload"`\>\> & `Partial`\<`Omit`\<[`SelectionFields`](../type-aliases/SelectionFields.md), `"payload"`\>\>
+
 #### Returns
 
-`QueryBuilder`
+`SelectQueryBuilder`\<`TEntity`\>
 
-#### Inherited from
+#### Overrides
 
 [`BaseQueryBuilder`](BaseQueryBuilder.md).[`constructor`](BaseQueryBuilder.md#constructor)
 
 ## Methods
 
-### ~~count()~~
+### count()
 
 > **count**(): `Promise`\<`number`\>
 
@@ -81,7 +96,7 @@ const result = await builder.where(eq("name", "John")).count()
 
 ***
 
-### ~~createdBy()~~
+### createdBy()
 
 > **createdBy**(`createdBy`): `this`
 
@@ -116,7 +131,7 @@ builder.createdBy("0x1234567890123456789012345678901234567890")
 
 ***
 
-### ~~cursor()~~
+### cursor()
 
 > **cursor**(`cursor`): `this`
 
@@ -151,9 +166,9 @@ builder.cursor("0xABC123")
 
 ***
 
-### ~~fetch()~~
+### fetch()
 
-> **fetch**(): `Promise`\<[`QueryResult`](QueryResult.md)\<[`Entity`](../../main/interfaces/Entity.md)\>\>
+> **fetch**(): `Promise`\<[`QueryResult`](QueryResult.md)\<`TEntity`\>\>
 
 Defined in: [src/query/queryBuilder.ts:288](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L288)
 
@@ -162,7 +177,7 @@ It will return a QueryResult instance which can be used to fetch the next and pr
 
 #### Returns
 
-`Promise`\<[`QueryResult`](QueryResult.md)\<[`Entity`](../../main/interfaces/Entity.md)\>\>
+`Promise`\<[`QueryResult`](QueryResult.md)\<`TEntity`\>\>
 
 The QueryResult instance [QueryResult](QueryResult.md)
 
@@ -180,7 +195,7 @@ const result = await builder.where(eq("name", "John")).fetch()
 
 ***
 
-### ~~limit()~~
+### limit()
 
 > **limit**(`limit`): `this`
 
@@ -317,7 +332,7 @@ builder.orderBy(desc("name", "string"))
 
 ***
 
-### ~~ownedBy()~~
+### ownedBy()
 
 > **ownedBy**(`ownedBy`): `this`
 
@@ -352,7 +367,7 @@ builder.ownedBy("0x1234567890123456789012345678901234567890")
 
 ***
 
-### ~~validAtBlock()~~
+### validAtBlock()
 
 > **validAtBlock**(`validAtBlock`): `this`
 
@@ -388,7 +403,7 @@ builder.validAtBlock(10000)
 
 ***
 
-### ~~where()~~
+### where()
 
 #### Call Signature
 
@@ -471,96 +486,3 @@ builder.where(eq("name", "John"), and(eq("age", 30), or(eq("age", 31), eq("age",
 ##### Inherited from
 
 [`BaseQueryBuilder`](BaseQueryBuilder.md).[`where`](BaseQueryBuilder.md#where)
-
-***
-
-### ~~withAttributes()~~
-
-> **withAttributes**(`withAttributes`): `this`
-
-Defined in: [src/query/queryBuilder.ts:364](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L364)
-
-Sets the withAttributes flag which will return the attributes for the entities if true
-
-#### Parameters
-
-##### withAttributes
-
-`boolean` = `true`
-
-The boolean value to set
-
-#### Returns
-
-`this`
-
-The QueryBuilder instance
-
-#### Example
-
-```ts
-const builder = client.buildQuery()
-builder.withAttributes(true)
-```
-
-***
-
-### ~~withMetadata()~~
-
-> **withMetadata**(`withMetadata`): `this`
-
-Defined in: [src/query/queryBuilder.ts:378](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L378)
-
-Sets the withMetadata flag which will return the metadata (like owner, expiredAt, etc.) for the entities if true
-
-#### Parameters
-
-##### withMetadata
-
-`boolean` = `true`
-
-The boolean value to set
-
-#### Returns
-
-`this`
-
-The QueryBuilder instance
-
-#### Example
-
-```ts
-const builder = client.buildQuery()
-builder.withMetadata(true)
-```
-
-***
-
-### ~~withPayload()~~
-
-> **withPayload**(`withPayload`): `this`
-
-Defined in: [src/query/queryBuilder.ts:392](https://github.com/Arkiv-Network/arkiv-sdk-js/blob/7e73d8f472c0b915dd47354518502478fa38bac5/src/query/queryBuilder.ts#L392)
-
-Sets the withPayload flag which will return the payload for the entities if true
-
-#### Parameters
-
-##### withPayload
-
-`boolean` = `true`
-
-The boolean value to set
-
-#### Returns
-
-`this`
-
-The QueryBuilder instance
-
-#### Example
-
-```ts
-const builder = client.buildQuery()
-builder.withPayload(true)
-```
