@@ -6,7 +6,6 @@ import {
   InvalidExpirationError,
   NoEntityFoundError,
 } from "@arkiv-network/sdk"
-import { privateKeyToAccount } from "@arkiv-network/sdk/accounts"
 import { and, asc, desc, eq, gt, gte, lt, lte, or } from "@arkiv-network/sdk/query"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import type { StartedTestContainer } from "testcontainers"
@@ -672,7 +671,7 @@ describe("Arkiv Integration Tests for public client", () => {
       // query with just the key — the result type is narrowed to exactly { key }
       const keyOnly = await readClient
         .select({ key: true })
-        .where(eq("testKey", "testValue"))
+        .where(eq("testkey", "testValue"))
         .fetch()
       expect(keyOnly.entities.length).toBeGreaterThanOrEqual(1)
       expect(keyOnly.entities[0].key).toBeDefined()
@@ -705,7 +704,7 @@ describe("Arkiv Integration Tests for public client", () => {
       // query with payload only
       const payloadOnly = await readClient
         .select({ payload: true })
-        .where(eq("testKey", "testValue"))
+        .where(eq("testkey", "testValue"))
         .fetch()
       expect(payloadOnly.entities.length).toBeGreaterThanOrEqual(1)
       expect(payloadOnly.entities[0].payload.length).toBeGreaterThan(0)
@@ -713,7 +712,7 @@ describe("Arkiv Integration Tests for public client", () => {
       // query with metadata only — metadata fields are flattened onto the result
       const metadataOnly = await readClient
         .select(allMetadata)
-        .where(eq("testKey", "testValue"))
+        .where(eq("testkey", "testValue"))
         .fetch()
       expect(metadataOnly.entities.length).toBeGreaterThanOrEqual(1)
       expect(metadataOnly.entities[0].owner).toBeDefined()
@@ -728,7 +727,7 @@ describe("Arkiv Integration Tests for public client", () => {
       // query with attributes only
       const attributesOnly = await readClient
         .select({ attributes: true })
-        .where(eq("testKey", "testValue"))
+        .where(eq("testkey", "testValue"))
         .fetch()
       expect(attributesOnly.entities[0].attributes.length).toBeGreaterThanOrEqual(1)
       // @ts-expect-error owner was not selected

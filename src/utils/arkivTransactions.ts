@@ -44,7 +44,7 @@ function validateContentType(contentType: string): void {
 // Attribute = struct { bytes32 name, uint8 valueType, bytes32[4] value }
 // BlockNumber = type BlockNumber is uint32
 export const ENTITY_EXECUTE_ABI = parseAbi([
-  "function execute((uint8 operationType, bytes32 entityKey, bytes payload, (bytes32[4] data) contentType, (bytes32 name, uint8 valueType, bytes32[4] value)[] attributes, uint32 expiresAt, address newOwner)[] ops) external",
+  "function execute((uint8 operationType, bytes32 entityKey, bytes payload, (bytes32[4] data) contentType, (bytes32 name, uint8 valueType, bytes32[4] value)[] attributes, uint32 expiresIn, address newOwner)[] ops) external",
 ])
 
 export const ENTITY_OPERATION_EVENT_ABI = parseAbi([
@@ -101,7 +101,8 @@ function encodeMime128(contentType: string): { data: readonly [Hex, Hex, Hex, He
   return { data: contentType ? encodeBytes128(toBytes(contentType)) : EMPTY_BYTES128 }
 }
 
-function encodeAttribute(attr: { key: string; value: Hex | string | number | bigint }) {
+function encodeAttribute(attr: { key: string; value: Hex | string | number }) {
+  validateAttribute(attr)
   const name = toHex(attr.key, { size: 32 })
 
   if (typeof attr.value === "string") {
@@ -127,6 +128,7 @@ function encodeAttribute(attr: { key: string; value: Hex | string | number | big
 }
 
 function toBTL(expiresIn: number): number {
+  validateExpiresIn(expiresIn)
   return Math.ceil(expiresIn / BLOCK_TIME)
 }
 
@@ -188,7 +190,7 @@ export async function sendArkivTransaction(
       payload: toHex(item.payload),
       contentType: encodeMime128(item.contentType),
       attributes: item.attributes.map(encodeAttribute),
-      expiresAt: toBTL(item.expiresIn),
+      expiresIn: toBTL(item.expiresIn),
       newOwner: ZERO_ADDRESS,
     })),
     ...(updates ?? []).map((item) => ({
@@ -197,7 +199,7 @@ export async function sendArkivTransaction(
       payload: toHex(item.payload),
       contentType: encodeMime128(item.contentType),
       attributes: item.attributes.map(encodeAttribute),
-      expiresAt: 0, // contract ignores expiresAt on UPDATE
+      expiresIn: 0, // contract ignores expiresAt on UPDATE
       newOwner: ZERO_ADDRESS,
     })),
     ...(deletes ?? []).map((item) => ({
@@ -206,7 +208,7 @@ export async function sendArkivTransaction(
       payload: "0x" as Hex,
       contentType: encodeMime128(""),
       attributes: [] as never[],
-      expiresAt: 0,
+      expiresIn: 0,
       newOwner: ZERO_ADDRESS,
     })),
     ...(extensions ?? []).map((item) => ({
@@ -215,7 +217,7 @@ export async function sendArkivTransaction(
       payload: "0x" as Hex,
       contentType: encodeMime128(""),
       attributes: [] as never[],
-      expiresAt: toBTL(item.expiresIn),
+      expiresIn: toBTL(item.expiresIn),
       newOwner: ZERO_ADDRESS,
     })),
     ...(ownershipChanges ?? []).map((item) => ({
@@ -224,7 +226,7 @@ export async function sendArkivTransaction(
       payload: "0x" as Hex,
       contentType: encodeMime128(""),
       attributes: [] as never[],
-      expiresAt: 0,
+      expiresIn: 0,
       newOwner: item.newOwner as Address,
     })),
   ]
@@ -280,11 +282,11 @@ export async function sendArkivTransaction(
       } else {
         message += ": Execution error without revert data"
       }      
-      logger("%s Detailed error stack: %o", message, error)
     } else if (error instanceof EntityMutationError) {
       throw error
     }
 
+    
     throw new EntityMutationError(message)
   }
 }

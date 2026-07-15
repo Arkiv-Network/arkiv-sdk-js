@@ -6,6 +6,7 @@ import * as engine from "./engine"
 import { eq, gte } from "./predicate"
 import { SelectQueryBuilder } from "./queryBuilder"
 import { selectionToIncludeData } from "./selection"
+import { RpcAttributeValueType } from "../types/rpcSchema"
 
 describe("SelectQueryBuilder", () => {
   let mockClient: ArkivClient
@@ -150,8 +151,7 @@ describe("SelectQueryBuilder", () => {
             key: "0xabc",
             owner: "0xowner",
             value: "0x68656c6c6f", // "hello"
-            stringAttributes: [{ key: "category", value: "docs" }],
-            numericAttributes: [{ key: "score", value: "0x2a" }],
+            attributes: [{ key: "category", value: "docs", valueType: RpcAttributeValueType.String }, { key: "score", value: "0x2a", valueType: RpcAttributeValueType.Uint }],
           },
         ],
         cursor: "",

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "bun:test"
 import { InvalidAttributeError, InvalidExpirationError } from "../errors"
-import { opsToTxData } from "./arkivTransactions"
 import { toBytes, toHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
 import { sendArkivTransaction } from "./arkivTransactions"
@@ -59,55 +58,60 @@ const validCreate = {
   expiresIn: 1000,
 }
 
-describe("opsToTxData expiration validation", () => {
-  it("builds tx data for a valid create", () => {
-    expect(typeof opsToTxData({ creates: [validCreate] })).toBe("string")
+describe("sendArkivTransaction expiration validation", () => {
+  it("sends a transaction for a valid create", async () => {
+    const { client, writeContract } = makeClient()
+    const result = await sendArkivTransaction(client, { creates: [validCreate] })
+    expect(writeContract).toHaveBeenCalledTimes(1)
+    expect(result.receipt.status).toBe("success")
   })
 
-  it("throws when a create expiresIn is not a multiple of the block time", () => {
-    expect(() => opsToTxData({ creates: [{ ...validCreate, expiresIn: 51 }] })).toThrow(
-      InvalidExpirationError,
-    )
+  it("rejects when a create expiresIn is not a multiple of the block time", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { creates: [{ ...validCreate, expiresIn: 51 }] }),
+    ).rejects.toThrow(InvalidExpirationError)
   })
 
-  it("throws when an update expiresIn is not an integer", () => {
-    expect(() =>
-      opsToTxData({
-        updates: [{ ...validCreate, entityKey: "0x123", expiresIn: 51.5 }],
-      }),
-    ).toThrow(InvalidExpirationError)
+  it("rejects when a create expiresIn is not an integer", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { creates: [{ ...validCreate, expiresIn: 51.5 }] }),
+    ).rejects.toThrow(InvalidExpirationError)
   })
 
-  it("throws when an extension expiresIn is not a multiple of the block time", () => {
-    expect(() => opsToTxData({ extensions: [{ entityKey: "0x123", expiresIn: 999 }] })).toThrow(
-      InvalidExpirationError,
-    )
+  it("rejects when an extension expiresIn is not a multiple of the block time", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { extensions: [{ entityKey: "0x123", expiresIn: 999 }] }),
+    ).rejects.toThrow(InvalidExpirationError)
   })
 })
 
-describe("opsToTxData attribute validation", () => {
-  it("throws when a numeric attribute value is not an integer", () => {
-    expect(() =>
-      opsToTxData({
+describe("sendArkivTransaction attribute validation", () => {
+  it("rejects when a numeric attribute value is not an integer", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
         creates: [{ ...validCreate, attributes: [{ key: "n", value: 1.5 }] }],
       }),
-    ).toThrow(InvalidAttributeError)
+    ).rejects.toThrow(InvalidAttributeError)
   })
 
-  it("accepts integer numeric attribute values", () => {
-    expect(
-      typeof opsToTxData({
-        creates: [{ ...validCreate, attributes: [{ key: "n", value: 123 }] }],
-      }),
-    ).toBe("string")
+  it("accepts integer numeric attribute values", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ ...validCreate, attributes: [{ key: "n", value: 123 }] }],
+    })
+    expect(writeContract).toHaveBeenCalledTimes(1)
   })
 
-  it("accepts string attribute values that look like non-integers", () => {
-    expect(
-      typeof opsToTxData({
-        creates: [{ ...validCreate, attributes: [{ key: "n", value: "1.5" }] }],
-      }),
-    ).toBe("string")
+  it("accepts string attribute values that look like non-integers", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ ...validCreate, attributes: [{ key: "n", value: "1.5" }] }],
+    })
+    expect(writeContract).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -129,7 +133,7 @@ describe("encodeAttribute", () => {
   })
 
   it("encodes a hex string as ENTITY_KEY (valueType 3) in first slot, rest zero", async () => {
-    const entityKey = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab"
+    const entityKey = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
     const [attr] = await captureAttributes([{ key: "ref", value: entityKey }])
 
     expect(attr.name).toBe(toHex("ref", { size: 32 }))
@@ -167,7 +171,7 @@ describe("encodeAttribute", () => {
   })
 
   it("encodes multiple mixed-type attributes preserving order", async () => {
-    const entityKey = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab"
+    const entityKey = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
     const attrs = await captureAttributes([
       { key: "count", value: 7 },
       { key: "label", value: "test" },
