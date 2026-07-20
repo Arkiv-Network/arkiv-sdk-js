@@ -1,16 +1,16 @@
 import {
   type Address,
-  type Hex,
-  type TransactionReceipt,
   ContractFunctionExecutionError,
   ContractFunctionRevertedError,
   encodePacked,
+  type Hex,
   isHex,
   keccak256,
   parseAbi,
+  TransactionExecutionError,
+  type TransactionReceipt,
   toBytes,
   toHex,
-  TransactionExecutionError,
 } from "viem"
 import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnership"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
@@ -20,11 +20,10 @@ import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
-import { EntityMutationError, InvalidContentTypeError } from "../errors"
+import { DuplicateAttributeError, EntityMutationError, InvalidContentTypeError } from "../errors"
 import type { TxParams } from "../types"
 import { EntityOperationType } from "../types/entity"
 import { RpcAttributeValueType as AttributeValueType } from "../types/rpcSchema"
-
 
 import { getLogger } from "./logger"
 import { validateAttribute, validateExpiresIn } from "./validation"
@@ -76,9 +75,7 @@ export const ENTITY_ERRORS_ABI = parseAbi([
 
 const EXECUTE_ABI = [...ENTITY_EXECUTE_ABI, ...ENTITY_ERRORS_ABI]
 
-const ENTITY_NONCE_ABI = parseAbi([
-  "function nonces(address owner) view returns (uint32)",
-])
+const ENTITY_NONCE_ABI = parseAbi(["function nonces(address owner) view returns (uint32)"])
 
 const ZERO_ADDRESS: Address = "0x0000000000000000000000000000000000000000"
 const ZERO_32 = `0x${"00".repeat(32)}` as Hex
@@ -125,6 +122,22 @@ function encodeAttribute(attr: { key: string; value: Hex | string | number }) {
     valueType: AttributeValueType.Uint,
     value: [toHex(BigInt(attr.value), { size: 32 }), ZERO_32, ZERO_32, ZERO_32] as const,
   }
+}
+
+// The registry requires attributes strictly ascending by their bytes32 name — the
+// canonical serialization hashes into the state root, and strict ordering doubles as
+// the uniqueness check (AttributesNotSorted). Sort here so callers can pass any order;
+// duplicates would revert on-chain, so reject them client-side with a clear error.
+function encodeAttributes(attrs: { key: string; value: Hex | string | number }[]) {
+  const encoded = attrs
+    .map((attr) => ({ key: attr.key, ...encodeAttribute(attr) }))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+  for (let i = 1; i < encoded.length; i++) {
+    if (encoded[i].name === encoded[i - 1].name) {
+      throw new DuplicateAttributeError(encoded[i].key)
+    }
+  }
+  return encoded.map(({ key: _, ...attr }) => attr)
 }
 
 function toBTL(expiresIn: number): number {
@@ -189,7 +202,7 @@ export async function sendArkivTransaction(
       entityKey: createdEntityKeys[i],
       payload: toHex(item.payload),
       contentType: encodeMime128(item.contentType),
-      attributes: item.attributes.map(encodeAttribute),
+      attributes: encodeAttributes(item.attributes),
       expiresIn: toBTL(item.expiresIn),
       newOwner: ZERO_ADDRESS,
     })),
@@ -198,7 +211,7 @@ export async function sendArkivTransaction(
       entityKey: item.entityKey,
       payload: toHex(item.payload),
       contentType: encodeMime128(item.contentType),
-      attributes: item.attributes.map(encodeAttribute),
+      attributes: encodeAttributes(item.attributes),
       expiresIn: 0, // contract ignores expiresAt on UPDATE
       newOwner: ZERO_ADDRESS,
     })),
@@ -281,12 +294,11 @@ export async function sendArkivTransaction(
         message += `: ${error.cause.message}`
       } else {
         message += ": Execution error without revert data"
-      }      
+      }
     } else if (error instanceof EntityMutationError) {
       throw error
     }
 
-    
     throw new EntityMutationError(message)
   }
 }

@@ -724,20 +724,20 @@ describe(`Network health check (${chain.name})`, () => {
         contentType: "application/json",
         attributes: [
           { key: "tag", value: tag },
-          { key: "strAttr", value: "hello" },
-          { key: "numAttr", value: 42 },
-          { key: "zeroAttr", value: 0 },
+          { key: "str_attr", value: "hello" },
+          { key: "num_attr", value: 42 },
+          { key: "zero_attr", value: 0 },
         ],
         expiresIn: ExpirationTime.fromHours(1),
       });
 
       const entity = await publicClient.getEntity(entityKey);
       expect(entity.attributes).toContainEqual({
-        key: "strAttr",
+        key: "str_attr",
         value: "hello",
       });
-      expect(entity.attributes).toContainEqual({ key: "numAttr", value: 42 });
-      expect(entity.attributes).toContainEqual({ key: "zeroAttr", value: 0 });
+      expect(entity.attributes).toContainEqual({ key: "num_attr", value: 42 });
+      expect(entity.attributes).toContainEqual({ key: "zero_attr", value: 0 });
       console.log(
         `  ATTRS   string, numeric, and zero attributes stored correctly`,
       );
@@ -745,7 +745,7 @@ describe(`Network health check (${chain.name})`, () => {
       // query by numeric attribute
       const numQuery = await publicClient
         .select({ key: true })
-        .where([eq("tag", tag), eq("numAttr", 42)])
+        .where([eq("tag", tag), eq("num_attr", 42)])
         .fetch();
       expect(numQuery.entities).toHaveLength(1);
       console.log(`  ATTRS   numeric query matched`);

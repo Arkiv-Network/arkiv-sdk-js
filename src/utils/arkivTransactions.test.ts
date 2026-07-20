@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "bun:test"
-import { InvalidAttributeError, InvalidExpirationError } from "../errors"
 import { toBytes, toHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
+import { DuplicateAttributeError, InvalidAttributeError, InvalidExpirationError } from "../errors"
 import { sendArkivTransaction } from "./arkivTransactions"
 
 const ZERO_32 = `0x${"00".repeat(32)}`
@@ -115,7 +115,6 @@ describe("sendArkivTransaction attribute validation", () => {
   })
 })
 
-
 describe("encodeAttribute", () => {
   it("encodes a plain string as STRING (valueType 2) left-aligned across 128 bytes", async () => {
     const [attr] = await captureAttributes([{ key: "name", value: "hello world" }])
@@ -192,5 +191,59 @@ describe("encodeAttribute", () => {
     const [chunk0, chunk1] = attr.value
     expect(chunk0).toBe(toHex(new Uint8Array(32).fill(0x61))) // 32 × 'a'
     expect(chunk1.startsWith("0x6161616161616161")).toBe(true) // next 8 × 'a', then zeros
+  })
+})
+
+describe("attribute sorting", () => {
+  it("sorts attributes ascending by their bytes32 name before encoding", async () => {
+    const attrs = await captureAttributes([
+      { key: "tag", value: "zz" },
+      { key: "status", value: "active" },
+      { key: "score", value: 30 },
+    ])
+
+    expect(attrs.map((a) => a.name)).toEqual([
+      toHex("score", { size: 32 }),
+      toHex("status", { size: 32 }),
+      toHex("tag", { size: 32 }),
+    ])
+  })
+
+  it("sorts a shorter key before a longer key sharing its prefix", async () => {
+    const attrs = await captureAttributes([
+      { key: "abc", value: 1 },
+      { key: "ab", value: 2 },
+    ])
+
+    expect(attrs.map((a) => a.name)).toEqual([
+      toHex("ab", { size: 32 }),
+      toHex("abc", { size: 32 }),
+    ])
+  })
+
+  it("does not mutate the caller's attributes array", async () => {
+    const input = [
+      { key: "b", value: 1 },
+      { key: "a", value: 2 },
+    ]
+    await captureAttributes(input)
+    expect(input.map((a) => a.key)).toEqual(["b", "a"])
+  })
+
+  it("rejects duplicate attribute keys", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        creates: [
+          {
+            ...BASE_CREATE,
+            attributes: [
+              { key: "tag", value: "one" },
+              { key: "tag", value: "two" },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toThrow(DuplicateAttributeError)
   })
 })

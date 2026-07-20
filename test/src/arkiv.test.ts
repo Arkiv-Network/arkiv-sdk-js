@@ -3,6 +3,7 @@ import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
 import {
   createPublicClient,
   createWalletClient,
+  InvalidAttributeKeyError,
   InvalidExpirationError,
   NoEntityFoundError,
 } from "@arkiv-network/sdk"
@@ -929,7 +930,7 @@ describe("Arkiv Integration Tests for public client", () => {
     },
     { timeout: 20000 },
   )
-  test("should handle nice error if creating entity with invalid attributes failes - tx is reverted", async () => {
+  test("should reject an invalid attribute key client-side before sending the tx", async () => {
     const writeClient = walletClient
     const entity = {
       payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
@@ -938,7 +939,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expiresIn: ExpirationTime.fromBlocks(1000),
     }
 
-    expect(writeClient.createEntity(entity)).rejects.toThrowError(/^Transaction failed:.*Ident32InvalidByte.*$/s)
+    expect(writeClient.createEntity(entity)).rejects.toThrowError(InvalidAttributeKeyError)
   })
 
   test.each(["http", "webSocket"] as const)(

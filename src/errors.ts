@@ -23,6 +23,22 @@ export class InvalidAttributeError extends Error {
   }
 }
 
+export class InvalidAttributeKeyError extends Error {
+  constructor(key: string, reason: string) {
+    super(
+      `Invalid attribute key "${key}": ${reason}. Keys must be 1-32 bytes, start with a lowercase letter (a-z), and contain only a-z, 0-9, ".", "-" or "_".`,
+    )
+    this.name = "InvalidAttributeKeyError"
+  }
+}
+
+export class DuplicateAttributeError extends Error {
+  constructor(key: string) {
+    super(`Duplicate attribute key "${key}". Attribute keys must be unique per entity.`)
+    this.name = "DuplicateAttributeError"
+  }
+}
+
 export class NoMoreResultsError extends Error {
   constructor() {
     super("No more results")
