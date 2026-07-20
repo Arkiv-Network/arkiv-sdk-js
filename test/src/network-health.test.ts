@@ -5,7 +5,7 @@ import {
   createWalletClient,
   NoEntityFoundError,
 } from "@arkiv-network/sdk";
-import { kaolin, braga } from "@arkiv-network/sdk/chains";
+import { kaolin, braga, localhost } from "@arkiv-network/sdk/chains";
 import { and, eq, gt, gte, lt, lte, neq, or } from "@arkiv-network/sdk/query";
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils";
 import { type Hex, http, isHex } from "viem";
@@ -20,7 +20,7 @@ if (!isHex(PRIVATE_KEY)) {
   throw new Error("Malformed PRIVATE_KEY: must be a hex string");
 }
 
-const chains = { kaolin, braga } as const;
+const chains = { kaolin, braga, localhost } as const;
 const chainName = (process.env.CHAIN ?? "braga") as keyof typeof chains;
 const chain = chains[chainName];
 if (!chain) {
