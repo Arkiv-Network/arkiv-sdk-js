@@ -16,8 +16,11 @@ export class InvalidExpirationError extends Error {
 }
 export class InvalidAttributeError extends Error {
   constructor(key: string, value: number) {
+    const remedy = Number.isInteger(value)
+      ? `Offset it into the non-negative range (e.g. store ${String(value)} + OFFSET, subtracting OFFSET on read) to keep numeric ordering/range queries; otherwise store it as a string (e.g. "${String(value)}")`
+      : `To keep numeric ordering/range queries, scale it to an integer (e.g. Math.round(${String(value)} * 1000), dividing by 1000 on read); otherwise store it as a string (e.g. "${String(value)}")`
     super(
-      `Invalid numeric value for attribute "${key}": ${String(value)}. Numeric attribute values must be integers. To keep numeric ordering/range queries, scale it to an integer (e.g. Math.round(${String(value)} * 1000), dividing by 1000 on read); otherwise store it as a string (e.g. "${String(value)}").`,
+      `Invalid numeric value for attribute "${key}": ${String(value)}. Numeric attribute values must be non-negative integers (stored on-chain as unsigned 256-bit). ${remedy}.`,
     )
     this.name = "InvalidAttributeError"
   }

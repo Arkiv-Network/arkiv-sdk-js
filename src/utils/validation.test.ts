@@ -42,15 +42,19 @@ describe("validateAttribute", () => {
     expect(() => validateAttribute({ key: "k", value: "anything" })).not.toThrow()
   })
 
-  it("accepts integer numeric values", () => {
+  it("accepts non-negative integer numeric values", () => {
     expect(() => validateAttribute({ key: "k", value: 0 })).not.toThrow()
     expect(() => validateAttribute({ key: "k", value: 123 })).not.toThrow()
-    expect(() => validateAttribute({ key: "k", value: -5 })).not.toThrow()
   })
 
   it("throws for non-integer numeric values", () => {
     expect(() => validateAttribute({ key: "k", value: 1.5 })).toThrow(InvalidAttributeError)
     expect(() => validateAttribute({ key: "k", value: Number.NaN })).toThrow(InvalidAttributeError)
+  })
+
+  it("throws for negative numeric values", () => {
+    expect(() => validateAttribute({ key: "k", value: -5 })).toThrow(InvalidAttributeError)
+    expect(() => validateAttribute({ key: "k", value: -0.5 })).toThrow(InvalidAttributeError)
   })
 
   it("includes the attribute key and value in the error message", () => {

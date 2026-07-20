@@ -4,11 +4,11 @@ import {
   ContractFunctionRevertedError,
   encodePacked,
   type Hex,
-  isHex,
   keccak256,
   parseAbi,
   TransactionExecutionError,
   type TransactionReceipt,
+  stringToBytes,
   toBytes,
   toHex,
 } from "viem"
@@ -26,7 +26,7 @@ import { EntityOperationType } from "../types/entity"
 import { RpcAttributeValueType as AttributeValueType } from "../types/rpcSchema"
 
 import { getLogger } from "./logger"
-import { validateAttribute, validateExpiresIn } from "./validation"
+import { isEntityKey, validateAttribute, validateExpiresIn } from "./validation"
 
 const logger = getLogger("utils:arkiv-transactions")
 
@@ -95,7 +95,7 @@ function encodeBytes128(data: Uint8Array): readonly [Hex, Hex, Hex, Hex] {
 
 // Mime128 struct: bytes32[4] data, string packed left-aligned into 128 bytes.
 function encodeMime128(contentType: string): { data: readonly [Hex, Hex, Hex, Hex] } {
-  return { data: contentType ? encodeBytes128(toBytes(contentType)) : EMPTY_BYTES128 }
+  return { data: contentType ? encodeBytes128(stringToBytes(contentType)) : EMPTY_BYTES128 }
 }
 
 function encodeAttribute(attr: { key: string; value: Hex | string | number }) {
@@ -103,7 +103,10 @@ function encodeAttribute(attr: { key: string; value: Hex | string | number }) {
   const name = toHex(attr.key, { size: 32 })
 
   if (typeof attr.value === "string") {
-    if (isHex(attr.value)) {
+    // Only exact 32-byte hex (an entity key) gets the EntityKey type; shorter or
+    // longer hex-looking strings are stored as plain strings so they round-trip
+    // unchanged and stay matchable by quoted string queries.
+    if (isEntityKey(attr.value)) {
       return {
         name,
         valueType: AttributeValueType.EntityKey,
@@ -113,7 +116,9 @@ function encodeAttribute(attr: { key: string; value: Hex | string | number }) {
     return {
       name,
       valueType: AttributeValueType.String,
-      value: encodeBytes128(toBytes(attr.value)),
+      // stringToBytes, not toBytes: toBytes hex-decodes hex-looking strings, which
+      // would corrupt string values like "0xab" instead of UTF-8 encoding them
+      value: encodeBytes128(stringToBytes(attr.value)),
     }
   }
 

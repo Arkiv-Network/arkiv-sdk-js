@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "bun:test"
-import { toBytes, toHex } from "viem"
+import { stringToBytes, toBytes, toHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
 import { DuplicateAttributeError, InvalidAttributeError, InvalidExpirationError } from "../errors"
 import { sendArkivTransaction } from "./arkivTransactions"
@@ -8,7 +8,9 @@ const ZERO_32 = `0x${"00".repeat(32)}`
 
 function encodeStringTo128(str: string): string[] {
   const padded = new Uint8Array(128)
-  padded.set(toBytes(str).slice(0, 128))
+  // stringToBytes, not toBytes — mirrors encodeAttribute: string values are always
+  // UTF-8 encoded, never hex-decoded, even when they look like hex
+  padded.set(stringToBytes(str).slice(0, 128))
   return [
     toHex(padded.slice(0, 32)),
     toHex(padded.slice(32, 64)),
@@ -140,10 +142,19 @@ describe("encodeAttribute", () => {
     expect(attr.value).toEqual([entityKey, ZERO_32, ZERO_32, ZERO_32])
   })
 
-  it("treats short hex strings (0x prefix only) as ENTITY_KEY, not STRING", async () => {
-    const [attr] = await captureAttributes([{ key: "x", value: "0x" }])
+  it("treats hex strings that are not 32 bytes as STRING, not ENTITY_KEY", async () => {
+    // only exact entity keys get the hex type — everything else must round-trip
+    // as a string and stay matchable by quoted string queries
+    for (const value of ["0x", "0xab", "0x6186b0dba9652262942d5a465d49686eb560834c"]) {
+      const [attr] = await captureAttributes([{ key: "x", value }])
+      expect(attr.valueType).toBe(2)
+      expect(attr.value).toEqual(encodeStringTo128(value))
+    }
 
-    expect(attr.valueType).toBe(3)
+    // the encoded bytes are the UTF-8 text, not a hex-decode: "0xab" is the
+    // four characters 0, x, a, b
+    const [attr] = await captureAttributes([{ key: "x", value: "0xab" }])
+    expect(attr.value[0].startsWith("0x30786162")).toBe(true)
   })
 
   it("encodes a number as UINT (valueType 1) big-endian in first slot, rest zero", async () => {

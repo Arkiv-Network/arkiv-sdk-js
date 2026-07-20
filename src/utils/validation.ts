@@ -1,6 +1,19 @@
+import { isHex } from "viem"
+import type { Hex } from "viem"
 import { BLOCK_TIME } from "../consts"
 import { InvalidAttributeError, InvalidAttributeKeyError, InvalidExpirationError } from "../errors"
 import type { Attribute } from "../types"
+
+/**
+ * True only for hex strings that are exactly 32 bytes (an entity key). This is
+ * the single rule deciding whether an attribute string value is stored as the
+ * on-chain `EntityKey` type or as a plain string — the query engine applies
+ * the same rule, so equality comparisons agree with storage on both paths.
+ * Hex-looking strings of any other length are treated as ordinary strings.
+ */
+export function isEntityKey(value: string): value is Hex {
+  return isHex(value) && value.length === 66
+}
 
 /**
  * Expiration on Arkiv is measured in blocks (1 block =
@@ -48,16 +61,20 @@ export function validateAttributeKey(key: string): void {
 /**
  * Validates a single attribute. Keys must follow the on-chain `Ident32` rules
  * (see {@link validateAttributeKey}). Arkiv supports string and number
- * attribute values, but numeric values must be integers.
+ * attribute values, but numeric values must be non-negative integers — they
+ * are stored on-chain as unsigned 256-bit values.
  *
  * @param attribute - The attribute to validate.
  * @throws {InvalidAttributeKeyError} If the key violates the `Ident32` rules.
- * @throws {InvalidAttributeError} If the attribute has a non-integer numeric
- * value.
+ * @throws {InvalidAttributeError} If the attribute has a non-integer or
+ * negative numeric value.
  */
 export function validateAttribute(attribute: Attribute): void {
   validateAttributeKey(attribute.key)
-  if (typeof attribute.value === "number" && !Number.isInteger(attribute.value)) {
+  if (
+    typeof attribute.value === "number" &&
+    (!Number.isInteger(attribute.value) || attribute.value < 0)
+  ) {
     throw new InvalidAttributeError(attribute.key, attribute.value)
   }
 }
