@@ -48,7 +48,7 @@ jobs:
         run: bun run package:test
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile
+        run: cd test && bun install
 
       - name: Run network health CRUD test
         env:

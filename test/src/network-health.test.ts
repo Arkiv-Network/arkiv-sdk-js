@@ -3,9 +3,10 @@ import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk";
 import {
   createPublicClient,
   createWalletClient,
+  InvalidAttributeError,
   NoEntityFoundError,
 } from "@arkiv-network/sdk";
-import { kaolin, braga } from "@arkiv-network/sdk/chains";
+import { kaolin, braga, localhost } from "@arkiv-network/sdk/chains";
 import { and, eq, gt, gte, lt, lte, neq, or } from "@arkiv-network/sdk/query";
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils";
 import { type Hex, http, isHex } from "viem";
@@ -20,7 +21,7 @@ if (!isHex(PRIVATE_KEY)) {
   throw new Error("Malformed PRIVATE_KEY: must be a hex string");
 }
 
-const chains = { kaolin, braga } as const;
+const chains = { kaolin, braga, localhost } as const;
 const chainName = (process.env.CHAIN ?? "braga") as keyof typeof chains;
 const chain = chains[chainName];
 if (!chain) {
@@ -724,20 +725,20 @@ describe(`Network health check (${chain.name})`, () => {
         contentType: "application/json",
         attributes: [
           { key: "tag", value: tag },
-          { key: "strAttr", value: "hello" },
-          { key: "numAttr", value: 42 },
-          { key: "zeroAttr", value: 0 },
+          { key: "str_attr", value: "hello" },
+          { key: "num_attr", value: 42 },
+          { key: "zero_attr", value: 0 },
         ],
         expiresIn: ExpirationTime.fromHours(1),
       });
 
       const entity = await publicClient.getEntity(entityKey);
       expect(entity.attributes).toContainEqual({
-        key: "strAttr",
+        key: "str_attr",
         value: "hello",
       });
-      expect(entity.attributes).toContainEqual({ key: "numAttr", value: 42 });
-      expect(entity.attributes).toContainEqual({ key: "zeroAttr", value: 0 });
+      expect(entity.attributes).toContainEqual({ key: "num_attr", value: 42 });
+      expect(entity.attributes).toContainEqual({ key: "zero_attr", value: 0 });
       console.log(
         `  ATTRS   string, numeric, and zero attributes stored correctly`,
       );
@@ -745,10 +746,176 @@ describe(`Network health check (${chain.name})`, () => {
       // query by numeric attribute
       const numQuery = await publicClient
         .select({ key: true })
-        .where([eq("tag", tag), eq("numAttr", 42)])
+        .where([eq("tag", tag), eq("num_attr", 42)])
         .fetch();
       expect(numQuery.entities).toHaveLength(1);
       console.log(`  ATTRS   numeric query matched`);
+    },
+    { timeout: 60_000 },
+  );
+
+  test(
+    "Hex attributes stored and queried correctly",
+    async () => {
+      const tag = `hex-${Date.now()}`;
+      const hexValue =
+        "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hex;
+      const otherHexValue =
+        "0x1111111111111111111111111111111111111111111111111111111111111111" as Hex;
+
+      const { entityKey } = await walletClient.createEntity({
+        payload: jsonToPayload({ hexTest: true }),
+        contentType: "application/json",
+        attributes: [
+          { key: "tag", value: tag },
+          { key: "hex_attr", value: hexValue },
+        ],
+        expiresIn: ExpirationTime.fromHours(1),
+      });
+
+      // round-trip: the value comes back as a 0x-prefixed string
+      const entity = await publicClient.getEntity(entityKey);
+      const hexAttr = entity.attributes.find((a) => a.key === "hex_attr");
+      expect(hexAttr?.value).toBe(hexValue);
+      expect(typeof hexAttr?.value).toBe("string");
+      expect((hexAttr?.value as string).startsWith("0x")).toBe(true);
+      console.log(`  HEX     attribute stored and round-tripped correctly`);
+
+      // query by the Hex value
+      const hexQuery = await publicClient
+        .select({ key: true })
+        .where([eq("tag", tag), eq("hex_attr", hexValue)])
+        .fetch();
+      expect(hexQuery.entities).toHaveLength(1);
+      expect(hexQuery.entities[0].key).toBe(entityKey);
+      console.log(`  HEX     query by hex value matched`);
+
+      // a different Hex value must not match
+      const noMatch = await publicClient
+        .select({ key: true })
+        .where([eq("tag", tag), eq("hex_attr", otherHexValue)])
+        .fetch();
+      expect(noMatch.entities).toHaveLength(0);
+      console.log(`  HEX     non-matching hex value correctly returns 0`);
+
+      // hex-looking strings that are not 32 bytes are stored as plain strings:
+      // they round-trip unchanged and stay matchable by equality
+      const shortHex = "0xab";
+      const { entityKey: shortKey } = await walletClient.createEntity({
+        payload: jsonToPayload({ hexTest: true }),
+        contentType: "application/json",
+        attributes: [
+          { key: "tag", value: tag },
+          { key: "short_hex", value: shortHex },
+        ],
+        expiresIn: ExpirationTime.fromHours(1),
+      });
+
+      const shortEntity = await publicClient.getEntity(shortKey);
+      expect(shortEntity.attributes).toContainEqual({
+        key: "short_hex",
+        value: shortHex,
+      });
+
+      const shortQuery = await publicClient
+        .select({ key: true })
+        .where([eq("tag", tag), eq("short_hex", shortHex)])
+        .fetch();
+      expect(shortQuery.entities).toHaveLength(1);
+      expect(shortQuery.entities[0].key).toBe(shortKey);
+      console.log(
+        `  HEX     non-32-byte hex string round-trips and queries as a string`,
+      );
+    },
+    { timeout: 60_000 },
+  );
+
+  test(
+    "negation with raw query NOT (...)",
+    async () => {
+      const group = `not-${Date.now()}`;
+
+      // one entity with the `flagged` attribute, one without
+      // (the not() builder predicate serializes to `!key`, which the network's
+      // query parser rejects — negation is only reachable via a raw query)
+      const { createdEntities } = await walletClient.mutateEntities({
+        creates: [
+          {
+            payload: jsonToPayload({ group, flagged: true }),
+            contentType: "application/json",
+            attributes: [
+              { key: "group", value: group },
+              { key: "flagged", value: "true" },
+            ],
+            expiresIn: ExpirationTime.fromHours(1),
+          },
+          {
+            payload: jsonToPayload({ group, flagged: false }),
+            contentType: "application/json",
+            attributes: [{ key: "group", value: group }],
+            expiresIn: ExpirationTime.fromHours(1),
+          },
+        ],
+      });
+      expect(createdEntities).toHaveLength(2);
+      const unflaggedKey = createdEntities[1];
+
+      // NOT excludes the matching entity; the entity without the attribute matches
+      const result = await publicClient.query(
+        `group = "${group}" && NOT (flagged = "true")`,
+      );
+      expect(result.entities).toHaveLength(1);
+      expect(result.entities[0].key).toBe(unflaggedKey);
+      console.log(`  NOT     matched only the entity without flagged="true"`);
+    },
+    { timeout: 60_000 },
+  );
+
+  test(
+    "numeric attribute bounds: large values work, negatives are rejected",
+    async () => {
+      const tag = `bounds-${Date.now()}`;
+      const bigValue = Number.MAX_SAFE_INTEGER;
+
+      // large (but safe-integer) values round-trip and are queryable
+      const { entityKey } = await walletClient.createEntity({
+        payload: jsonToPayload({ boundsTest: true }),
+        contentType: "application/json",
+        attributes: [
+          { key: "tag", value: tag },
+          { key: "big_attr", value: bigValue },
+        ],
+        expiresIn: ExpirationTime.fromHours(1),
+      });
+
+      const entity = await publicClient.getEntity(entityKey);
+      expect(entity.attributes).toContainEqual({
+        key: "big_attr",
+        value: bigValue,
+      });
+
+      const bigQuery = await publicClient
+        .select({ key: true })
+        .where([eq("tag", tag), eq("big_attr", bigValue)])
+        .fetch();
+      expect(bigQuery.entities).toHaveLength(1);
+      expect(bigQuery.entities[0].key).toBe(entityKey);
+      console.log(`  BOUNDS  MAX_SAFE_INTEGER stored and queried correctly`);
+
+      // negative values are not representable on-chain (unsigned 256-bit) and
+      // are rejected client-side with a descriptive error
+      expect(
+        walletClient.createEntity({
+          payload: jsonToPayload({ boundsTest: true }),
+          contentType: "application/json",
+          attributes: [
+            { key: "tag", value: tag },
+            { key: "neg_attr", value: -10 },
+          ],
+          expiresIn: ExpirationTime.fromHours(1),
+        }),
+      ).rejects.toThrowError(InvalidAttributeError);
+      console.log(`  BOUNDS  negative value correctly rejected client-side`);
     },
     { timeout: 60_000 },
   );

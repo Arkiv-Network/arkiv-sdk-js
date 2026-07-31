@@ -3,6 +3,7 @@ import { hexToNumber, numberToHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
 import type { RpcIncludeData, RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
 import { getLogger } from "../utils/logger"
+import { isEntityKey } from "../utils/validation"
 import type { Predicate } from "./predicate"
 
 const logger = getLogger("query:engine")
@@ -10,7 +11,11 @@ const logger = getLogger("query:engine")
 function processPredicates(predicates: Predicate[]): string {
   const processValue = (value: string | number) => {
     if (typeof value === "string") {
-      return `"${value}"`
+      // 32-byte hex strings are stored as the EntityKey attribute type (see
+      // encodeAttribute), which the query language only matches against unquoted
+      // hex literals. All other strings — including shorter hex — are stored and
+      // compared as quoted strings.
+      return isEntityKey(value) ? value : `"${value}"`
     }
     return value
   }

@@ -76,7 +76,7 @@ jobs:
         run: bun run package:test
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile --no-verify
+        run: cd test && bun install
 
       - name: Run smoke tests
         run: cd test && bun run test:smoke
@@ -111,7 +111,7 @@ jobs:
           retention-days: 30
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile --no-verify
+        run: cd test && bun install
 
       - name: Pull Arkiv Docker image
         run: docker pull golemnetwork/arkiv-op-geth:latest

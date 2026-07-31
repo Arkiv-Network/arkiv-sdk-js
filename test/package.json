@@ -3,9 +3,9 @@
   "type": "module",
   "main": "src/smoke-tests/index.ts",
   "devDependencies": {
-    "@types/bun": "latest",
-    "testcontainers": "^11.6.0",
-    "rimraf": "^6.0.1"
+    "@types/bun": "1.3.14",
+    "rimraf": "6.1.3",
+    "testcontainers": "11.14.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
@@ -15,11 +15,13 @@
     "test:component": "TESTCONTAINERS_RYUK_DISABLED=true bun test src/arkiv.test.ts",
     "test:smoke": "bun src/smoke-tests/index.ts && node src/smoke-tests/index.cjs && node src/smoke-tests/index.mjs && node src/smoke-tests/index.js && bunx tsc --project tsconfig.smoke-test.json && node dist/index.js",
     "test:network-health": "bun test src/network-health.test.ts",
-    "reinstall": "rimraf bun.lockb && bun install --force",
-    "refresh": "cd .. && bun run package && cd test && bun install --force"
+    "reinstall": "rimraf bun.lock node_modules && bun install --force",
+    "refresh": "cd .. && bun run package:test && cd test && rimraf bun.lock node_modules/@arkiv-network && bun install --force",
+    "test:component:fresh": "bun run refresh && bun run test:component",
+    "test:network-health:fresh": "bun run refresh && bun run test:network-health"
   },
   "dependencies": {
     "@arkiv-network/sdk": "file:../arkiv-network-sdk-latest.tgz",
-    "viem": "^2.38.2"
+    "viem": "2.55.0"
   }
 }
