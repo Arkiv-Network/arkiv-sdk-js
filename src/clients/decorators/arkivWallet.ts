@@ -36,9 +36,9 @@ export type WalletArkivActions<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
 > = Pick<
-    PublicActions<transport, chain, account>,
-    "waitForTransactionReceipt" | "call" | "simulateContract" | "readContract" | "getBlockNumber"
-  > &
+  PublicActions<transport, chain, account>,
+  "waitForTransactionReceipt" | "call" | "simulateContract" | "readContract" | "getBlockNumber"
+> &
   Pick<
     WalletActions<chain, account>,
     | "addChain"

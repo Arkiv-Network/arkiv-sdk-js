@@ -1,5 +1,5 @@
-import { isHex } from "viem"
 import type { Hex } from "viem"
+import { isHex } from "viem"
 import { BLOCK_TIME } from "../consts"
 import { InvalidAttributeError, InvalidAttributeKeyError, InvalidExpirationError } from "../errors"
 import type { Attribute } from "../types"

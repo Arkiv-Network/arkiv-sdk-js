@@ -1,4 +1,4 @@
-import { toBytes, type Hex } from "viem"
+import { type Hex, toBytes } from "viem"
 import type { Attribute } from "../types/attributes"
 import { Entity } from "../types/entity"
 import type { RpcEntity } from "../types/rpcSchema"
@@ -41,7 +41,7 @@ export async function entityFromRpcResult(rpcEntity: RpcEntity) {
       ...(rpcEntity.attributes ?? []).map(({ key, value, valueType }) => ({
         key,
         value: decodeAttributeValue(value, valueType),
-      }))
+      })),
     ],
   )
 }

@@ -1,6 +1,7 @@
 import { decodeEventLog, type Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { PublicArkivClient } from "../../clients/createPublicClient"
+import { EntityOperationType } from "../../types/entity"
 import type {
   OnEntityCreatedEvent,
   OnEntityDeletedEvent,
@@ -9,7 +10,6 @@ import type {
   OnEntityOwnerChangedEvent,
   OnEntityUpdatedEvent,
 } from "../../types/events"
-import { EntityOperationType } from "../../types/entity"
 import { ENTITY_OPERATION_EVENT_ABI } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 

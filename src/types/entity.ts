@@ -8,6 +8,7 @@ export enum EntityOperationType {
   Delete = 5,
   Expire = 6,
 }
+
 import type { MimeType } from "../types"
 import type { Attribute } from "./attributes"
 
