@@ -121,7 +121,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PULL_TOKEN }}
 
       - name: Pull Arkiv Docker image
         run: docker pull ghcr.io/arkiv-network/arkiv-dev:latest
