@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test"
+import { i32, str } from "../attr"
+import { TYPE_IDS } from "../attr/types"
 import type { ArkivClient } from "../clients/baseClient"
 import type { Entity } from "../types/entity"
-import { RpcAttributeValueType } from "../types/rpcSchema"
 import * as entitiesUtils from "../utils/entities"
 import * as engine from "./engine"
 import { eq, gte } from "./predicate"
@@ -152,8 +153,8 @@ describe("SelectQueryBuilder", () => {
             owner: "0xowner",
             value: "0x68656c6c6f", // "hello"
             attributes: [
-              { key: "category", value: "docs", valueType: RpcAttributeValueType.String },
-              { key: "score", value: "0x2a", valueType: RpcAttributeValueType.Uint },
+              { key: "category", value: "docs", valueType: TYPE_IDS.str },
+              { key: "score", value: "42", valueType: TYPE_IDS.i32 },
             ],
           },
         ],
@@ -173,10 +174,8 @@ describe("SelectQueryBuilder", () => {
       // flat, backwards-compatible field access
       expect(entity.key).toBe("0xabc")
       expect(entity.owner).toBe("0xowner")
-      expect(entity.attributes).toEqual([
-        { key: "category", value: "docs" },
-        { key: "score", value: 42 },
-      ])
+      // Attributes come back keyed by name, each value carrying the type it was stored as.
+      expect(entity.attributes).toEqual({ category: str("docs"), score: i32(42) })
       // entity methods are preserved on the result
       expect(typeof entity.toText).toBe("function")
       expect(entity.toText()).toBe("hello")
@@ -207,7 +206,7 @@ describe("SelectQueryBuilder", () => {
       expect(entity.key).toBe("0xabc")
       expect(entity.owner).toBeUndefined()
       expect(entity.payload).toBeUndefined()
-      expect(entity.attributes).toEqual([])
+      expect(entity.attributes).toEqual({})
     })
   })
 })

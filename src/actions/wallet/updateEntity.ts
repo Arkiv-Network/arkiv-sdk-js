@@ -1,6 +1,7 @@
 import type { Hash, Hex } from "viem"
+import type { AttributeInputs } from "../../attr"
 import type { ArkivClient } from "../../clients/baseClient"
-import type { Attribute, MimeType, TxParams } from "../../types"
+import type { MimeType, TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
@@ -8,24 +9,28 @@ const logger = getLogger("actions:wallet:update-entity")
 
 /**
  * Parameters for the updateEntity function.
- * - entityKey: The key of the entity to update.
- * - payload: The payload of the entity.
- * - attributes: The attributes of the entity. Attribute values may be strings
- *   or numbers, but numeric values **must be integers**. To store a non-integer,
- *   scale it to an integer (e.g. `1.5` -> `1500`) to preserve numeric ordering,
- *   or pass it as a string (e.g. `"1.5"`). A non-integer numeric value throws an
- *   {@link InvalidAttributeError}.
- * - contentType: The content type of the entity.
- * - expiresIn: How long until the entity expires, in seconds. Because Arkiv
- *   measures expiration in blocks (1 block = 2 seconds), this **must be a
- *   positive integer and a multiple of the block time (2 seconds)**.
- *   Invalid values throw an {@link InvalidExpirationError}.
+ *
+ * An update **replaces** the entity's attributes rather than merging into them: whatever is not in
+ * `attributes` is gone afterwards.
  */
 export type UpdateEntityParameters = {
   entityKey: Hex
+  /** The entity's opaque payload. */
   payload: Uint8Array
-  /** Entity attributes. Numeric values must be integers (scale non-integers, e.g. `1.5` -> `1500`, or use a string). Throws {@link InvalidAttributeError} otherwise. */
-  attributes: Attribute[]
+  /**
+   * The entity's queryable attributes, keyed by name. Values are the tagged constructors from
+   * `@arkiv-network/sdk/attr` — `i32`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32`, `bool` —
+   * or a bare `boolean`, `number`, `bigint` or `string` where the type is unambiguous.
+   *
+   * **Required, and required on purpose.** An update replaces the attribute set wholesale, so an
+   * omitted `attributes` would silently delete every attribute on the entity — including ones
+   * this caller never knew about. Pass `{}` if erasing them is what you mean; otherwise read the
+   * entity first and pass the attributes you want it to end up with.
+   *
+   * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
+   * @throws {InvalidValueError} If a value does not fit the type it names or defaults to.
+   */
+  attributes: AttributeInputs
   contentType: MimeType | string
   /** Seconds until expiry. Must be a positive integer and a multiple of the 2s block time.
    * Throws {@link InvalidExpirationError} otherwise. */

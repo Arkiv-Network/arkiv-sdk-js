@@ -1,23 +1,26 @@
-import { type Hex, toBytes } from "viem"
-import type { Attribute } from "../types/attributes"
+import { toBytes } from "viem"
+import type { Attributes } from "../attr"
+// Internal seam: the JSON-RPC decoder is not part of the package's public surface.
+import { decodeRpcValue } from "../attr/codec"
 import { Entity } from "../types/entity"
 import type { RpcEntity } from "../types/rpcSchema"
-import { RpcAttributeValueType } from "../types/rpcSchema"
 import { getLogger } from "./logger"
 
-function decodeAttributeValue(value: string, valueType: RpcAttributeValueType): Attribute["value"] {
-  switch (valueType) {
-    case RpcAttributeValueType.Uint:
-      return Number(BigInt(value as Hex))
-    case RpcAttributeValueType.EntityKey:
-      return value as Hex
-    case RpcAttributeValueType.String:
-    default:
-      return value
-  }
-}
-
 const logger = getLogger("utils:entities")
+
+/**
+ * Decodes the attribute array a query returns into a name-keyed map of typed values.
+ *
+ * Attribute names are unique per entity, so the map loses nothing and gives callers
+ * `entity.attributes.level.value` instead of a linear search.
+ */
+function decodeAttributes(rpcAttributes: RpcEntity["attributes"]): Attributes {
+  const attributes: Record<string, ReturnType<typeof decodeRpcValue>> = {}
+  for (const { key, value, valueType } of rpcAttributes ?? []) {
+    attributes[key] = decodeRpcValue(valueType, value)
+  }
+  return attributes
+}
 
 export async function entityFromRpcResult(rpcEntity: RpcEntity) {
   logger("entityFromRpcResult %o", rpcEntity)
@@ -37,11 +40,6 @@ export async function entityFromRpcResult(rpcEntity: RpcEntity) {
       ? BigInt(rpcEntity.operationIndexInTransaction)
       : undefined,
     rpcEntity.value !== undefined ? toBytes(rpcEntity.value) : undefined,
-    [
-      ...(rpcEntity.attributes ?? []).map(({ key, value, valueType }) => ({
-        key,
-        value: decodeAttributeValue(value, valueType),
-      })),
-    ],
+    decodeAttributes(rpcEntity.attributes),
   )
 }

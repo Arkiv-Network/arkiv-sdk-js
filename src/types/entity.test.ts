@@ -16,7 +16,7 @@ describe("Entity.toText()", () => {
       undefined,
       undefined,
       undefined,
-      [],
+      {},
     )
     expect(() => entity.toText()).toThrow(
       "Entity has no payload – it was probably queried without withPayload(true) via QueryBuilder",
@@ -36,7 +36,7 @@ describe("Entity.toText()", () => {
       undefined,
       undefined,
       payload,
-      [],
+      {},
     )
     expect(entity.toText()).toBe("hello world")
   })
@@ -53,7 +53,7 @@ describe("Entity.toText()", () => {
       undefined,
       undefined,
       new Uint8Array([]),
-      [],
+      {},
     )
     expect(entity.toText()).toBe("")
   })
@@ -72,7 +72,7 @@ describe("Entity.toJson()", () => {
       undefined,
       undefined,
       undefined,
-      [],
+      {},
     )
     expect(() => entity.toJson()).toThrow(
       "Entity has no payload – it was probably queried without withPayload(true) via QueryBuilder",
@@ -91,7 +91,7 @@ describe("Entity.toJson()", () => {
       undefined,
       undefined,
       new Uint8Array([]),
-      [],
+      {},
     )
     expect(() => entity.toJson()).toThrow("Entity has empty payload, cannot parse as JSON")
   })
@@ -109,7 +109,7 @@ describe("Entity.toJson()", () => {
       undefined,
       undefined,
       payload,
-      [],
+      {},
     )
     expect(() => entity.toJson()).toThrow("Failed to parse entity payload as JSON")
   })
@@ -127,7 +127,7 @@ describe("Entity.toJson()", () => {
       undefined,
       undefined,
       payload,
-      [],
+      {},
     )
     let caught: unknown
     try {
@@ -153,7 +153,7 @@ describe("Entity.toJson()", () => {
       undefined,
       undefined,
       payload,
-      [],
+      {},
     )
     expect(entity.toJson()).toEqual(data)
   })
@@ -172,7 +172,7 @@ describe("Entity.toJson()", () => {
       undefined,
       undefined,
       payload,
-      [],
+      {},
     )
     expect(entity.toJson()).toEqual(data)
   })

@@ -206,6 +206,7 @@ Create a file named `write_example.ts` with the following content:
 
 ```typescript
 import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
+import { dec, i32 } from "@arkiv-network/sdk/attr"
 import { braga } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import { http } from "viem"
@@ -233,10 +234,14 @@ const { entityKey, txHash } = await client.createEntity({
     },
   }),
   contentType: 'application/json',
-  attributes: [
-    { key: 'category', value: 'documentation' },
-    { key: 'version', value: '1.0' },
-  ],
+  // Attributes are keyed by name. Values carry their type: use the tagged constructors from
+  // "@arkiv-network/sdk/attr" (i32, u256, dec, str, addr, key, bytes32, bool), or pass a bare
+  // boolean, number, bigint or string where the type is unambiguous.
+  attributes: {
+    category: 'documentation',   // bare string -> str
+    version: i32(1),
+    score: dec('4.5'),
+  },
   expiresIn: ExpirationTime.fromDays(30), // Entity expires in 30 days
 });
 

@@ -9,8 +9,8 @@ export enum EntityOperationType {
   Expire = 6,
 }
 
+import type { Attributes } from "../attr"
 import type { MimeType } from "../types"
-import type { Attribute } from "./attributes"
 
 export class Entity {
   key: Hex
@@ -23,7 +23,7 @@ export class Entity {
   transactionIndexInBlock: bigint | undefined
   operationIndexInTransaction: bigint | undefined
   payload: Uint8Array | undefined
-  attributes: Attribute[]
+  attributes: Attributes
 
   constructor(
     key: Hex,
@@ -36,7 +36,7 @@ export class Entity {
     transactionIndexInBlock: bigint | undefined = undefined,
     operationIndexInTransaction: bigint | undefined = undefined,
     payload: Uint8Array | undefined = undefined,
-    attributes: Attribute[],
+    attributes: Attributes = {},
   ) {
     this.key = key
     this.owner = owner

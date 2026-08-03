@@ -2,6 +2,8 @@
  * @module main
  */
 
+// the attribute type system
+export * from "./attr"
 // export main arkiv stuff
 export type { ArkivClient } from "./clients/baseClient"
 export type { PublicArkivClient } from "./clients/createPublicClient"

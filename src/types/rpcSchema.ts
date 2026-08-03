@@ -12,13 +12,12 @@ export type RpcEntity = {
   operationIndexInTransaction: Hex
   owner: Hex
   creator: Hex
-  attributes?: { key: string; value: string; valueType: RpcAttributeValueType }[]
-}
-
-export enum RpcAttributeValueType {
-  Uint = 1,
-  String = 2,
-  EntityKey = 3,
+  /**
+   * Attributes as the node renders them: the name, the `typeId` byte, and the value as a string
+   * whose format follows the type (see `decodeRpcValue`). The typeIds are the protocol's — see
+   * `TYPE_IDS` in `@arkiv-network/sdk/attr`.
+   */
+  attributes?: { key: string; value: string; valueType: number }[]
 }
 
 export type RpcOrderByAttribute = {

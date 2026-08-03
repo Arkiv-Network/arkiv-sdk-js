@@ -15,6 +15,12 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
+    "./attr": {
+      "bun": "./src/attr/index.ts",
+      "import": "./dist/attr/index.js",
+      "require": "./dist/attr/index.cjs",
+      "default": "./dist/attr/index.js"
+    },
     "./chains": {
       "bun": "./src/chains/index.ts",
       "import": "./dist/chains/index.js",
@@ -43,6 +49,9 @@
   },
   "typesVersions": {
     "*": {
+      "attr": [
+        "./dist/_types/attr/index.d.ts"
+      ],
       "chains": [
         "./dist/_types/chains/index.d.ts"
       ],

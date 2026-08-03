@@ -9,7 +9,6 @@ import {
   stringToBytes,
   TransactionExecutionError,
   type TransactionReceipt,
-  toBytes,
   toHex,
 } from "viem"
 import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnership"
@@ -17,16 +16,17 @@ import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
 import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
 import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
+// Internal seam: the ABI encoders are not part of the package's public surface.
+import { encodeAttributes } from "../attr/attributes"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
-import { DuplicateAttributeError, EntityMutationError, InvalidContentTypeError } from "../errors"
+import { EntityMutationError, InvalidContentTypeError } from "../errors"
 import type { TxParams } from "../types"
 import { EntityOperationType } from "../types/entity"
-import { RpcAttributeValueType as AttributeValueType } from "../types/rpcSchema"
 
 import { getLogger } from "./logger"
-import { isEntityKey, validateAttribute, validateExpiresIn } from "./validation"
+import { validateExpiresIn } from "./validation"
 
 const logger = getLogger("utils:arkiv-transactions")
 
@@ -98,53 +98,6 @@ function encodeMime128(contentType: string): { data: readonly [Hex, Hex, Hex, He
   return { data: contentType ? encodeBytes128(stringToBytes(contentType)) : EMPTY_BYTES128 }
 }
 
-function encodeAttribute(attr: { key: string; value: Hex | string | number }) {
-  validateAttribute(attr)
-  const name = toHex(attr.key, { size: 32 })
-
-  if (typeof attr.value === "string") {
-    // Only exact 32-byte hex (an entity key) gets the EntityKey type; shorter or
-    // longer hex-looking strings are stored as plain strings so they round-trip
-    // unchanged and stay matchable by quoted string queries.
-    if (isEntityKey(attr.value)) {
-      return {
-        name,
-        valueType: AttributeValueType.EntityKey,
-        value: [toHex(toBytes(attr.value), { size: 32 }), ZERO_32, ZERO_32, ZERO_32] as const,
-      }
-    }
-    return {
-      name,
-      valueType: AttributeValueType.String,
-      // stringToBytes, not toBytes: toBytes hex-decodes hex-looking strings, which
-      // would corrupt string values like "0xab" instead of UTF-8 encoding them
-      value: encodeBytes128(stringToBytes(attr.value)),
-    }
-  }
-
-  return {
-    name,
-    valueType: AttributeValueType.Uint,
-    value: [toHex(BigInt(attr.value), { size: 32 }), ZERO_32, ZERO_32, ZERO_32] as const,
-  }
-}
-
-// The registry requires attributes strictly ascending by their bytes32 name — the
-// canonical serialization hashes into the state root, and strict ordering doubles as
-// the uniqueness check (AttributesNotSorted). Sort here so callers can pass any order;
-// duplicates would revert on-chain, so reject them client-side with a clear error.
-function encodeAttributes(attrs: { key: string; value: Hex | string | number }[]) {
-  const encoded = attrs
-    .map((attr) => ({ key: attr.key, ...encodeAttribute(attr) }))
-    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
-  for (let i = 1; i < encoded.length; i++) {
-    if (encoded[i].name === encoded[i - 1].name) {
-      throw new DuplicateAttributeError(encoded[i].key)
-    }
-  }
-  return encoded.map(({ key: _, ...attr }) => attr)
-}
-
 function toBTL(expiresIn: number): number {
   validateExpiresIn(expiresIn)
   return Math.ceil(expiresIn / BLOCK_TIME)
@@ -207,7 +160,7 @@ export async function sendArkivTransaction(
       entityKey: createdEntityKeys[i],
       payload: toHex(item.payload),
       contentType: encodeMime128(item.contentType),
-      attributes: encodeAttributes(item.attributes),
+      attributes: encodeAttributes(item.attributes ?? {}),
       expiresIn: toBTL(item.expiresIn),
       newOwner: ZERO_ADDRESS,
     })),
@@ -216,6 +169,8 @@ export async function sendArkivTransaction(
       entityKey: item.entityKey,
       payload: toHex(item.payload),
       contentType: encodeMime128(item.contentType),
+      // Required on UpdateEntityParameters — an update replaces the attribute set, so there is no
+      // "leave them alone" default to fall back to.
       attributes: encodeAttributes(item.attributes),
       expiresIn: 0, // contract ignores expiresAt on UPDATE
       newOwner: ZERO_ADDRESS,

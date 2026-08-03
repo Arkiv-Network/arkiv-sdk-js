@@ -1,21 +1,25 @@
 import type { Hex } from "viem"
-import { hexToNumber, numberToHex } from "viem"
+import { hexToNumber, isHex, numberToHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
 import type { RpcIncludeData, RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
 import { getLogger } from "../utils/logger"
-import { isEntityKey } from "../utils/validation"
 import type { Predicate } from "./predicate"
 
 const logger = getLogger("query:engine")
 
+/**
+ * True only for hex strings that are exactly 32 bytes — an entity key. The node's query language
+ * matches entity keys against unquoted hex literals and every other string against a quoted one,
+ * so this is the rule deciding how a predicate value is written into the query string.
+ */
+function isEntityKeyLiteral(value: string): value is Hex {
+  return isHex(value) && value.length === 66
+}
+
 function processPredicates(predicates: Predicate[]): string {
   const processValue = (value: string | number) => {
     if (typeof value === "string") {
-      // 32-byte hex strings are stored as the EntityKey attribute type (see
-      // encodeAttribute), which the query language only matches against unquoted
-      // hex literals. All other strings — including shorter hex — are stored and
-      // compared as quoted strings.
-      return isEntityKey(value) ? value : `"${value}"`
+      return isEntityKeyLiteral(value) ? value : `"${value}"`
     }
     return value
   }
