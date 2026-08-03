@@ -16,10 +16,29 @@ export class InvalidExpirationError extends Error {
 }
 export class InvalidAttributeError extends Error {
   constructor(key: string, value: number) {
+    const remedy = Number.isInteger(value)
+      ? `Offset it into the non-negative range (e.g. store ${String(value)} + OFFSET, subtracting OFFSET on read) to keep numeric ordering/range queries; otherwise store it as a string (e.g. "${String(value)}")`
+      : `To keep numeric ordering/range queries, scale it to an integer (e.g. Math.round(${String(value)} * 1000), dividing by 1000 on read); otherwise store it as a string (e.g. "${String(value)}")`
     super(
-      `Invalid numeric value for attribute "${key}": ${String(value)}. Numeric attribute values must be integers. To keep numeric ordering/range queries, scale it to an integer (e.g. Math.round(${String(value)} * 1000), dividing by 1000 on read); otherwise store it as a string (e.g. "${String(value)}").`,
+      `Invalid numeric value for attribute "${key}": ${String(value)}. Numeric attribute values must be non-negative integers (stored on-chain as unsigned 256-bit). ${remedy}.`,
     )
     this.name = "InvalidAttributeError"
+  }
+}
+
+export class InvalidAttributeKeyError extends Error {
+  constructor(key: string, reason: string) {
+    super(
+      `Invalid attribute key "${key}": ${reason}. Keys must be 1-32 bytes, start with a lowercase letter (a-z), and contain only a-z, 0-9, ".", "-" or "_".`,
+    )
+    this.name = "InvalidAttributeKeyError"
+  }
+}
+
+export class DuplicateAttributeError extends Error {
+  constructor(key: string) {
+    super(`Duplicate attribute key "${key}". Attribute keys must be unique per entity.`)
+    this.name = "DuplicateAttributeError"
   }
 }
 
@@ -41,5 +60,14 @@ export class NoEntityFoundError extends Error {
   constructor() {
     super("No entity found")
     this.name = "NoEntityFoundError"
+  }
+}
+
+export class InvalidContentTypeError extends Error {
+  constructor(contentType: string) {
+    super(
+      `Invalid content type "${contentType}". Must follow RFC 2045 MIME grammar and be lowercase only (e.g. "text/plain").`,
+    )
+    this.name = "InvalidContentTypeError"
   }
 }

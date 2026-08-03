@@ -1,16 +1,15 @@
-import type { Hash, Hex, TransactionReceipt } from "viem"
+import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
-import { opsToTxData, sendArkivTransaction } from "../../utils/arkivTransactions"
+import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 import type { ChangeOwnershipParameters } from "./changeOwnership"
-
-const logger = getLogger("actions:wallet:mutate-entities")
-
 import type { CreateEntityParameters } from "./createEntity"
 import type { DeleteEntityParameters } from "./deleteEntity"
 import type { ExtendEntityParameters } from "./extendEntity"
 import type { UpdateEntityParameters } from "./updateEntity"
+
+const logger = getLogger("actions:wallet:mutate-entities")
 
 /**
  * Parameters for the mutateEntities function.
@@ -25,39 +24,6 @@ export type MutateEntitiesParameters = {
   deletes?: DeleteEntityParameters[]
   extensions?: ExtendEntityParameters[]
   ownershipChanges?: ChangeOwnershipParameters[]
-}
-
-function parseReceipt(receipt: TransactionReceipt, params: MutateEntitiesParameters) {
-  const createdEntities: Hex[] = []
-  const updatedEntities: Hex[] = []
-  const deletedEntities: Hex[] = []
-  const extendedEntities: Hex[] = []
-  const ownershipChanges: Hex[] = []
-
-  const totalCreates = params.creates?.length ?? 0
-  const totalUpdates = params.updates?.length ?? 0
-  const totalDeletes = params.deletes?.length ?? 0
-  const totalExtensions = params.extensions?.length ?? 0
-
-  // iterate over all logs and parse the event
-  // logs go in the following order: creates, deleted, updates, extends, ownership changes
-  for (let index = 0; index < receipt.logs.length; index++) {
-    const log = receipt.logs[index]
-
-    if (index < totalCreates) {
-      createdEntities.push(log.topics[1] as Hex)
-    } else if (index < totalCreates + totalDeletes) {
-      deletedEntities.push(log.topics[1] as Hex)
-    } else if (index < totalCreates + totalUpdates + totalDeletes) {
-      updatedEntities.push(log.topics[1] as Hex)
-    } else if (index < totalCreates + totalUpdates + totalDeletes + totalExtensions) {
-      extendedEntities.push(log.topics[1] as Hex)
-    } else {
-      ownershipChanges.push(log.topics[1] as Hex)
-    }
-  }
-
-  return { createdEntities, updatedEntities, deletedEntities, extendedEntities, ownershipChanges }
 }
 
 /**
@@ -77,6 +43,7 @@ export type MutateEntitiesReturnType = {
   extendedEntities: Hex[]
   ownershipChanges: Hex[]
 }
+
 export async function mutateEntities(
   client: ArkivClient,
   data: MutateEntitiesParameters,
@@ -86,26 +53,16 @@ export async function mutateEntities(
     throw new Error("No operations to perform")
   }
 
-  const txData = opsToTxData({
-    creates: data.creates ?? [],
-    updates: data.updates ?? [],
-    deletes: data.deletes ?? [],
-    extensions: data.extensions ?? [],
-    ownershipChanges: data.ownershipChanges ?? [],
-  })
-
-  const receipt = await sendArkivTransaction(client, txData, txParams)
+  const { receipt, createdEntityKeys } = await sendArkivTransaction(client, data, txParams)
 
   logger("Receipt from mutateEntities %o", receipt)
 
-  const { createdEntities, updatedEntities, deletedEntities, extendedEntities, ownershipChanges } =
-    parseReceipt(receipt, data)
   return {
     txHash: receipt.transactionHash as Hash,
-    createdEntities,
-    updatedEntities,
-    deletedEntities,
-    extendedEntities,
-    ownershipChanges,
+    createdEntities: createdEntityKeys,
+    updatedEntities: (data.updates ?? []).map((u) => u.entityKey),
+    deletedEntities: (data.deletes ?? []).map((d) => d.entityKey),
+    extendedEntities: (data.extensions ?? []).map((e) => e.entityKey),
+    ownershipChanges: (data.ownershipChanges ?? []).map((o) => o.entityKey),
   }
 }

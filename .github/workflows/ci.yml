@@ -76,7 +76,7 @@ jobs:
         run: bun run package:test
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile --no-verify
+        run: cd test && bun install
 
       - name: Run smoke tests
         run: cd test && bun run test:smoke
@@ -84,6 +84,9 @@ jobs:
   component-tests:
     runs-on: ubuntu-latest
     needs: [lint, unit-tests]
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
@@ -111,10 +114,17 @@ jobs:
           retention-days: 30
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile --no-verify
+        run: cd test && bun install
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PULL_TOKEN }}
 
       - name: Pull Arkiv Docker image
-        run: docker pull golemnetwork/arkiv-op-geth:latest
+        run: docker pull ghcr.io/arkiv-network/arkiv-dev:latest
 
       # Using a test private key (randomly generated for testing purposes only)
       - name: Run component tests

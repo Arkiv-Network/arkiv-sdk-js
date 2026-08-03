@@ -19,6 +19,7 @@ export type {
 export type { UpdateEntityParameters, UpdateEntityReturnType } from "../actions/wallet/updateEntity"
 export type { Attribute } from "./attributes"
 export type { Entity } from "./entity"
+export { EntityOperationType } from "./entity"
 export type {
   OnEntityCreatedEvent,
   OnEntityDeletedEvent,

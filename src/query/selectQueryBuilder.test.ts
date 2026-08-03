@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "bun:test"
 import type { ArkivClient } from "../clients/baseClient"
 import type { Entity } from "../types/entity"
+import { RpcAttributeValueType } from "../types/rpcSchema"
 import * as entitiesUtils from "../utils/entities"
 import * as engine from "./engine"
 import { eq, gte } from "./predicate"
@@ -150,8 +151,10 @@ describe("SelectQueryBuilder", () => {
             key: "0xabc",
             owner: "0xowner",
             value: "0x68656c6c6f", // "hello"
-            stringAttributes: [{ key: "category", value: "docs" }],
-            numericAttributes: [{ key: "score", value: "0x2a" }],
+            attributes: [
+              { key: "category", value: "docs", valueType: RpcAttributeValueType.String },
+              { key: "score", value: "0x2a", valueType: RpcAttributeValueType.Uint },
+            ],
           },
         ],
         cursor: "",

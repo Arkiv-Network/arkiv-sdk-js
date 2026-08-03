@@ -1,7 +1,21 @@
-import { toBytes } from "viem"
+import { type Hex, toBytes } from "viem"
+import type { Attribute } from "../types/attributes"
 import { Entity } from "../types/entity"
 import type { RpcEntity } from "../types/rpcSchema"
+import { RpcAttributeValueType } from "../types/rpcSchema"
 import { getLogger } from "./logger"
+
+function decodeAttributeValue(value: string, valueType: RpcAttributeValueType): Attribute["value"] {
+  switch (valueType) {
+    case RpcAttributeValueType.Uint:
+      return Number(BigInt(value as Hex))
+    case RpcAttributeValueType.EntityKey:
+      return value as Hex
+    case RpcAttributeValueType.String:
+    default:
+      return value
+  }
+}
 
 const logger = getLogger("utils:entities")
 
@@ -24,13 +38,9 @@ export async function entityFromRpcResult(rpcEntity: RpcEntity) {
       : undefined,
     rpcEntity.value !== undefined ? toBytes(rpcEntity.value) : undefined,
     [
-      ...(rpcEntity.stringAttributes ?? []).map(({ key, value }) => ({
+      ...(rpcEntity.attributes ?? []).map(({ key, value, valueType }) => ({
         key,
-        value,
-      })),
-      ...(rpcEntity.numericAttributes ?? []).map(({ key, value }) => ({
-        key,
-        value: Number(value),
+        value: decodeAttributeValue(value, valueType),
       })),
     ],
   )

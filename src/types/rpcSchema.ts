@@ -12,8 +12,13 @@ export type RpcEntity = {
   operationIndexInTransaction: Hex
   owner: Hex
   creator: Hex
-  stringAttributes?: [{ key: string; value: string }]
-  numericAttributes?: [{ key: string; value: Hex }]
+  attributes?: { key: string; value: string; valueType: RpcAttributeValueType }[]
+}
+
+export enum RpcAttributeValueType {
+  Uint = 1,
+  String = 2,
+  EntityKey = 3,
 }
 
 export type RpcOrderByAttribute = {

@@ -1,10 +1,20 @@
 import { bytesToString, type Hex } from "viem"
+
+export enum EntityOperationType {
+  Create = 1,
+  Update = 2,
+  Extend = 3,
+  Transfer = 4,
+  Delete = 5,
+  Expire = 6,
+}
+
 import type { MimeType } from "../types"
 import type { Attribute } from "./attributes"
 
 export class Entity {
   key: Hex
-  contentType: MimeType | undefined
+  contentType: MimeType | `${string}/${string}` | undefined
   owner: Hex | undefined
   creator: Hex | undefined
   expiresAtBlock: bigint | undefined
@@ -17,7 +27,7 @@ export class Entity {
 
   constructor(
     key: Hex,
-    contentType: MimeType | undefined = undefined,
+    contentType: MimeType | `${string}/${string}` | undefined = undefined,
     owner: Hex | undefined = undefined,
     creator: Hex | undefined = undefined,
     expiresAtBlock: bigint | undefined = undefined,

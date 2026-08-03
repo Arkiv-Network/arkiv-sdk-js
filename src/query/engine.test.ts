@@ -47,6 +47,51 @@ describe("processQuery tests", () => {
     })
   })
 
+  it("should serialize 32-byte hex values as unquoted literals and other hex as strings", async () => {
+    const hexValue = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    const predicates = [
+      { type: "eq" as const, key: "hexattr", value: hexValue },
+      { type: "eq" as const, key: "strattr", value: "value" },
+      // hex-looking but not 32 bytes — stored as strings, so compared quoted
+      { type: "eq" as const, key: "shorthex", value: "0xab" },
+      { type: "eq" as const, key: "addrhex", value: "0x6186b0dba9652262942d5a465d49686eb560834c" },
+    ]
+    await processQuery(client, {
+      predicates,
+      limit: undefined,
+      cursor: undefined,
+      ownedBy: undefined,
+      createdBy: undefined,
+      orderBy: undefined,
+      validAtBlock: undefined,
+      withAttributes: undefined,
+      withMetadata: undefined,
+      withPayload: undefined,
+    })
+
+    expect(client.request).lastCalledWith({
+      method: "arkiv_query",
+      params: [
+        `hexattr = ${hexValue} && strattr = "value" && shorthex = "0xab" && addrhex = "0x6186b0dba9652262942d5a465d49686eb560834c"`,
+        {
+          includeData: {
+            key: true,
+            attributes: false,
+            contentType: false,
+            payload: false,
+            expiration: false,
+            owner: false,
+            creator: false,
+            createdAtBlock: false,
+            lastModifiedAtBlock: false,
+            transactionIndexInBlock: false,
+            operationIndexInTransaction: false,
+          },
+        },
+      ],
+    })
+  })
+
   it("should process all simple predicates - flat", async () => {
     const predicates = [
       { type: "eq" as const, key: "key", value: "value" },
