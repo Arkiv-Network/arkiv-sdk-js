@@ -36,7 +36,7 @@ const { entityKey, txHash } = await client.createEntity({
     version: i32(1),
     score: dec("4.5"),
   },
-  expiresIn: ExpirationTime.fromDays(30), // Entity expires in 30 days
+  expires: ExpirationTime.fromDays(30), // Entity expires in 30 days
 })
 
 console.log("Created entity:", entityKey)

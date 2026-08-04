@@ -38,13 +38,8 @@ describe("encodeAttributes", () => {
   })
 
   it("carries each value's typeId", () => {
-    const byName = Object.fromEntries(
-      encodeAttributes({ level: i32(1), score: dec("1"), tag: "x" }).map((attribute) => [
-        attribute.valueType,
-        attribute,
-      ]),
-    )
-    expect(Object.keys(byName).map(Number).sort()).toEqual([2, 4, 7])
+    const ids = encodeAttributes({ level: i32(1), score: dec("1"), tag: "x" }).map((a) => a.typeId)
+    expect([...ids].sort()).toEqual([2, 4, 7])
   })
 
   it("accepts an empty attribute set", () => {

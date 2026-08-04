@@ -21,6 +21,12 @@
       "require": "./dist/attr/index.cjs",
       "default": "./dist/attr/index.js"
     },
+    "./entity": {
+      "bun": "./src/entity/index.ts",
+      "import": "./dist/entity/index.js",
+      "require": "./dist/entity/index.cjs",
+      "default": "./dist/entity/index.js"
+    },
     "./chains": {
       "bun": "./src/chains/index.ts",
       "import": "./dist/chains/index.js",
@@ -50,16 +56,22 @@
   "typesVersions": {
     "*": {
       "attr": [
-        "./dist/_types/attr/index.d.ts"
+        "./dist/attr/index.d.ts"
       ],
       "chains": [
-        "./dist/_types/chains/index.d.ts"
+        "./dist/chains/index.d.ts"
       ],
-      "utils": [
-        "./dist/_types/utils/index.d.ts"
+      "entity": [
+        "./dist/entity/index.d.ts"
       ],
       "query": [
-        "./dist/_types/query/index.d.ts"
+        "./dist/query/index.d.ts"
+      ],
+      "types": [
+        "./dist/types/index.d.ts"
+      ],
+      "utils": [
+        "./dist/utils/index.d.ts"
       ]
     }
   },

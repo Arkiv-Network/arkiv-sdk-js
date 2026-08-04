@@ -27,14 +27,15 @@ export type PublicArkivClient<
  *
  * - Docs: https://docs.arkiv.network/ts-sdk/clients/public
  *
- * A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Braga JSON-RPC API](https://braga.holesky.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
+ * A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Braga JSON-RPC API](https://braga.hoodi.arkiv.network/rpc) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
  *
  * @param parameters - Configuration object for the public client (chain, transport, etc.)
  * @returns A Arkiv Public Client. {@link PublicArkivClient}
  *
  * @example
- * import { createPublicClient, http } from 'arkiv'
- * import { braga } from 'arkiv/chains'
+ * import { createPublicClient } from "@arkiv-network/sdk"
+ * import { braga } from "@arkiv-network/sdk/chains"
+ * import { http } from "viem"
  *
  * const client = createPublicClient({
  *   chain: braga,

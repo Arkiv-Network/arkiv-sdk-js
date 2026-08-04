@@ -32,8 +32,8 @@ export type UpdateEntityParameters = {
    */
   attributes: AttributeInputs
   contentType: MimeType | string
-  /** Seconds until expiry. Must be a positive integer and a multiple of the 2s block time.
-   * Throws {@link InvalidExpirationError} otherwise. */
+  /** Seconds to extend by, rounded up to whole blocks at the chain's block time.
+   * Throws {@link InvalidExpiryError} if it is not a positive whole number of seconds. */
   expiresIn: number
 }
 

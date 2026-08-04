@@ -1,17 +1,7 @@
-import { BLOCK_TIME } from "./consts"
-
 export class EntityMutationError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "EntityMutationError"
-  }
-}
-export class InvalidExpirationError extends Error {
-  constructor(expiresIn: unknown) {
-    super(
-      `Invalid expiresIn: ${String(expiresIn)}. expiresIn must be a positive integer and a multiple of the Arkiv block time (${BLOCK_TIME} seconds), because expiration is measured in whole blocks (1 block = ${BLOCK_TIME} seconds).`,
-    )
-    this.name = "InvalidExpirationError"
   }
 }
 export class NoMoreResultsError extends Error {

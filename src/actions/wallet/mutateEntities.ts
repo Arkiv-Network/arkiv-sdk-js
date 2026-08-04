@@ -17,6 +17,10 @@ const logger = getLogger("actions:wallet:mutate-entities")
  * - updates: The updates to perform.
  * - deletes: The deletes to perform.
  * - extensions: The extensions to perform.
+ * - ownershipChanges: The ownership transfers to perform.
+ *
+ * At least one operation is required; a batch with nothing in it throws rather than spending gas on
+ * an empty transaction.
  */
 export type MutateEntitiesParameters = {
   creates?: CreateEntityParameters[]
@@ -49,7 +53,11 @@ export async function mutateEntities(
   data: MutateEntitiesParameters,
   txParams?: TxParams,
 ): Promise<MutateEntitiesReturnType> {
-  if (!data.creates && !data.updates && !data.deletes && !data.extensions) {
+  const total = (Object.keys(data) as (keyof MutateEntitiesParameters)[]).reduce(
+    (count, kind) => count + (data[kind]?.length ?? 0),
+    0,
+  )
+  if (total === 0) {
     throw new Error("No operations to perform")
   }
 

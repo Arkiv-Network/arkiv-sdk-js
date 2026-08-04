@@ -41,17 +41,22 @@ export type PublicArkivActions<
    * @returns The entity with the given key. {@link Entity}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { braga } from 'arkiv/chains'
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
    *   transport: http(),
    * })
-   * const entity = await client.getEntity("0x123")
-   * // {
-   * //   key: "0x123",
-   * //   value: "0x123",
+   * const entity = await client.getEntity(entityKey)
+   * // Entity {
+   * //   key: "0x9f2c…",
+   * //   owner: "0xabc…",
+   * //   contentType: "application/json",
+   * //   payload: Uint8Array,          // entity.toJson() / entity.toText() decode it
+   * //   attributes: { category: { type: "str", value: "docs" } },
+   * //   expiresAtBlock: 1_297_000n,
    * // }
    */
   getEntity: (key: Hex) => Promise<Entity>
@@ -70,9 +75,10 @@ export type PublicArkivActions<
    * @returns A SelectQueryBuilder instance for building and executing queries. {@link SelectQueryBuilder}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { braga } from 'arkiv/chains'
-   * import { eq } from 'arkiv/query'
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { eq } from "@arkiv-network/sdk/query"
+   * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
@@ -83,7 +89,7 @@ export type PublicArkivActions<
    * await client.select("*").where(eq("category", "docs")).fetch()
    * // only the key
    * await client.select({ key: true }).where(eq("category", "docs")).fetch()
-   * // select specific fields — result typed { owner: Hex; attributes: Attribute[] }
+   * // select specific fields — result typed { owner: Hex; attributes: Attributes }
    * await client.select({ owner: true, attributes: true }).fetch()
    * // a single field — result typed { owner: Hex }
    * await client.select({ owner: true }).fetch()
@@ -105,7 +111,7 @@ export type PublicArkivActions<
      *
      * @example
      * client.select({ owner: true, attributes: true }) // entities typed { owner, attributes }
-     * client.select({ key: true, payload: true })       // includes payload → toText()/toJson() too
+     * client.select({ key: true, payload: true })      // includes payload → toText()/toJson() too
      */
     <const S extends EntitySelection>(selection: S): SelectQueryBuilder<ProjectedEntity<S>>
     /**
@@ -129,16 +135,22 @@ export type PublicArkivActions<
    * @returns A QueryBuilder instance for building and executing queries. {@link QueryBuilder}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { braga } from 'arkiv/chains'
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { eq } from "@arkiv-network/sdk/query"
+   * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
    *   transport: http(),
    * })
    * const query = client.buildQuery()
-   * const entities = await query.where("key", "=", "value").ownedBy("0x123").fetch()
-   *
+   * // Without the with* opt-ins the entities come back carrying only their key.
+   * const entities = await query
+   *   .where(eq("category", "docs"))
+   *   .ownedBy(owner)
+   *   .withAttributes()
+   *   .fetch()
    */
   buildQuery: () => QueryBuilder
 
@@ -150,16 +162,17 @@ export type PublicArkivActions<
    * @returns A QueryReturnType instance - {@link QueryReturnType}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { braga } from 'arkiv/chains'
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
    *   transport: http(),
    * })
-   * const queryResult = client.query('key = value && $owner = 0x123')
-   * // queryResult = { entities: [{ key: "0x123", value: "0x123" }], cursor: undefined, blockNumber: undefined }
-   * const queryResultWithOptions = client.query('key = value && $owner = 0x123', {
+   * const queryResult = await client.query('category = "docs" && $owner = 0xabc')
+   * // { entities: [Entity], cursor: undefined, blockNumber: undefined }
+   * const queryResultWithOptions = await client.query('category = "docs"', {
    *   includeData: {
    *     attributes: false,
    *     payload: true,
@@ -169,17 +182,18 @@ export type PublicArkivActions<
    *   cursor: undefined,
    *   atBlock: undefined,
    * })
-   * // queryResultWithOptions = { entities: [{ key: "0x123", value: "0x123" }], cursor: "...", blockNumber: 32223n }
+   * // { entities: [Entity], cursor: "...", blockNumber: 32223n }
    */
   query: (query: string, queryOptions?: QueryOptions) => Promise<QueryReturnType>
 
   /**
-   * Returns the number of entities in the DBChain.
-   * @returns The number of entities in the DBChain
+   * Returns the total number of entities on the chain.
+   * @returns The number of entities currently stored
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { braga } from 'arkiv/chains'
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
@@ -195,8 +209,9 @@ export type PublicArkivActions<
    * @returns The current block timing. {@link GetBlockTimingReturnType}
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { braga } from 'arkiv/chains'
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
@@ -217,14 +232,18 @@ export type PublicArkivActions<
 
   /**
    * Subscribes to entity events.
-   * Takes an object with event handlers: {onError, onEntityCreated, onEntityUpdated, onEntityDeleted, onEntityExpiresInExtended}
+   *
+   * Takes an object of handlers, all optional: `onError`, `onEntityCreated`, `onEntityUpdated`,
+   * `onEntityDeleted`, `onEntityExpired` and `onEntityExpiresInExtended`.
+   *
    * @param pollingInterval - The polling interval in milliseconds
    * @param fromBlock - The block number to start from
    * @returns A function to unsubscribe from the events
    *
    * @example
-   * import { createPublicClient, http } from 'arkiv'
-   * import { braga } from 'arkiv/chains'
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
@@ -241,6 +260,7 @@ export type PublicArkivActions<
       onEntityCreated,
       onEntityUpdated,
       onEntityDeleted,
+      onEntityExpired,
       onEntityExpiresInExtended,
     }: {
       onError?: (error: Error) => void

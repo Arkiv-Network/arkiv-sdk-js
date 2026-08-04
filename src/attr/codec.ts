@@ -1,47 +1,37 @@
-import { bytesToString, type Hex, hexToBytes, pad, stringToBytes, toHex } from "viem"
+import { bytesToString, type Hex, hexToBytes, pad, size, stringToBytes, toHex } from "viem"
 import { unitsToDecimal } from "./decimal"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
-import {
-  type AnyArkivValue,
-  type ArkivValue,
-  makeValue,
-  TYPE_IDS,
-  type TypeTag,
-  tagFromTypeId,
-} from "./types"
-import { addr, bool, bytes32, dec, decUnits, i32, key, MAX_STRING_BYTES, str, u256 } from "./values"
-
-const ZERO_WORD = `0x${"00".repeat(32)}` as Hex
+import { type AnyArkivValue, makeValue, TYPE_IDS, type TypeTag, tagFromTypeId } from "./types"
+import { addr, bool, bytes32, dec, decUnits, i32, key, str, u256 } from "./values"
 
 /**
- * An attribute value as the `execute` ABI carries it: four 32-byte words. Single-word types sit in
- * word 0 in their standard Solidity encoding (right-aligned, sign-extended where Solidity would);
- * a `string` is packed left-aligned across up to all four words, which is where its 128-byte limit
- * comes from.
+ * The `typeId` marking a tombstone — an attribute being unset. It carries a zero-length value and
+ * is legal only in a patch's mutation list, never in a create.
  */
-export type ValueWords = readonly [Hex, Hex, Hex, Hex]
+export const TOMBSTONE_TYPE_ID = 0
 
-/** An attribute in its ABI form: `(bytes32 name, uint8 valueType, bytes32[4] value)`. */
+/**
+ * An attribute in its ABI form: `(Ident32 name, uint8 typeId, bytes value)`.
+ *
+ * The `value` encoding is selected by `typeId`: an exact 32-byte word for the word types, the raw
+ * bytes for `str` and `bytes`, and zero-length for a tombstone.
+ */
 export type AbiAttribute = {
   name: Hex
-  valueType: number
-  value: ValueWords
+  typeId: number
+  value: Hex
 }
 
 /**
- * Encodes a typed value into its four ABI words.
+ * Encodes a typed value into the `bytes` the ABI carries for it.
  *
- * This and {@link decodeValueWords} are the only place the value/word mapping is written down.
+ * This and {@link decodeValueBytes} are the only place the value/wire mapping is written down.
  *
- * @throws {InvalidValueError} If the value is the system-only `bytes` type.
+ * - Word types (`bool`, `i32`, `u256`, `dec`, `bytes32`, `addr`, `key`) become exactly 32 bytes, in
+ *   the encoding Solidity would use — right-aligned, and sign-extended for `i32`.
+ * - `str` becomes its raw UTF-8 bytes, and `bytes` its raw bytes: variable length, no padding.
  */
-export function encodeValueWords(value: ArkivValue): ValueWords {
-  if (value.type === "str") return packString(value.value)
-  return [encodeWord0(value), ZERO_WORD, ZERO_WORD, ZERO_WORD]
-}
-
-/** The single occupied word of every type except `str`, which spans all four. */
-function encodeWord0(value: Exclude<ArkivValue, { type: "str" }>): Hex {
+export function encodeValueBytes(value: AnyArkivValue): Hex {
   switch (value.type) {
     case "bool":
       return pad(value.value ? "0x01" : "0x00", { size: 32 })
@@ -57,123 +47,150 @@ function encodeWord0(value: Exclude<ArkivValue, { type: "str" }>): Hex {
       return value.value
     case "addr":
       return pad(value.value.toLowerCase() as Hex, { size: 32 })
+    case "str":
+      return toHex(stringToBytes(value.value))
+    case "bytes":
+      return value.value
   }
 }
 
-/** Packs a string's UTF-8 bytes left-aligned across the four words, zero-padded. */
-function packString(value: string): ValueWords {
-  const bytes = stringToBytes(value)
-  if (bytes.length > MAX_STRING_BYTES) {
-    throw new InvalidValueError("str", value, `exceeds the ${MAX_STRING_BYTES}-byte str limit`)
-  }
-  const padded = new Uint8Array(MAX_STRING_BYTES)
-  padded.set(bytes)
-  return [
-    toHex(padded.subarray(0, 32)),
-    toHex(padded.subarray(32, 64)),
-    toHex(padded.subarray(64, 96)),
-    toHex(padded.subarray(96, 128)),
-  ]
-}
+/**
+ * Decodes the ABI `bytes` of an attribute of type `tag`.
+ *
+ * Rejects anything a well-formed encoder would not have produced — a word type whose value is not
+ * 32 bytes, an `i32` that is not sign-extended, a `bool` that is neither 0 nor 1 — rather than
+ * silently truncating it.
+ */
+export function decodeValueBytes(tag: TypeTag, value: Hex): AnyArkivValue {
+  if (tag === "str") return str(bytesToString(hexToBytes(value)))
+  if (tag === "bytes") return makeValue("bytes", value.toLowerCase() as Hex)
 
-/** Decodes the four ABI words of an attribute of type `tag` back into a typed value. */
-export function decodeValueWords(tag: TypeTag, words: ValueWords): ArkivValue {
-  if (tag === "str") {
-    const packed = hexToBytes(`0x${words.map((word) => word.slice(2)).join("")}` as Hex)
-    let end = packed.length
-    while (end > 0 && packed[end - 1] === 0) end--
-    return str(bytesToString(packed.subarray(0, end)))
+  const width = size(value)
+  if (width !== 32) {
+    throw new InvalidValueError(tag, value, `a ${tag} value must be 32 bytes, got ${width}`)
   }
-  if (tag === "bytes") {
-    throw new InvalidValueError(
-      "bytes",
-      words[0],
-      "system-only — never carried in an ABI attribute",
-    )
-  }
-  const word = words[0]
-  const raw = BigInt(word)
+  const raw = BigInt(value)
+
   switch (tag) {
     case "bool":
       if (raw !== 0n && raw !== 1n) {
-        throw new InvalidValueError("bool", word, "a bool word must hold exactly 0 or 1")
+        throw new InvalidValueError("bool", value, "a bool word must hold exactly 0 or 1")
       }
       return bool(raw === 1n)
-    case "i32":
-      return i32(BigInt.asIntN(32, raw))
+    case "i32": {
+      const narrowed = BigInt.asIntN(32, raw)
+      if (BigInt.asUintN(256, narrowed) !== raw) {
+        throw new InvalidValueError("i32", value, "an i32 word must be sign-extended")
+      }
+      return i32(narrowed)
+    }
     case "u256":
       return u256(raw)
     case "dec":
       return dec(unitsToDecimal(BigInt.asIntN(256, raw)))
     case "bytes32":
-      return bytes32(word)
+      return bytes32(value)
     case "key":
-      return key(word)
-    case "addr":
-      return addr(`0x${word.slice(-40)}`)
+      return key(value)
+    case "addr": {
+      if (raw >> 160n !== 0n) {
+        throw new InvalidValueError(
+          "addr",
+          value,
+          "an address word must be zero-padded to 20 bytes",
+        )
+      }
+      return addr(`0x${value.slice(-40)}`)
+    }
   }
 }
 
 /**
  * Encodes a named, typed attribute into its ABI form.
  *
- * @param name - The attribute name. Assumed already validated by `validateAttributeName`.
- * @param value - The typed value.
+ * @param name - The attribute name. Assumed already validated, or a system (`$`) name the SDK sets
+ * itself.
  */
-export function encodeAbiAttribute(name: string, value: ArkivValue): AbiAttribute {
+export function encodeAbiAttribute(name: string, value: AnyArkivValue): AbiAttribute {
   return {
     // Ident32 is left-aligned and null-padded, which is what `toHex` does for a string.
     name: toHex(name, { size: 32 }),
-    valueType: TYPE_IDS[value.type],
-    value: encodeValueWords(value),
+    typeId: TYPE_IDS[value.type],
+    value: encodeValueBytes(value),
   }
+}
+
+/** Encodes a tombstone — the mutation that unsets `name`. Legal only in a patch. */
+export function encodeTombstone(name: string): AbiAttribute {
+  return { name: toHex(name, { size: 32 }), typeId: TOMBSTONE_TYPE_ID, value: "0x" }
 }
 
 /**
  * Decodes an attribute value as it comes back over JSON-RPC.
  *
- * The node renders every value as a string, by type: `bool` as `"true"`/`"false"`, the numeric
- * types as decimal digits, `str` as itself, and the byte-shaped types as `0x` hex. Integers are
- * also accepted in `0x` form, so this keeps working if the node moves to the QUANTITY encoding.
+ * The JSON encoding follows the value's **declared type**, never its magnitude: `bool` is a JSON
+ * boolean, `i32` a JSON number, `u256` a `0x` QUANTITY, `dec` a decimal string, `str` a string, and
+ * the byte-shaped types `0x` DATA. Decimal strings are also accepted for the integer types, so this
+ * keeps working against a node that renders them that way.
  *
- * @param typeId - The `valueType` byte from the response.
- * @param rendered - The rendered value.
+ * @param typeId - The `type` the response declared, as its protocol typeId.
+ * @param value - The JSON value.
  * @throws {UnknownAttributeTypeError} If the typeId names no known type.
- * @throws {InvalidValueError} If the rendered value does not parse as that type.
+ * @throws {InvalidValueError} If the value does not parse as that type.
  */
-export function decodeRpcValue(typeId: number, rendered: string): AnyArkivValue {
+export function decodeRpcValue(typeId: number, value: unknown): AnyArkivValue {
   const tag = tagFromTypeId(typeId)
   if (tag === undefined) {
     throw new UnknownAttributeTypeError(typeId)
   }
   switch (tag) {
     case "bool":
-      if (rendered !== "true" && rendered !== "false") {
-        throw new InvalidValueError("bool", rendered, 'not "true" or "false"')
-      }
-      return bool(rendered === "true")
+      return bool(asBoolean(value))
     case "i32":
-      return i32(Number(parseSignedInteger("i32", rendered)))
+      return i32(Number(asIntegerish("i32", value)))
     case "u256":
-      return u256(rendered)
+      return u256(asIntegerish("u256", value))
     case "dec":
-      return dec(rendered)
+      return dec(asString("dec", value))
     case "bytes32":
-      return bytes32(rendered as Hex)
+      return bytes32(asString("bytes32", value) as Hex)
     case "key":
-      return key(rendered as Hex)
+      return key(asString("key", value) as Hex)
     case "addr":
-      return addr(rendered)
+      return addr(asString("addr", value))
     case "str":
-      return str(rendered)
+      return str(asString("str", value))
     case "bytes":
-      return makeValue("bytes", rendered.toLowerCase() as Hex)
+      return makeValue("bytes", asString("bytes", value).toLowerCase() as Hex)
   }
 }
 
-/** Parses a signed integer given as decimal digits or as a `0x` two's-complement word. */
-function parseSignedInteger(tag: TypeTag, rendered: string): bigint {
-  if (/^-?\d+$/.test(rendered)) return BigInt(rendered)
-  if (/^0x[0-9a-fA-F]+$/.test(rendered)) return BigInt.asIntN(32, BigInt(rendered))
-  throw new InvalidValueError(tag, rendered, "not an integer")
+function asBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value
+  // Tolerated because a node may render it as text; anything else is a protocol error.
+  if (value === "true" || value === "false") return value === "true"
+  throw new InvalidValueError("bool", value, "not a boolean")
+}
+
+function asString(tag: TypeTag, value: unknown): string {
+  if (typeof value !== "string") {
+    throw new InvalidValueError(tag, value, `expected a string, got ${typeof value}`)
+  }
+  return value
+}
+
+/** A `0x` QUANTITY, a JSON number, or a decimal string — all of which name one integer. */
+function asIntegerish(tag: TypeTag, value: unknown): bigint {
+  if (typeof value === "number") {
+    if (!Number.isInteger(value)) {
+      throw new InvalidValueError(tag, value, "not an integer")
+    }
+    return BigInt(value)
+  }
+  if (typeof value === "bigint") return value
+  if (typeof value === "string") {
+    if (/^0x[0-9a-fA-F]+$/.test(value)) return BigInt(value)
+    if (/^-?\d+$/.test(value)) return BigInt(value)
+  }
+  throw new InvalidValueError(tag, value, "not an integer")
 }

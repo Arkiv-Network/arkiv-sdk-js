@@ -1,6 +1,12 @@
 import { describe, expect, it } from "bun:test"
 import type { Hex } from "viem"
-import { decodeRpcValue, decodeValueWords, encodeAbiAttribute, encodeValueWords } from "./codec"
+import {
+  decodeRpcValue,
+  decodeValueBytes,
+  encodeAbiAttribute,
+  encodeTombstone,
+  encodeValueBytes,
+} from "./codec"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
 import type { ArkivValue } from "./types"
 import { addr, bool, bytes32, dec, i32, key, str, u256 } from "./values"
@@ -31,58 +37,57 @@ const SAMPLES: ArkivValue[] = [
   str("é".repeat(64)),
 ]
 
-describe("ABI word encoding", () => {
-  it("round-trips every type through its four words", () => {
+describe("ABI value encoding", () => {
+  it("round-trips every type", () => {
     for (const value of SAMPLES) {
-      const back = decodeValueWords(value.type, encodeValueWords(value))
+      const back = decodeValueBytes(value.type, encodeValueBytes(value))
       expect(back.type).toBe(value.type)
       expect(back.value).toEqual(value.value)
     }
   })
 
-  it("puts single-word types in word 0 and leaves the rest zero", () => {
-    const [word0, ...rest] = encodeValueWords(u256(42n))
-    expect(word0).toBe(`0x${"00".repeat(31)}2a`)
-    expect(rest).toEqual([ZERO, ZERO, ZERO])
+  it("gives every word type exactly 32 bytes", () => {
+    for (const value of SAMPLES) {
+      if (value.type === "str") continue
+      expect(encodeValueBytes(value)).toHaveLength(2 + 64)
+    }
   })
 
   it("sign-extends a negative i32 across the whole word, as Solidity does", () => {
-    expect(encodeValueWords(i32(-1))[0]).toBe(`0x${"ff".repeat(32)}`)
-    expect(encodeValueWords(i32(-42))[0]).toBe(`0x${"ff".repeat(31)}d6`)
-    expect(encodeValueWords(i32(42))[0]).toBe(`0x${"00".repeat(31)}2a`)
+    expect(encodeValueBytes(i32(-1))).toBe(`0x${"ff".repeat(32)}`)
+    expect(encodeValueBytes(i32(-42))).toBe(`0x${"ff".repeat(31)}d6`)
+    expect(encodeValueBytes(i32(42))).toBe(`0x${"00".repeat(31)}2a`)
   })
 
   it("stores a dec as its two's-complement scaled int256", () => {
-    const scaled = (value: string) => BigInt.asIntN(256, BigInt(encodeValueWords(dec(value))[0]))
+    const scaled = (value: string) => BigInt.asIntN(256, BigInt(encodeValueBytes(dec(value))))
     expect(scaled("1.5")).toBe(1_500_000_000_000_000_000n)
     expect(scaled("-1.5")).toBe(-1_500_000_000_000_000_000n)
     expect(scaled("0")).toBe(0n)
   })
 
   it("right-aligns an address and a bool", () => {
-    expect(encodeValueWords(addr(VITALIK))[0]).toBe(
+    expect(encodeValueBytes(addr(VITALIK))).toBe(
       `0x${"00".repeat(12)}${VITALIK.slice(2).toLowerCase()}`,
     )
-    expect(encodeValueWords(bool(true))[0]).toBe(`0x${"00".repeat(31)}01`)
-    expect(encodeValueWords(bool(false))[0]).toBe(ZERO)
+    expect(encodeValueBytes(bool(true))).toBe(`0x${"00".repeat(31)}01`)
+    expect(encodeValueBytes(bool(false))).toBe(ZERO)
   })
 
-  it("packs a string left-aligned across the words it needs", () => {
-    const words = encodeValueWords(str("hi"))
-    expect(words[0].slice(0, 6)).toBe("0x6869")
-    expect(words[1]).toBe(ZERO)
-    // 128 bytes exactly fills all four words.
-    expect(encodeValueWords(str("a".repeat(128))).every((word) => word !== ZERO)).toBe(true)
+  it("gives a str its raw UTF-8 bytes, with no padding", () => {
+    expect(encodeValueBytes(str("hi"))).toBe("0x6869")
+    expect(encodeValueBytes(str(""))).toBe("0x")
+    // Two bytes per "é", so no relationship to a 32-byte word.
+    expect(encodeValueBytes(str("é"))).toBe("0xc3a9")
   })
 
-  it("rejects a bool word holding anything but 0 or 1", () => {
-    expect(() => decodeValueWords("bool", [`0x${"00".repeat(31)}02`, ZERO, ZERO, ZERO])).toThrow(
-      InvalidValueError,
-    )
-  })
-
-  it("refuses to encode the system-only bytes type", () => {
-    expect(() => decodeValueWords("bytes", [ZERO, ZERO, ZERO, ZERO])).toThrow(/system-only/)
+  it("rejects a word a well-formed encoder would not have produced", () => {
+    expect(() => decodeValueBytes("bool", `0x${"00".repeat(31)}02`)).toThrow(/exactly 0 or 1/)
+    expect(() => decodeValueBytes("u256", "0x2a")).toThrow(/must be 32 bytes, got 1/)
+    // An i32 whose upper bytes contradict its sign bit.
+    expect(() => decodeValueBytes("i32", `0xff${"00".repeat(31)}`)).toThrow(/sign-extended/)
+    // An address with junk above its 20 bytes.
+    expect(() => decodeValueBytes("addr", `0x${"ab".repeat(32)}`)).toThrow(/zero-padded/)
   })
 })
 
@@ -91,16 +96,23 @@ describe("encodeAbiAttribute", () => {
     const attribute = encodeAbiAttribute("level", i32(10))
     // "level" is 6c6576656c, null-padded to 32 bytes.
     expect(attribute.name).toBe(`0x6c6576656c${"00".repeat(27)}`)
-    expect(attribute.valueType).toBe(2)
+    expect(attribute.typeId).toBe(2)
+  })
+
+  it("encodes a tombstone as a zero-length value under typeId 0", () => {
+    expect(encodeTombstone("flagged")).toEqual({
+      name: `0x666c6167676564${"00".repeat(25)}`,
+      typeId: 0,
+      value: "0x",
+    })
   })
 })
 
 describe("decodeRpcValue", () => {
-  it("reads back what the node renders for each type", () => {
-    expect(decodeRpcValue(1, "true").value).toBe(true)
-    expect(decodeRpcValue(1, "false").value).toBe(false)
-    expect(decodeRpcValue(2, "-42").value).toBe(-42)
-    expect(decodeRpcValue(3, "123456789").value).toBe(123456789n)
+  it("reads the JSON encoding each type declares", () => {
+    expect(decodeRpcValue(1, true).value).toBe(true)
+    expect(decodeRpcValue(2, -42).value).toBe(-42)
+    expect(decodeRpcValue(3, "0xf4240").value).toBe(1_000_000n)
     expect(decodeRpcValue(4, "3.5").value).toBe("3.5")
     expect(decodeRpcValue(4, "-0.25").value).toBe("-0.25")
     expect(decodeRpcValue(5, KEY).value).toBe(KEY)
@@ -109,9 +121,12 @@ describe("decodeRpcValue", () => {
     expect(decodeRpcValue(9, KEY).value).toBe(KEY)
   })
 
-  it("also accepts integers in 0x QUANTITY form", () => {
-    expect(decodeRpcValue(3, "0xf4240").value).toBe(1_000_000n)
-    expect(decodeRpcValue(2, "0xffffffd6").value).toBe(-42)
+  it("takes an integer however it is rendered", () => {
+    // QUANTITY is the spec's encoding; decimal strings and numbers are tolerated.
+    expect(decodeRpcValue(3, "0x2a").value).toBe(42n)
+    expect(decodeRpcValue(3, "42").value).toBe(42n)
+    expect(decodeRpcValue(3, 42).value).toBe(42n)
+    expect(decodeRpcValue(2, "-42").value).toBe(-42)
   })
 
   it("decodes the system-only bytes type, which only ever arrives as a payload", () => {
@@ -123,8 +138,10 @@ describe("decodeRpcValue", () => {
     expect(() => decodeRpcValue(42, "x")).toThrow(/upgrade @arkiv-network\/sdk/)
   })
 
-  it("round-trips a value through the RPC rendering", () => {
-    expect(decodeRpcValue(4, dec("3.5").value).value).toBe("3.5")
-    expect(decodeRpcValue(7, str("héllo").value).value).toBe("héllo")
+  it("rejects a value whose JSON shape contradicts its declared type", () => {
+    expect(() => decodeRpcValue(3, "not a number")).toThrow(InvalidValueError)
+    expect(() => decodeRpcValue(7, 42)).toThrow(/expected a string/)
+    expect(() => decodeRpcValue(1, "yes")).toThrow(/not a boolean/)
+    expect(() => decodeRpcValue(2, 1.5)).toThrow(/not an integer/)
   })
 })

@@ -1,36 +1,32 @@
 import { describe, expect, it, vi } from "bun:test"
-import { stringToBytes, toHex } from "viem"
+import { decodeAbiParameters, parseAbiParameters, toHex } from "viem"
 import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import {
   type AttributeInputs,
-  addr,
-  bool,
-  bytes32,
   dec,
   InvalidAttributeNameError,
   InvalidValueError,
-  key,
+  i32,
   MissingValueError,
-  str,
   u256,
 } from "../attr"
 import type { ArkivClient } from "../clients/baseClient"
-import { InvalidExpirationError } from "../errors"
+import { InvalidExpiryError } from "../entity"
+import { OperationType, DEFAULT_PROTOCOL_PARAMS as PARAMS } from "../entity/params"
 import { sendArkivTransaction } from "./arkivTransactions"
+import { ExpirationTime } from "./expirationTime"
 
-const ZERO_32 = `0x${"00".repeat(32)}`
 const ENTITY_KEY = `0x${"ab".repeat(32)}` as const
+const CURRENT_BLOCK = 100n
+const OWNER_NONCE = 7n
 
-function encodeStringTo128(value: string): string[] {
-  const padded = new Uint8Array(128)
-  padded.set(stringToBytes(value).slice(0, 128))
-  return [
-    toHex(padded.slice(0, 32)),
-    toHex(padded.slice(32, 64)),
-    toHex(padded.slice(64, 96)),
-    toHex(padded.slice(96, 128)),
-  ]
-}
+const CREATE_PARAMS = parseAbiParameters(
+  "(uint128 salt, uint256 expiresAt, uint256 minLifetime, uint8 creationFlags, (bytes32 name, uint8 typeId, bytes value)[] attributes)",
+)
+
+const EXTEND_PARAMS = parseAbiParameters(
+  "(bytes32 entityKey, uint256 expiresAt, uint256 minLifetime)",
+)
 
 function makeClient() {
   const writeContract = vi.fn().mockResolvedValue("0xdeadbeef")
@@ -42,8 +38,8 @@ function makeClient() {
     client: {
       account: { address: "0x1111111111111111111111111111111111111111" },
       chain: { id: 1 },
-      getBlockNumber: vi.fn().mockResolvedValue(100n),
-      readContract: vi.fn().mockResolvedValue(0),
+      getBlockNumber: vi.fn().mockResolvedValue(CURRENT_BLOCK),
+      readContract: vi.fn().mockResolvedValue(OWNER_NONCE),
       writeContract,
       waitForTransactionReceipt,
     } as unknown as ArkivClient,
@@ -51,55 +47,216 @@ function makeClient() {
   }
 }
 
-const BASE_CREATE = {
+/** The operations a call put on the wire. */
+function sentOperations(writeContract: ReturnType<typeof vi.fn>) {
+  return writeContract.mock.calls[0][0].args[0] as {
+    operation: number
+    operationData: `0x${string}`
+  }[]
+}
+
+/** The decoded Create struct of the first operation. */
+function sentCreate(writeContract: ReturnType<typeof vi.fn>) {
+  const [op] = sentOperations(writeContract)
+  expect(op.operation).toBe(OperationType.Create)
+  return decodeAbiParameters(CREATE_PARAMS, op.operationData)[0]
+}
+
+/** The decoded ExtendExpiry struct of the batch's only extension. */
+function sentExtension(writeContract: ReturnType<typeof vi.fn>) {
+  const op = sentOperations(writeContract).find((o) => o.operation === OperationType.ExtendExpiry)
+  if (!op) throw new Error("no ExtendExpiry operation was sent")
+  return decodeAbiParameters(EXTEND_PARAMS, op.operationData)[0]
+}
+
+const CONTENTS = {
   payload: new Uint8Array([1, 2, 3]),
   contentType: "application/octet-stream",
-  expiresIn: 3600,
 }
 
-async function captureAttributes(attributes: AttributeInputs) {
-  const { client, writeContract } = makeClient()
-  await sendArkivTransaction(client, {
-    creates: [{ ...BASE_CREATE, attributes }],
-  })
-  const callArgs = writeContract.mock.calls[0][0]
-  return callArgs.args[0][0].attributes as { name: string; valueType: number; value: string[] }[]
-}
+const DAY = ExpirationTime.fromDays(1) // 86400s -> 43200 blocks at 2s
+const validCreate = { ...CONTENTS, expires: DAY }
 
-const validCreate = {
-  payload: new Uint8Array([1, 2, 3]),
-  contentType: "text/plain",
-  attributes: { k: "v" } as AttributeInputs,
-  expiresIn: 1000,
-}
-
-describe("sendArkivTransaction expiration validation", () => {
-  it("sends a transaction for a valid create", async () => {
+describe("create expiry", () => {
+  it("sends a create for a valid expiry", async () => {
     const { client, writeContract } = makeClient()
     const result = await sendArkivTransaction(client, { creates: [validCreate] })
     expect(writeContract).toHaveBeenCalledTimes(1)
     expect(result.receipt.status).toBe("success")
   })
 
-  it("rejects when a create expiresIn is not a multiple of the block time", async () => {
-    const { client } = makeClient()
-    await expect(
-      sendArkivTransaction(client, { creates: [{ ...validCreate, expiresIn: 51 }] }),
-    ).rejects.toThrow(InvalidExpirationError)
+  it("puts the expiry pair on the wire untouched, for the engine to resolve", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [
+        {
+          ...CONTENTS,
+          expires: ExpirationTime.atBlock(5_000n, { atLeast: ExpirationTime.fromSeconds(200) }),
+        },
+      ],
+    })
+    const create = sentCreate(writeContract)
+    expect(create.expiresAt).toBe(5_000n)
+    expect(create.minLifetime).toBe(100n) // 200s at 2s/block
   })
 
-  it("rejects when a create expiresIn is not an integer", async () => {
+  it("reports the block the entity will actually expire at", async () => {
     const { client } = makeClient()
-    await expect(
-      sendArkivTransaction(client, { creates: [{ ...validCreate, expiresIn: 51.5 }] }),
-    ).rejects.toThrow(InvalidExpirationError)
+    const relative = await sendArkivTransaction(client, {
+      creates: [{ ...CONTENTS, expires: DAY }],
+    })
+    expect(relative.createdExpiries[0]).toBe(CURRENT_BLOCK + 43_200n)
+
+    const { client: client2 } = makeClient()
+    const absolute = await sendArkivTransaction(client2, {
+      creates: [{ ...CONTENTS, expires: ExpirationTime.atBlock(5_000n) }],
+    })
+    expect(absolute.createdExpiries[0]).toBe(5_000n)
+
+    const { client: client3 } = makeClient()
+    const dated = await sendArkivTransaction(client3, {
+      creates: [{ ...CONTENTS, expires: ExpirationTime.atDate(new Date(Date.now() + 3600_000)) }],
+    })
+    // An hour at 2s/block, counted from the block the transaction was built on.
+    expect(dated.createdExpiries[0]).toBe(CURRENT_BLOCK + 1800n)
   })
 
-  it("rejects when an extension expiresIn is not a multiple of the block time", async () => {
+  it("refuses a create with no expiry at all", async () => {
     const { client } = makeClient()
     await expect(
-      sendArkivTransaction(client, { extensions: [{ entityKey: "0x123", expiresIn: 999 }] }),
-    ).rejects.toThrow(InvalidExpirationError)
+      sendArkivTransaction(client, { creates: [{ ...CONTENTS } as never] }),
+    ).rejects.toThrow(InvalidExpiryError)
+  })
+
+  it("catches a dead-on-arrival expiry before it costs gas", async () => {
+    const { client, writeContract } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        creates: [{ ...CONTENTS, expires: ExpirationTime.atBlock(CURRENT_BLOCK - 1n) }],
+      }),
+    ).rejects.toThrow(/dead on arrival/)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("rejects a malformed duration at the call site, long before the transaction", () => {
+    // 999 seconds is 499.5 blocks, which is not a lifetime the chain can store. Building the value
+    // throws, so nothing malformed ever reaches sendArkivTransaction.
+    expect(() => ExpirationTime.fromSeconds(999)).toThrow(/multiple of the 2s block time/)
+    expect(() => ExpirationTime.fromSeconds(0)).toThrow(InvalidExpiryError)
+    expect(() => ExpirationTime.fromSeconds(1.5)).toThrow(/positive whole number of seconds/)
+  })
+})
+
+describe("extend expiry", () => {
+  it("resolves an extension exactly like a create, both forms", async () => {
+    const { client, writeContract } = makeClient()
+    const relative = await sendArkivTransaction(client, {
+      extensions: [{ entityKey: ENTITY_KEY, expires: DAY }],
+    })
+    const extension = sentExtension(writeContract)
+    expect(extension.entityKey).toBe(ENTITY_KEY)
+    // A duration is a floor measured from now, not an increment on the entity's current expiry.
+    expect(extension.minLifetime).toBe(43_200n)
+    expect(extension.expiresAt).toBe(0n)
+    expect(relative.extendedExpiries[0]).toBe(CURRENT_BLOCK + 43_200n)
+
+    const { client: client2, writeContract: writeContract2 } = makeClient()
+    const absolute = await sendArkivTransaction(client2, {
+      extensions: [{ entityKey: ENTITY_KEY, expires: ExpirationTime.atBlock(5_000n) }],
+    })
+    expect(sentExtension(writeContract2).expiresAt).toBe(5_000n)
+    expect(absolute.extendedExpiries[0]).toBe(5_000n)
+  })
+
+  it("checks the protocol bounds before spending gas, as a create does", async () => {
+    const { client, writeContract } = makeClient()
+    const tooLong = ExpirationTime.fromBlocks(Number(PARAMS.maxLifetime + 1n))
+    await expect(
+      sendArkivTransaction(client, { extensions: [{ entityKey: ENTITY_KEY, expires: tooLong }] }),
+    ).rejects.toThrow(/beyond the protocol maximum/)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("refuses an extension that says nothing", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { extensions: [{ entityKey: ENTITY_KEY } as never] }),
+    ).rejects.toThrow(/must be built with ExpirationTime/)
+  })
+
+  it("reads the block height for an extension-only batch", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      extensions: [
+        { entityKey: ENTITY_KEY, expires: ExpirationTime.atDate(new Date(Date.now() + 3600_000)) },
+      ],
+    })
+    // A Date can only be placed once the current block is known, so it must have been fetched even
+    // though the batch creates nothing.
+    expect(sentExtension(writeContract).expiresAt).toBe(CURRENT_BLOCK + 1800n)
+  })
+})
+
+describe("creation flags and salt", () => {
+  it("packs flags into the creationFlags byte", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ ...validCreate, flags: { readonly: true, permissionlessExtension: true } }],
+    })
+    expect(sentCreate(writeContract).creationFlags).toBe(0b11)
+  })
+
+  it("defaults flags to none", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, { creates: [validCreate] })
+    expect(sentCreate(writeContract).creationFlags).toBe(0)
+  })
+
+  it("defaults the salt to random bits, and honours an explicit one", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, { creates: [validCreate] })
+    expect(sentCreate(writeContract).salt).toBeGreaterThan(0n)
+
+    const { client: c2, writeContract: w2 } = makeClient()
+    await sendArkivTransaction(c2, { creates: [{ ...validCreate, salt: 0n }] })
+    expect(sentCreate(w2).salt).toBe(0n)
+  })
+
+  it("rejects a salt wider than the uint128 field", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { creates: [{ ...validCreate, salt: 2n ** 128n }] }),
+    ).rejects.toThrow(/uint128/)
+  })
+})
+
+describe("entity keys", () => {
+  it("predicts a distinct key per create, advancing the nonce across the batch", async () => {
+    const { client } = makeClient()
+    const result = await sendArkivTransaction(client, {
+      creates: [
+        { ...validCreate, salt: 1n },
+        { ...validCreate, salt: 1n },
+        { ...validCreate, salt: 1n },
+      ],
+    })
+    expect(result.createdEntityKeys).toHaveLength(3)
+    // Same salt, different nonce — the nonce is what guarantees uniqueness.
+    expect(new Set(result.createdEntityKeys).size).toBe(3)
+  })
+
+  it("derives the key from the owner's entity nonce", async () => {
+    const { client } = makeClient()
+    const result = await sendArkivTransaction(client, { creates: [{ ...validCreate, salt: 5n }] })
+    const { predictEntityKey } = await import("../entity/key")
+    expect(result.createdEntityKeys[0]).toBe(
+      predictEntityKey({
+        owner: "0x1111111111111111111111111111111111111111",
+        nonce: OWNER_NONCE,
+        salt: 5n,
+        params: PARAMS,
+      }),
+    )
   })
 })
 
@@ -111,19 +268,11 @@ describe("attribute typing through the write path", () => {
     ).rejects.toThrow(InvalidValueError)
   })
 
-  it("rejects an attribute name outside the on-chain grammar", async () => {
+  it("rejects an attribute name outside the grammar", async () => {
     const { client } = makeClient()
     await expect(
-      sendArkivTransaction(client, {
-        creates: [{ ...validCreate, attributes: { "1bad": 1 } }],
-      }),
+      sendArkivTransaction(client, { creates: [{ ...validCreate, attributes: { "1bad": 1 } }] }),
     ).rejects.toThrow(InvalidAttributeNameError)
-  })
-
-  it("accepts a create with no attributes at all", async () => {
-    const { client, writeContract } = makeClient()
-    await sendArkivTransaction(client, { creates: [{ ...BASE_CREATE }] })
-    expect(writeContract.mock.calls[0][0].args[0][0].attributes).toEqual([])
   })
 
   it("rejects an attribute whose value is absent, rather than writing a typeless one", async () => {
@@ -141,7 +290,81 @@ describe("attribute typing through the write path", () => {
     ).rejects.toThrow(MissingValueError)
   })
 
-  it("requires attributes on an update, because an update replaces the whole set", async () => {
+  it("carries only the system cells when there are no user attributes", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, { creates: [validCreate] })
+    expect(sentCreate(writeContract).attributes.map((a) => a.name)).toEqual([
+      toHex("$contentType", { size: 32 }),
+      toHex("$payload", { size: 32 }),
+    ])
+  })
+
+  it("writes an empty payload rather than dropping it", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ ...validCreate, payload: new Uint8Array() }],
+    })
+    const byName = Object.fromEntries(sentCreate(writeContract).attributes.map((a) => [a.name, a]))
+    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 6, value: "0x" })
+  })
+
+  it("carries the protocol typeId of whichever type the value names", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [
+        { ...validCreate, attributes: { count: 42, balance: u256(1n), score: dec("3.5") } },
+      ],
+    })
+    const byName = Object.fromEntries(
+      sentCreate(writeContract).attributes.map((a) => [a.name, a.typeId]),
+    )
+    expect(byName[toHex("count", { size: 32 })]).toBe(2)
+    expect(byName[toHex("balance", { size: 32 })]).toBe(3)
+    expect(byName[toHex("score", { size: 32 })]).toBe(4)
+  })
+
+  it("sends the payload and content type as system cells", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [
+        {
+          ...validCreate,
+          payload: new Uint8Array([1, 2, 3]),
+          contentType: "application/json",
+          attributes: { level: i32(1) },
+        },
+      ],
+    })
+    const byName = Object.fromEntries(sentCreate(writeContract).attributes.map((a) => [a.name, a]))
+    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 6, value: "0x010203" })
+    expect(byName[toHex("$contentType", { size: 32 })].typeId).toBe(7)
+  })
+
+  it("rejects a content type that is not a MIME token", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { creates: [{ ...validCreate, contentType: "Not A Mime" }] }),
+    ).rejects.toThrow(/Invalid content type/)
+  })
+
+  it("sorts attributes ascending by their bytes32 name", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ ...validCreate, attributes: { tag: "zz", status: "active", score: 30 } }],
+    })
+    const names = sentCreate(writeContract).attributes.map((a) => a.name)
+    expect(names).toEqual([...names].sort())
+    // The "$" system cells lead; the user attributes follow in name order.
+    expect(names.slice(2)).toEqual([
+      toHex("score", { size: 32 }),
+      toHex("status", { size: 32 }),
+      toHex("tag", { size: 32 }),
+    ])
+  })
+})
+
+describe("update", () => {
+  it("requires attributes, because a mutation set replaces what it names", async () => {
     const { client, writeContract } = makeClient()
     const update = {
       entityKey: ENTITY_KEY,
@@ -153,77 +376,7 @@ describe("attribute typing through the write path", () => {
     // type system makes you say so explicitly rather than letting it happen by default.
     const omitted: UpdateEntityParameters = update
 
-    // Passing {} is the explicit way to ask for that erasure.
     await sendArkivTransaction(client, { updates: [{ ...omitted, attributes: {} }] })
-    expect(writeContract.mock.calls[0][0].args[0][0].attributes).toEqual([])
-  })
-})
-
-describe("attribute encoding", () => {
-  it("carries the protocol typeId of whichever type the value names", async () => {
-    const attrs = await captureAttributes({
-      flag: bool(true),
-      count: 42,
-      balance: u256(1n),
-      score: dec("3.5"),
-      digest: bytes32(ENTITY_KEY),
-      label: str("x"),
-      account: addr("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"),
-      parent: key(ENTITY_KEY),
-    })
-    const byName = Object.fromEntries(attrs.map((a) => [a.name, a.valueType]))
-    expect(byName[toHex("flag", { size: 32 })]).toBe(1)
-    expect(byName[toHex("count", { size: 32 })]).toBe(2)
-    expect(byName[toHex("balance", { size: 32 })]).toBe(3)
-    expect(byName[toHex("score", { size: 32 })]).toBe(4)
-    expect(byName[toHex("digest", { size: 32 })]).toBe(5)
-    expect(byName[toHex("label", { size: 32 })]).toBe(7)
-    expect(byName[toHex("account", { size: 32 })]).toBe(8)
-    expect(byName[toHex("parent", { size: 32 })]).toBe(9)
-  })
-
-  it("gives a bare number i32 rather than the old unsigned type", async () => {
-    const [attr] = await captureAttributes({ count: 42 })
-    expect(attr.valueType).toBe(2)
-    expect(attr.value).toEqual([toHex(42n, { size: 32 }), ZERO_32, ZERO_32, ZERO_32])
-  })
-
-  it("keeps a hex-looking string a string, instead of guessing at an entity key", async () => {
-    for (const value of ["0x", "0xab", ENTITY_KEY]) {
-      const [attr] = await captureAttributes({ x: value })
-      expect(attr.valueType).toBe(7)
-      expect(attr.value).toEqual(encodeStringTo128(value))
-    }
-    // The bytes are the UTF-8 text, not a hex decode: "0xab" is the four characters 0, x, a, b.
-    const [attr] = await captureAttributes({ x: "0xab" })
-    expect(attr.value[0].startsWith("0x30786162")).toBe(true)
-  })
-
-  it("packs a string longer than one word across the following words", async () => {
-    const [attr] = await captureAttributes({ body: "a".repeat(40) })
-    const [chunk0, chunk1] = attr.value
-    expect(chunk0).toBe(toHex(new Uint8Array(32).fill(0x61)))
-    expect(chunk1.startsWith("0x6161616161616161")).toBe(true)
-  })
-})
-
-describe("attribute sorting", () => {
-  it("sorts attributes ascending by their bytes32 name before encoding", async () => {
-    const attrs = await captureAttributes({ tag: "zz", status: "active", score: 30 })
-
-    expect(attrs.map((a) => a.name)).toEqual([
-      toHex("score", { size: 32 }),
-      toHex("status", { size: 32 }),
-      toHex("tag", { size: 32 }),
-    ])
-  })
-
-  it("sorts a shorter name before a longer one sharing its prefix", async () => {
-    const attrs = await captureAttributes({ abc: 1, ab: 2 })
-
-    expect(attrs.map((a) => a.name)).toEqual([
-      toHex("ab", { size: 32 }),
-      toHex("abc", { size: 32 }),
-    ])
+    expect(sentOperations(writeContract)[0].operation).toBe(OperationType.Patch)
   })
 })

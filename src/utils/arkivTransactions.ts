@@ -2,14 +2,10 @@ import {
   type Address,
   ContractFunctionExecutionError,
   ContractFunctionRevertedError,
-  encodePacked,
   type Hex,
-  keccak256,
   parseAbi,
-  stringToBytes,
   TransactionExecutionError,
   type TransactionReceipt,
-  toHex,
 } from "viem"
 import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnership"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
@@ -20,13 +16,24 @@ import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import { encodeAttributes } from "../attr/attributes"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
-import { ARKIV_ADDRESS, BLOCK_TIME } from "../consts"
+import { ARKIV_ADDRESS } from "../consts"
+import { resolveExpiry } from "../entity/expiry"
+import { encodeCreationFlags } from "../entity/flags"
+import { predictEntityKey, randomSalt, validateSalt } from "../entity/key"
+import {
+  createOperation,
+  deleteOperation,
+  EXECUTE_ABI as EXECUTE_FUNCTION_ABI,
+  extendExpiryOperation,
+  type Operation,
+  patchOperation,
+  transferOwnershipOperation,
+} from "../entity/operations"
+import { DEFAULT_PROTOCOL_PARAMS, type ProtocolParams } from "../entity/params"
 import { EntityMutationError, InvalidContentTypeError } from "../errors"
 import type { TxParams } from "../types"
-import { EntityOperationType } from "../types/entity"
 
 import { getLogger } from "./logger"
-import { validateExpiresIn } from "./validation"
 
 const logger = getLogger("utils:arkiv-transactions")
 
@@ -39,83 +46,64 @@ function validateContentType(contentType: string): void {
   }
 }
 
-// Mime128 = struct { bytes32[4] data }  (128-byte fixed MIME type container)
-// Attribute = struct { bytes32 name, uint8 valueType, bytes32[4] value }
-// BlockNumber = type BlockNumber is uint32
-export const ENTITY_EXECUTE_ABI = parseAbi([
-  "function execute((uint8 operationType, bytes32 entityKey, bytes payload, (bytes32[4] data) contentType, (bytes32 name, uint8 valueType, bytes32[4] value)[] attributes, uint32 expiresIn, address newOwner)[] ops) external",
+/**
+ * The events the spec defines: one per applied operation, in application order, so an off-chain
+ * replica can replay a transaction operation by operation. Purge emits nothing — apps watch the
+ * indexed `$expiresAt` instead.
+ */
+export const ENTITY_EVENTS_ABI = parseAbi([
+  "event EntityCreated(bytes32 indexed entityKey, address indexed owner, uint256 expiresAt)",
+  "event EntityPatched(bytes32 indexed entityKey, address indexed owner)",
+  "event ExpiryExtended(bytes32 indexed entityKey, uint256 expiresAt)",
+  "event OwnershipTransferred(bytes32 indexed entityKey, address indexed from, address indexed to)",
+  "event EntityDeleted(bytes32 indexed entityKey, address indexed owner)",
 ])
 
+/**
+ * The single pre-spec event, still used by `subscribeEntityEvents`.
+ *
+ * @deprecated The spec replaces this with the five events in {@link ENTITY_EVENTS_ABI}. The
+ * subscription surface has not been migrated yet, so this stays until it is — it will not decode
+ * logs from an engine that emits the spec's events.
+ */
 export const ENTITY_OPERATION_EVENT_ABI = parseAbi([
   "event EntityOperation(bytes32 indexed entityKey, uint8 indexed operationType, address indexed owner, uint32 expiresAt, bytes32 entityHash)",
 ])
 
 export const ENTITY_ERRORS_ABI = parseAbi([
   "error EmptyBatch()",
+  "error UnknownOperation(uint8 operation)",
+  "error NonCanonicalOperationData()",
   "error AttributesNotSorted()",
-  "error InvalidValueType(bytes32 name, uint8 valueType)",
-  "error InvalidOpType(uint8 operationType)",
-  "error ExpiryInPast(uint32 expiresAt, uint32 currentBlock)",
+  "error TombstoneInCreate(bytes32 name)",
+  "error SystemCellNotWritable(bytes32 name)",
+  "error InvalidTypeId(bytes32 name, uint8 typeId)",
+  "error InvalidName(bytes32 name)",
   "error TooManyAttributes(uint256 count, uint256 maxCount)",
   "error EntityNotFound(bytes32 entityKey)",
   "error NotOwner(bytes32 entityKey, address caller, address owner)",
-  "error EntityExpired(bytes32 entityKey, uint32 expiresAt)",
-  "error ExpiryNotExtended(bytes32 entityKey, uint32 newExpiresAt, uint32 currentExpiresAt)",
+  "error EntityReadonly(bytes32 entityKey)",
+  "error ExpiresAtTooLarge(uint256 expiresAt, uint256 maxExpiresAt)",
+  "error MinLifetimeTooLarge(uint256 minLifetime, uint256 maxLifetime)",
+  "error LifetimeTooLong(uint256 target, uint256 maxTarget)",
+  "error ExpiryDeadOnArrival(uint256 target, uint256 currentBlock)",
+  "error ExpiryNotExtended(bytes32 entityKey, uint256 target, uint256 currentExpiresAt)",
   "error TransferToZeroAddress(bytes32 entityKey)",
   "error TransferToSelf(bytes32 entityKey)",
-  "error EntityNotExpired(bytes32 entityKey, uint32 expiresAt)",
-  "error Ident32Empty()",
-  "error Ident32TooLong(uint256 length)",
-  "error Ident32InvalidByte(uint256 position, bytes1 value)",
-  "error MimeEmpty()",
-  "error MimeTooLong(uint256 length, uint256 maxLength)",
-  "error MimeInvalidByte(uint256 position, bytes1 value)",
-  "error MimeIncomplete()",
 ])
 
-const EXECUTE_ABI = [...ENTITY_EXECUTE_ABI, ...ENTITY_ERRORS_ABI]
+const EXECUTE_ABI = [...EXECUTE_FUNCTION_ABI, ...ENTITY_ERRORS_ABI]
 
-const ENTITY_NONCE_ABI = parseAbi(["function nonces(address owner) view returns (uint32)"])
-
-const ZERO_ADDRESS: Address = "0x0000000000000000000000000000000000000000"
-const ZERO_32 = `0x${"00".repeat(32)}` as Hex
-const EMPTY_BYTES128 = [ZERO_32, ZERO_32, ZERO_32, ZERO_32] as const
-
-// Encode a string or bytes into a bytes32[4] (128-byte) container, left-aligned.
-function encodeBytes128(data: Uint8Array): readonly [Hex, Hex, Hex, Hex] {
-  const padded = new Uint8Array(128)
-  padded.set(data.slice(0, 128))
-  return [
-    toHex(padded.slice(0, 32)),
-    toHex(padded.slice(32, 64)),
-    toHex(padded.slice(64, 96)),
-    toHex(padded.slice(96, 128)),
-  ]
-}
-
-// Mime128 struct: bytes32[4] data, string packed left-aligned into 128 bytes.
-function encodeMime128(contentType: string): { data: readonly [Hex, Hex, Hex, Hex] } {
-  return { data: contentType ? encodeBytes128(stringToBytes(contentType)) : EMPTY_BYTES128 }
-}
-
-function toBTL(expiresIn: number): number {
-  validateExpiresIn(expiresIn)
-  return Math.ceil(expiresIn / BLOCK_TIME)
-}
-
-// entityKey = keccak256(chainId || registryAddress || ownerAddress || nonce)
-function deriveEntityKey(chainId: number, owner: Address, nonce: bigint): Hex {
-  return keccak256(
-    encodePacked(
-      ["uint256", "address", "address", "uint32"],
-      [BigInt(chainId), ARKIV_ADDRESS, owner, Number(nonce)],
-    ),
-  )
-}
+const ENTITY_NONCE_ABI = parseAbi(["function entityNonce(address owner) view returns (uint256)"])
 
 export type SendArkivTransactionResult = {
   receipt: TransactionReceipt
+  /** The keys of the entities created by this transaction, in batch order. */
   createdEntityKeys: Hex[]
+  /** The block each created entity is expected to expire at, in the same order. */
+  createdExpiries: bigint[]
+  /** The block each extended entity is expected to expire at, in batch order. */
+  extendedExpiries: bigint[]
 }
 
 export async function sendArkivTransaction(
@@ -128,6 +116,7 @@ export async function sendArkivTransaction(
     ownershipChanges?: ChangeOwnershipParameters[]
   },
   txParams?: TxParams,
+  params: ProtocolParams = DEFAULT_PROTOCOL_PARAMS,
 ): Promise<SendArkivTransactionResult> {
   if (!client.account) throw new Error("Account required")
   if (!client.chain) throw new Error("Chain required")
@@ -136,75 +125,85 @@ export async function sendArkivTransaction(
   const { creates, updates, deletes, extensions, ownershipChanges } = ops
   const owner = client.account.address as Address
 
-  const ownerNonce: bigint = creates?.length
-    ? BigInt(
-        await walletClient.readContract({
-          address: ARKIV_ADDRESS,
-          abi: ENTITY_NONCE_ABI,
-          functionName: "nonces",
-          args: [owner],
-        }),
-      )
-    : 0n
+  // The nonce is needed only to derive the keys of new entities; the block height to resolve any
+  // relative expiry, which both creates and extensions carry. Fetched together so the second round
+  // trip costs no wall-clock time, and skipped entirely for a batch that needs neither.
+  const [ownerNonce, currentBlock] = await Promise.all([
+    creates?.length
+      ? walletClient
+          .readContract({
+            address: ARKIV_ADDRESS,
+            abi: ENTITY_NONCE_ABI,
+            functionName: "entityNonce",
+            args: [owner],
+          })
+          .then(BigInt)
+      : 0n,
+    creates?.length || extensions?.length ? walletClient.getBlockNumber() : 0n,
+  ])
 
-  const createdEntityKeys: Hex[] = (creates ?? []).map((_, i) =>
-    deriveEntityKey(client.chain!.id, owner, ownerNonce + BigInt(i)),
-  )
+  const expiryContext = { currentBlock, params }
 
-  for (const item of creates ?? []) validateContentType(item.contentType)
-  for (const item of updates ?? []) validateContentType(item.contentType)
+  const createdEntityKeys: Hex[] = []
+  const createdExpiries: bigint[] = []
+  const extendedExpiries: bigint[] = []
 
-  const operations = [
-    ...(creates ?? []).map((item, i) => ({
-      operationType: EntityOperationType.Create,
-      entityKey: createdEntityKeys[i],
-      payload: toHex(item.payload),
-      contentType: encodeMime128(item.contentType),
-      attributes: encodeAttributes(item.attributes ?? {}),
-      expiresIn: toBTL(item.expiresIn),
-      newOwner: ZERO_ADDRESS,
-    })),
-    ...(updates ?? []).map((item) => ({
-      operationType: EntityOperationType.Update,
+  const createOps = (creates ?? []).map((item, index) => {
+    validateContentType(item.contentType)
+
+    const salt = item.salt === undefined ? randomSalt() : validateSalt(item.salt)
+    const expiry = resolveExpiry(item.expires, expiryContext)
+
+    // A create consumes one nonce, so the nth create in the batch derives from nonce + n.
+    const nonce = ownerNonce + BigInt(index)
+    createdEntityKeys.push(predictEntityKey({ owner, nonce, salt, params }))
+    createdExpiries.push(expiry.target)
+
+    return createOperation({
+      salt,
+      expiry,
+      creationFlags: encodeCreationFlags(item.flags),
+      attributes: encodeAttributes(item.attributes, {
+        payload: item.payload,
+        contentType: item.contentType,
+      }),
+    })
+  })
+
+  const patchOps = (updates ?? []).map((item) => {
+    validateContentType(item.contentType)
+    return patchOperation({
       entityKey: item.entityKey,
-      payload: toHex(item.payload),
-      contentType: encodeMime128(item.contentType),
-      // Required on UpdateEntityParameters — an update replaces the attribute set, so there is no
-      // "leave them alone" default to fall back to.
-      attributes: encodeAttributes(item.attributes),
-      expiresIn: 0, // contract ignores expiresAt on UPDATE
-      newOwner: ZERO_ADDRESS,
-    })),
-    ...(deletes ?? []).map((item) => ({
-      operationType: EntityOperationType.Delete,
-      entityKey: item.entityKey,
-      payload: "0x" as Hex,
-      contentType: encodeMime128(""),
-      attributes: [] as never[],
-      expiresIn: 0,
-      newOwner: ZERO_ADDRESS,
-    })),
-    ...(extensions ?? []).map((item) => ({
-      operationType: EntityOperationType.Extend,
-      entityKey: item.entityKey,
-      payload: "0x" as Hex,
-      contentType: encodeMime128(""),
-      attributes: [] as never[],
-      expiresIn: toBTL(item.expiresIn),
-      newOwner: ZERO_ADDRESS,
-    })),
-    ...(ownershipChanges ?? []).map((item) => ({
-      operationType: EntityOperationType.Transfer,
-      entityKey: item.entityKey,
-      payload: "0x" as Hex,
-      contentType: encodeMime128(""),
-      attributes: [] as never[],
-      expiresIn: 0,
-      newOwner: item.newOwner as Address,
-    })),
+      mutations: encodeAttributes(item.attributes, {
+        payload: item.payload,
+        contentType: item.contentType,
+      }),
+    })
+  })
+
+  // An extension resolves its expiry exactly as a create does — the engine applies the same
+  // `max(expiresAt, currentBlock + minLifetime)` to both — so the same bounds are checked here
+  // rather than left to a revert.
+  const extendOps = (extensions ?? []).map((item) => {
+    const expiry = resolveExpiry(item.expires, expiryContext)
+    extendedExpiries.push(expiry.target)
+    return extendExpiryOperation({ entityKey: item.entityKey, expiry })
+  })
+
+  const operations: Operation[] = [
+    ...createOps,
+    ...patchOps,
+    ...(deletes ?? []).map((item) => deleteOperation({ entityKey: item.entityKey })),
+    ...extendOps,
+    ...(ownershipChanges ?? []).map((item) =>
+      transferOwnershipOperation({
+        entityKey: item.entityKey,
+        newOwner: item.newOwner as Address,
+      }),
+    ),
   ]
 
-  logger("Sending execute with %d operations %s", operations.length, JSON.stringify(operations))
+  logger("Sending execute with %d operations %o", operations.length, operations)
 
   try {
     const txHash = await walletClient.writeContract({
@@ -243,7 +242,7 @@ export async function sendArkivTransaction(
       )
     }
 
-    return { receipt, createdEntityKeys }
+    return { receipt, createdEntityKeys, createdExpiries, extendedExpiries }
   } catch (error) {
     let message = "Transaction failed"
     if (error instanceof TransactionExecutionError) {

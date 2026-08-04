@@ -333,8 +333,8 @@ export abstract class BaseQueryBuilder<TEntity> {
 }
 
 /**
- * QueryBuilder is a helper class to build queries to the Arkiv DBChains.
- * It can be used to fetch entities from the Arkiv DBChains. It follows the Builder pattern allowing chaining of methods.
+ * QueryBuilder is a helper class to build queries against Arkiv.
+ * It fetches entities from the chain, following the Builder pattern allowing chaining of methods.
  *
  * By default the result includes only the entity `key`. Additional data is opt-in through
  * `withAttributes()`, `withMetadata()` and `withPayload()`.
