@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "bun:test"
 import { decodeAbiParameters, parseAbiParameters, toHex } from "viem"
-import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
 import {
   type AttributeInputs,
+  ConflictingMutationError,
   dec,
   InvalidAttributeNameError,
   InvalidValueError,
@@ -13,6 +13,7 @@ import {
 import type { ArkivClient } from "../clients/baseClient"
 import { InvalidExpiryError } from "../entity"
 import { OperationType, DEFAULT_PROTOCOL_PARAMS as PARAMS } from "../entity/params"
+import { EmptyPatchError, EntityMutationError } from "../errors"
 import { sendArkivTransaction } from "./arkivTransactions"
 import { ExpirationTime } from "./expirationTime"
 
@@ -26,6 +27,10 @@ const CREATE_PARAMS = parseAbiParameters(
 
 const EXTEND_PARAMS = parseAbiParameters(
   "(bytes32 entityKey, uint256 expiresAt, uint256 minLifetime)",
+)
+
+const PATCH_PARAMS = parseAbiParameters(
+  "(bytes32 entityKey, (bytes32 name, uint8 typeId, bytes value)[] mutations)",
 )
 
 function makeClient() {
@@ -363,20 +368,152 @@ describe("attribute typing through the write path", () => {
   })
 })
 
-describe("update", () => {
-  it("requires attributes, because a mutation set replaces what it names", async () => {
-    const { client, writeContract } = makeClient()
-    const update = {
-      entityKey: ENTITY_KEY,
-      payload: new Uint8Array([1]),
-      contentType: "text/plain",
-      expiresIn: 1000,
-    }
-    // @ts-expect-error — omitting `attributes` would erase every attribute on the entity, so the
-    // type system makes you say so explicitly rather than letting it happen by default.
-    const omitted: UpdateEntityParameters = update
+describe("patch", () => {
+  /** The decoded Patch struct of the batch's only patch. */
+  function sentPatch(writeContract: ReturnType<typeof vi.fn>) {
+    const op = sentOperations(writeContract).find((o) => o.operation === OperationType.Patch)
+    if (!op) throw new Error("no Patch operation was sent")
+    return decodeAbiParameters(PATCH_PARAMS, op.operationData)[0]
+  }
 
-    await sendArkivTransaction(client, { updates: [{ ...omitted, attributes: {} }] })
-    expect(sentOperations(writeContract)[0].operation).toBe(OperationType.Patch)
+  it("carries only what the patch named", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(11) } }],
+    })
+    const patch = sentPatch(writeContract)
+    expect(patch.entityKey).toBe(ENTITY_KEY)
+    // No $payload, no $contentType, no tombstones: everything unnamed is left alone.
+    expect(patch.mutations).toEqual([
+      { name: toHex("level", { size: 32 }), typeId: 2, value: expect.any(String) },
+    ])
+  })
+
+  it("writes the system cells only when the patch gives them", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, payload: new Uint8Array([9]) }],
+    })
+    const names = sentPatch(writeContract).mutations.map((m) => m.name)
+    expect(names).toEqual([toHex("$payload", { size: 32 })])
+  })
+
+  it("tombstones an unset attribute with typeId 0 and an empty value", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, unset: ["draft"] }],
+    })
+    expect(sentPatch(writeContract).mutations).toEqual([
+      { name: toHex("draft", { size: 32 }), typeId: 0, value: "0x" },
+    ])
+  })
+
+  it("sorts writes and tombstones together, not each half on its own", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [
+        {
+          entityKey: ENTITY_KEY,
+          set: { zeta: "z", beta: "b" },
+          unset: ["alpha", "gamma"],
+          payload: new Uint8Array([1]),
+        },
+      ],
+    })
+    const names = sentPatch(writeContract).mutations.map((m) => m.name)
+    expect(names).toEqual([
+      toHex("$payload", { size: 32 }),
+      toHex("alpha", { size: 32 }),
+      toHex("beta", { size: 32 }),
+      toHex("gamma", { size: 32 }),
+      toHex("zeta", { size: 32 }),
+    ])
+  })
+
+  it("collapses a name repeated in unset, since it is the same intent twice", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, unset: ["draft", "draft"] }],
+    })
+    // Two identical tombstones would break the engine's strict-ascending uniqueness rule.
+    expect(sentPatch(writeContract).mutations).toHaveLength(1)
+  })
+
+  it("rejects a name that is both set and unset", async () => {
+    const { client, writeContract } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) }, unset: ["level"] }],
+      }),
+    ).rejects.toThrow(ConflictingMutationError)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("rejects a patch with nothing to apply", async () => {
+    const { client, writeContract } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { patches: [{ entityKey: ENTITY_KEY }] }),
+    ).rejects.toThrow(EmptyPatchError)
+    // Present but empty is just as empty.
+    await expect(
+      sendArkivTransaction(client, { patches: [{ entityKey: ENTITY_KEY, set: {}, unset: [] }] }),
+    ).rejects.toThrow(EmptyPatchError)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("still validates a content type when one is given", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ entityKey: ENTITY_KEY, payload: new Uint8Array(), contentType: "Not A Mime" }],
+      }),
+    ).rejects.toThrow(/Invalid content type/)
+  })
+
+  it("rejects a bare string as unset, rather than tombstoning its letters", async () => {
+    const { client, writeContract } = makeClient()
+    // A Set is built from any iterable, so "draft" would become tombstones for d, r, a, f and t —
+    // five valid attribute names, none of them the one meant, and the real "draft" left untouched.
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ entityKey: ENTITY_KEY, unset: "draft" as unknown as string[] }],
+      }),
+    ).rejects.toThrow(/must be an array of attribute names/)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("rejects unsetting a system cell, which belongs to the engine", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { patches: [{ entityKey: ENTITY_KEY, unset: ["$payload"] }] }),
+    ).rejects.toThrow(InvalidAttributeNameError)
+  })
+
+  it("does not fetch a block height for a patch-only batch", async () => {
+    const { client } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+    })
+    // A patch carries no expiry, so there is nothing to resolve against the chain.
+    expect(client.getBlockNumber).not.toHaveBeenCalled()
+  })
+})
+
+describe("failures that are not reverts", () => {
+  it("keeps an unrecognised error's message and the error itself as the cause", async () => {
+    const { client } = makeClient()
+    // The transaction was broadcast; it is waiting for the receipt that times out. What that error
+    // knows — not least the hash it was watching — is the only way to find out whether the patch
+    // landed, so summarising it away as "Transaction failed" would strand the caller.
+    const timeout = new Error("Timed out while waiting for transaction 0xabc to be confirmed.")
+    ;(client.waitForTransactionReceipt as ReturnType<typeof vi.fn>).mockRejectedValue(timeout)
+
+    const failure = await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+    }).catch((error: Error) => error)
+
+    expect(failure).toBeInstanceOf(EntityMutationError)
+    expect(failure.message).toContain("0xabc")
+    expect(failure.cause).toBe(timeout)
   })
 })

@@ -431,17 +431,14 @@ describe("Arkiv Integration Tests for public client", () => {
       )
       expect(entity.attributes.length).toEqual(1)
 
-      // update entity
-      const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await writeClient.updateEntity(
-        {
-          entityKey,
-          payload: jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } }),
-          contentType: "application/json",
-          attributes: [],
-          expiresIn: 1000,
-        },
-      )
-      console.log("result from updateEntity", { updatedEntityKey, updatedTxHash })
+      // patch entity
+      const { entityKey: updatedEntityKey, txHash: updatedTxHash } = await writeClient.patchEntity({
+        entityKey,
+        payload: jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } }),
+        contentType: "application/json",
+        unset: ["testkey"],
+      })
+      console.log("result from patchEntity", { updatedEntityKey, updatedTxHash })
 
       // get entity
       const updatedEntity = await readClient.getEntity(updatedEntityKey)
@@ -545,13 +542,12 @@ describe("Arkiv Integration Tests for public client", () => {
             expiresIn: 1000,
           },
         ],
-        updates: [
+        patches: [
           {
             entityKey: entityKey1,
             payload: toBytes(JSON.stringify({ entity: { entityType: "test", entityId: "test" } })),
             contentType: "application/json",
-            attributes: [{ key: "testkey", value: "testValue" }],
-            expiresIn: 1000,
+            set: { testkey: "testValue" },
           },
         ],
         deletes: [
@@ -580,8 +576,8 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(result.txHash).toBeDefined()
       expect(result.createdEntities).toBeDefined()
       expect(result.createdEntities.length).toEqual(1)
-      expect(result.updatedEntities).toBeDefined()
-      expect(result.updatedEntities.length).toEqual(1)
+      expect(result.patchedEntities).toBeDefined()
+      expect(result.patchedEntities.length).toEqual(1)
       expect(result.deletedEntities).toBeDefined()
       expect(result.deletedEntities.length).toEqual(2)
       expect(result.extendedEntities).toBeDefined()

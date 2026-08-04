@@ -24,11 +24,8 @@ import type {
   MutateEntitiesReturnType,
 } from "../../actions/wallet/mutateEntities"
 import { mutateEntities } from "../../actions/wallet/mutateEntities"
-import type {
-  UpdateEntityParameters,
-  UpdateEntityReturnType,
-} from "../../actions/wallet/updateEntity"
-import { updateEntity } from "../../actions/wallet/updateEntity"
+import type { PatchEntityParameters, PatchEntityReturnType } from "../../actions/wallet/patchEntity"
+import { patchEntity } from "../../actions/wallet/patchEntity"
 import type { TxParams } from "../../types"
 
 export type WalletArkivActions<
@@ -88,22 +85,24 @@ export type WalletArkivActions<
     ) => Promise<CreateEntityReturnType>
 
     /**
-     * Updates the entity with the given key.
+     * Applies a patch to the entity with the given key: sets some fields, unsets others, and leaves
+     * everything it does not name alone.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/updateEntity
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/patchEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param data - The entity update parameters
+     * @param data - The entity key and the mutations to apply
      * @param txParams - Optional transaction parameters
-     * @returns The updated entity with transaction hash
+     * @returns The entity key and the transaction hash
      *
-     * @throws {InvalidExpiryError} If `expiresIn` is not a positive integer
-     * of seconds.
-     * @throws {InvalidAttributeError} If a numeric attribute value is not an
-     * integer.
+     * @throws {EmptyPatchError} If the patch has nothing to apply.
+     * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
+     * @throws {InvalidValueError} If an attribute value does not fit the type it names.
+     * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
      *
      * @example
-     * import { createWalletClient } from "@arkiv-network/sdk"
+     * import { createWalletClient, jsonToPayload } from "@arkiv-network/sdk"
+     * import { i32 } from "@arkiv-network/sdk/attr"
      * import { braga } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      *
@@ -111,11 +110,18 @@ export type WalletArkivActions<
      *   chain: braga,
      *   transport: http(),
      * })
+     * // Publish the entity: one attribute changes, one goes away, the payload is replaced.
+     * const { txHash } = await client.patchEntity({
+     *   entityKey,
+     *   set: { status: "published", revision: i32(2) },
+     *   unset: ["draft"],
+     *   payload: jsonToPayload({ title: "Hello" }),
+     * })
      */
-    updateEntity: (
-      data: UpdateEntityParameters,
+    patchEntity: (
+      data: PatchEntityParameters,
       txParams?: TxParams,
-    ) => Promise<UpdateEntityReturnType>
+    ) => Promise<PatchEntityReturnType>
 
     /**
      * Deletes the entity with the given key.
@@ -204,7 +210,7 @@ export type WalletArkivActions<
      * Every operation lands in one transaction, so the whole batch applies or none of it does.
      * At least one operation is required.
      *
-     * @param data - The mutation parameters (creates, updates, deletes, extensions, ownershipChanges)
+     * @param data - The mutation parameters (creates, patches, deletes, extensions, ownershipChanges)
      * @param txParams - Optional transaction parameters
      * @returns The mutation result with transaction hash
      *
@@ -228,6 +234,7 @@ export type WalletArkivActions<
      *     attributes: { testKey: "testValue" },
      *     expires: ExpirationTime.fromDays(30),
      *   }],
+     *   patches: [{ entityKey: keyToRevise, set: { status: "archived" }, unset: ["draft"] }],
      *   deletes: [{ entityKey: staleKey }],
      *   extensions: [{
      *     entityKey: keyToKeepAlive,
@@ -250,8 +257,8 @@ export function walletArkivActions<
   return {
     createEntity: (data: CreateEntityParameters, txParams?: TxParams) =>
       createEntity(client, data, txParams),
-    updateEntity: (data: UpdateEntityParameters, txParams?: TxParams) =>
-      updateEntity(client, data, txParams),
+    patchEntity: (data: PatchEntityParameters, txParams?: TxParams) =>
+      patchEntity(client, data, txParams),
     deleteEntity: (data: DeleteEntityParameters, txParams?: TxParams) =>
       deleteEntity(client, data, txParams),
     extendEntity: (data: ExtendEntityParameters, txParams?: TxParams) =>

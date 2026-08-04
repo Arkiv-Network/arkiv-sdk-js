@@ -113,7 +113,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(queryResult.entities[0].key).toBe(entityKey);
       console.log(`  QUERY   found 1 entity matching tag=${tag}`);
 
-      // UPDATE
+      // PATCH
       const updatedPayload = jsonToPayload({
         healthCheck: true,
         timestamp: new Date().toISOString(),
@@ -122,21 +122,16 @@ describe(`Network health check (${chain.name})`, () => {
       });
 
       const { entityKey: updatedKey, txHash: updateTx } =
-        await walletClient.updateEntity({
+        await walletClient.patchEntity({
           entityKey,
           payload: updatedPayload,
           contentType: "application/json",
-          attributes: [
-            { key: "healthcheck", value: "true" },
-            { key: "tag", value: tag },
-            { key: "updated", value: "true" },
-          ],
-          expiresIn: ExpirationTime.fromHours(1),
+          set: { updated: "true" },
         });
 
       expect(updatedKey).toBe(entityKey);
       expect(updateTx).toBeDefined();
-      console.log(`  UPDATE  tx=${updateTx}`);
+      console.log(`  PATCH   tx=${updateTx}`);
 
       // READ (after update)
       const updated = await publicClient.getEntity(entityKey);
@@ -383,13 +378,12 @@ describe(`Network health check (${chain.name})`, () => {
             expiresIn: ExpirationTime.fromHours(1),
           },
         ],
-        updates: [
+        patches: [
           {
             entityKey: toUpdateKey,
             payload: jsonToPayload({ batch: "updated", updated: true }),
             contentType: "application/json",
-            attributes: [{ key: "purpose", value: "batch_updated" }],
-            expiresIn: ExpirationTime.fromHours(1),
+            set: { purpose: "batch_updated" },
           },
         ],
         deletes: [{ entityKey: toDeleteKey }],
@@ -409,7 +403,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       expect(result.txHash).toBeDefined();
       expect(result.createdEntities).toHaveLength(1);
-      expect(result.updatedEntities).toHaveLength(1);
+      expect(result.patchedEntities).toHaveLength(1);
       expect(result.deletedEntities).toHaveLength(1);
       expect(result.extendedEntities).toHaveLength(1);
       expect(result.ownershipChanges).toHaveLength(1);

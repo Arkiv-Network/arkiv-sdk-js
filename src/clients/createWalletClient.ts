@@ -29,7 +29,7 @@ export type WalletArkivClient<
  * - Docs: https://docs.arkiv.network/ts-sdk/clients/wallet
  *
  * A Wallet Client signs and sends transactions, so it carries an `account` and exposes everything
- * that mutates state — `createEntity`, `updateEntity`, `deleteEntity`, `extendEntity`,
+ * that mutates state — `createEntity`, `patchEntity`, `deleteEntity`, `extendEntity`,
  * `changeOwnership` and `mutateEntities` — on top of the read actions a Public Client has.
  *
  * @param parameters - Configuration object for the wallet client (chain, transport, account, etc.)

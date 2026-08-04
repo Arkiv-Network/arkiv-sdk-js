@@ -2,6 +2,7 @@ export type { AttributeInputs, Attributes } from "./attributes"
 export { MAX_ATTRIBUTES } from "./attributes"
 export { DECIMAL_SCALE, DECIMAL_UNIT } from "./decimal"
 export {
+  ConflictingMutationError,
   InvalidAttributeNameError,
   InvalidValueError,
   MissingValueError,

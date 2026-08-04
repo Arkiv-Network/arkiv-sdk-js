@@ -44,4 +44,32 @@ describe("the empty-batch guard", () => {
     )
     expect(writeContract).not.toHaveBeenCalled()
   })
+
+  it("counts only real operation kinds, not whatever keys the caller passed", async () => {
+    const { client, writeContract } = makeClient()
+    // `updates` was this API's name for patches until they were renamed. Counting the caller's own
+    // keys would score this batch as non-empty and then drop it on the way to the wire, sending
+    // execute([]) — so the guard counts the five kinds that actually reach the transaction.
+    const stale = { updates: [{ entityKey: ENTITY_KEY, set: { level: 1 } }] } as never
+    await expect(mutateEntities(client, stale)).rejects.toThrow(/No operations/)
+    // A typo is the same mistake with a different name.
+    await expect(
+      mutateEntities(client, { delete: [{ entityKey: ENTITY_KEY }] } as never),
+    ).rejects.toThrow(/No operations/)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("does not let a stale key smuggle itself into a batch that is otherwise valid", async () => {
+    const { client, writeContract } = makeClient()
+    // The dangerous shape: the creates apply and the transaction succeeds, so nothing surfaces the
+    // fact that the `updates` never happened. The guard cannot catch this one — only the caller's
+    // types can — but the result must at least not claim they did.
+    const result = await mutateEntities(client, {
+      deletes: [{ entityKey: ENTITY_KEY }],
+      updates: [{ entityKey: ENTITY_KEY, set: { level: 1 } }],
+    } as never)
+    expect(result.patchedEntities).toEqual([])
+    // Only the delete reached the wire, and the report says so.
+    expect(writeContract.mock.calls[0][0].args[0]).toHaveLength(1)
+  })
 })

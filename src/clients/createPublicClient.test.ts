@@ -33,7 +33,7 @@ test("creates", () => {
   expect(client.watchEvent).toBeDefined()
   expect(typeof client.watchEvent).toBe("function")
   expect(client.createEntity).not.toBeDefined()
-  expect(client.updateEntity).not.toBeDefined()
+  expect(client.patchEntity).not.toBeDefined()
   expect(client.deleteEntity).not.toBeDefined()
   expect(client.extendEntity).not.toBeDefined()
   expect(client.changeOwnership).not.toBeDefined()

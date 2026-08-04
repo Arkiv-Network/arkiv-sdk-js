@@ -80,6 +80,23 @@ export class InvalidAttributeNameError extends Error {
   }
 }
 
+/**
+ * One patch tried to both write and remove the same attribute.
+ */
+export class ConflictingMutationError extends Error {
+  readonly attributeName: string
+
+  constructor(attributeName: string) {
+    super(
+      `The patch both sets and unsets "${attributeName}". A patch applies one mutation per ` +
+        'attribute, so say which you mean: drop it from "unset" to write the value, or from ' +
+        '"set" to remove the attribute.',
+    )
+    this.name = "ConflictingMutationError"
+    this.attributeName = attributeName
+  }
+}
+
 /** More attributes were supplied than an entity operation can carry. */
 export class TooManyAttributesError extends Error {
   constructor(count: number, max: number) {

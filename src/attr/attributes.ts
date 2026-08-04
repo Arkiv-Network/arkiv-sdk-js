@@ -1,5 +1,5 @@
-import { type AbiAttribute, encodeAbiAttribute } from "./codec"
-import { TooManyAttributesError } from "./errors"
+import { type AbiAttribute, encodeAbiAttribute, encodeTombstone } from "./codec"
+import { ConflictingMutationError, TooManyAttributesError } from "./errors"
 import { validateAttributeName } from "./names"
 import type { AnyArkivValue, ArkivValue } from "./types"
 import { makeValue } from "./types"
@@ -80,12 +80,6 @@ export type SystemCells = {
  * Encodes an attribute map, plus the payload and content-type system cells, into the ABI attribute
  * array an operation carries.
  *
- * The engine requires attributes **strictly ascending by their `bytes32` name**: that ordering is
- * what the canonical serialization hashes into the state root, and it doubles as the uniqueness
- * check. Sorting here means callers never have to think about it — and because the map is keyed by
- * name, duplicates cannot arise in the first place. The `$` cells sort ahead of every user
- * attribute, since `$` precedes every letter.
- *
  * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
  * @throws {MissingValueError} If a value is `undefined` or `null`.
  * @throws {InvalidValueError} If a value does not fit its type.
@@ -107,9 +101,58 @@ export function encodeAttributes(
     cells.push([CONTENT_TYPE_CELL, str(system.contentType)])
   }
 
-  return cells
-    .map(([name, value]) => encodeAbiAttribute(name, value))
-    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
+  return cells.map(([name, value]) => encodeAbiAttribute(name, value)).sort(byName)
+}
+
+export type MutationInputs = SystemCells & {
+  /** Attributes to write. Existing ones are overwritten; new ones are added. */
+  set?: AttributeInputs | undefined
+  /** Attribute names to remove. Each becomes a tombstone on the wire. */
+  unset?: readonly string[] | undefined
+}
+
+/**
+ * Encodes a patch's mutations into the ABI attribute array the operation carries.
+ *
+ * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
+ * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
+ * @throws {InvalidValueError} If a value does not fit its type.
+ * @throws {TooManyAttributesError} If `set` names more than {@link MAX_ATTRIBUTES} attributes.
+ */
+export function encodeMutations({
+  set,
+  unset,
+  payload,
+  contentType,
+}: MutationInputs): AbiAttribute[] {
+  const written = encodeAttributes(set, { payload, contentType })
+  const tombstones = resolveUnset(unset, set).map(encodeTombstone)
+  return [...written, ...tombstones].sort(byName)
+}
+
+function resolveUnset(unset: readonly string[] = [], set: AttributeInputs = {}): string[] {
+  if (!Array.isArray(unset)) {
+    throw new TypeError(
+      `"unset" must be an array of attribute names`
+    )
+  }
+  const names = new Set(unset)
+  for (const name of names) {
+    validateAttributeName(name)
+    if (Object.hasOwn(set, name)) {
+      throw new ConflictingMutationError(name)
+    }
+  }
+  return [...names]
+}
+
+/**
+ * The engine requires attributes **strictly ascending by their `bytes32` name**: that ordering is
+ * what the canonical serialization hashes into the state root, and it doubles as the uniqueness
+ * check.
+ */
+function byName(a: AbiAttribute, b: AbiAttribute): number {
+  return a.name < b.name ? -1 : a.name > b.name ? 1 : 0
 }
 
 /** Raw bytes as lowercase `0x` hex, without viem's hex-string ambiguity. */

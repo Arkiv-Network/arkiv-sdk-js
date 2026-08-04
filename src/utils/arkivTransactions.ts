@@ -11,9 +11,9 @@ import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnershi
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
 import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
-import type { UpdateEntityParameters } from "../actions/wallet/updateEntity"
+import type { PatchEntityParameters } from "../actions/wallet/patchEntity"
 // Internal seam: the ABI encoders are not part of the package's public surface.
-import { encodeAttributes } from "../attr/attributes"
+import { encodeAttributes, encodeMutations } from "../attr/attributes"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS } from "../consts"
@@ -30,7 +30,7 @@ import {
   transferOwnershipOperation,
 } from "../entity/operations"
 import { DEFAULT_PROTOCOL_PARAMS, type ProtocolParams } from "../entity/params"
-import { EntityMutationError, InvalidContentTypeError } from "../errors"
+import { EmptyPatchError, EntityMutationError, InvalidContentTypeError } from "../errors"
 import type { TxParams } from "../types"
 
 import { getLogger } from "./logger"
@@ -110,7 +110,7 @@ export async function sendArkivTransaction(
   client: ArkivClient,
   ops: {
     creates?: CreateEntityParameters[]
-    updates?: UpdateEntityParameters[]
+    patches?: PatchEntityParameters[]
     deletes?: DeleteEntityParameters[]
     extensions?: ExtendEntityParameters[]
     ownershipChanges?: ChangeOwnershipParameters[]
@@ -122,7 +122,7 @@ export async function sendArkivTransaction(
   if (!client.chain) throw new Error("Chain required")
   const walletClient = client as WalletArkivClient
 
-  const { creates, updates, deletes, extensions, ownershipChanges } = ops
+  const { creates, patches, deletes, extensions, ownershipChanges } = ops
   const owner = client.account.address as Address
 
   // The nonce is needed only to derive the keys of new entities; the block height to resolve any
@@ -170,15 +170,14 @@ export async function sendArkivTransaction(
     })
   })
 
-  const patchOps = (updates ?? []).map((item) => {
-    validateContentType(item.contentType)
-    return patchOperation({
-      entityKey: item.entityKey,
-      mutations: encodeAttributes(item.attributes, {
-        payload: item.payload,
-        contentType: item.contentType,
-      }),
-    })
+
+  const patchOps = (patches ?? []).map((item) => {
+    if (item.contentType !== undefined) validateContentType(item.contentType)
+    const mutations = encodeMutations(item)
+    if (mutations.length === 0) {
+      throw new EmptyPatchError(item.entityKey)
+    }
+    return patchOperation({ entityKey: item.entityKey, mutations })
   })
 
   // An extension resolves its expiry exactly as a create does — the engine applies the same
@@ -202,6 +201,10 @@ export async function sendArkivTransaction(
       }),
     ),
   ]
+
+  if (operations.length === 0) {
+    throw new Error("No operations to perform")
+  }
 
   logger("Sending execute with %d operations %o", operations.length, operations)
 
@@ -256,8 +259,10 @@ export async function sendArkivTransaction(
       }
     } else if (error instanceof EntityMutationError) {
       throw error
+    } else if (error instanceof Error) {
+      message += `: ${error.message}`
     }
 
-    throw new EntityMutationError(message)
+    throw new EntityMutationError(message, { cause: error })
   }
 }
