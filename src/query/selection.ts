@@ -1,3 +1,4 @@
+import { validateAttributeName } from "../attr"
 import type { Entity } from "../types/entity"
 import type { RpcSelect } from "../types/rpcSchema"
 
@@ -105,6 +106,9 @@ export function toRpcSelect(selection?: SelectArg): RpcSelect {
     if (field === "attributes" && typeof value === "object" && value !== null) {
       // A named subset. An empty map asks for no attributes at all, which is what `false` means.
       const names = Object.entries(value).filter(([, wanted]) => wanted)
+      // Checked rather than forwarded: a name outside the grammar cannot exist on any entity, so
+      // asking for one is a typo that would otherwise come back as a silently absent attribute.
+      for (const [name] of names) validateAttributeName(name)
       select.attributes = names.length > 0 ? Object.fromEntries(names) : false
       any ||= names.length > 0
       continue

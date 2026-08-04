@@ -76,6 +76,15 @@ export function validateAttributeName(name: string): void {
   if (name.length > MAX_NAME_BYTES) {
     throw new InvalidAttributeNameError(name, `the name is ${name.length} bytes long`)
   }
+  // `-` is a legal name character and `--` opens a comment that runs to the end of the line, so a
+  // name containing one renders a query whose whole remainder is discarded
+  if (name.includes("--")) {
+    throw new InvalidAttributeNameError(
+      name,
+      '"--" opens a comment in the query language, so everything after it in a query would be ' +
+        "discarded — an attribute with this name could be written but never safely queried",
+    )
+  }
   if (RESERVED.has(name.toLowerCase())) {
     throw new InvalidAttributeNameError(
       name,

@@ -38,6 +38,17 @@ export const U256_MAX = 2n ** 256n - 1n
 export const MAX_STRING_BYTES = 128
 
 /**
+ * Finds the first C0 control or DEL — the characters a `str` may not contain.
+ */
+function findControlChar(value: string): { index: number; code: number } | undefined {
+  for (let index = 0; index < value.length; index++) {
+    const code = value.charCodeAt(index)
+    if (code <= 0x1f || code === 0x7f) return { index, code }
+  }
+  return undefined
+}
+
+/**
  * A boolean.
  *
  * `bool` is the one type that may also be written bare — `{ flagged: true }` and
@@ -228,6 +239,18 @@ export function decFromUnits(units: bigint): DecValue {
 export function str(value: string): StrValue {
   if (typeof value !== "string") {
     throw new InvalidValueError("str", value, "not a string")
+  }
+  const control = findControlChar(value)
+  if (control !== undefined) {
+    const code = control.code.toString(16).padStart(4, "0").toUpperCase()
+    throw new InvalidValueError(
+      "str",
+      value,
+      `contains the control character U+${code} at index ${control.index}`,
+      "A str is written into a query as str('...'), whose only escape is a doubled quote — there " +
+        "is no spelling for a control character, so this value could be stored but never queried. " +
+        "Free-form text belongs in the entity payload; keep a short, printable key here.",
+    )
   }
   const bytes = stringToBytes(value).length
   if (bytes > MAX_STRING_BYTES) {
