@@ -107,15 +107,16 @@ export class TooManyAttributesError extends Error {
 
 /** The node sent back an attribute this SDK cannot decode. */
 export class UnknownAttributeTypeError extends Error {
-  readonly typeId: number
+  /** The type as the node named it — a tag over JSON-RPC, a typeId on the wire. */
+  readonly type: string | number
 
-  constructor(typeId: number) {
+  constructor(type: string | number) {
     super(
-      `Unknown attribute typeId ${typeId}. The node is using a type this SDK version does not ` +
-        "know about — upgrade @arkiv-network/sdk.",
+      `Unknown attribute type ${describe(type)}. The node is using a type this SDK version does ` +
+        "not know about — upgrade @arkiv-network/sdk.",
     )
     this.name = "UnknownAttributeTypeError"
-    this.typeId = typeId
+    this.type = type
   }
 }
 

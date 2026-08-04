@@ -18,8 +18,6 @@ test("creates", () => {
   expect(uid).toBeDefined()
   expect(client.getEntity).toBeDefined()
   expect(typeof client.getEntity).toBe("function")
-  expect(client.buildQuery).toBeDefined()
-  expect(typeof client.buildQuery).toBe("function")
   expect(client.select).toBeDefined()
   expect(typeof client.select).toBe("function")
   expect(client.query).toBeDefined()

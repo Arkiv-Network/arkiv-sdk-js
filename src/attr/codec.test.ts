@@ -110,38 +110,49 @@ describe("encodeAbiAttribute", () => {
 
 describe("decodeRpcValue", () => {
   it("reads the JSON encoding each type declares", () => {
-    expect(decodeRpcValue(1, true).value).toBe(true)
-    expect(decodeRpcValue(2, -42).value).toBe(-42)
-    expect(decodeRpcValue(3, "0xf4240").value).toBe(1_000_000n)
-    expect(decodeRpcValue(4, "3.5").value).toBe("3.5")
-    expect(decodeRpcValue(4, "-0.25").value).toBe("-0.25")
-    expect(decodeRpcValue(5, KEY).value).toBe(KEY)
-    expect(decodeRpcValue(7, "hello").value).toBe("hello")
-    expect(decodeRpcValue(8, VITALIK.toLowerCase()).value).toBe(VITALIK)
-    expect(decodeRpcValue(9, KEY).value).toBe(KEY)
+    expect(decodeRpcValue("bool", true).value).toBe(true)
+    expect(decodeRpcValue("i32", -42).value).toBe(-42)
+    expect(decodeRpcValue("u256", "0xf4240").value).toBe(1_000_000n)
+    expect(decodeRpcValue("dec", "3.5").value).toBe("3.5")
+    expect(decodeRpcValue("dec", "-0.25").value).toBe("-0.25")
+    expect(decodeRpcValue("bytes32", KEY).value).toBe(KEY)
+    expect(decodeRpcValue("str", "hello").value).toBe("hello")
+    expect(decodeRpcValue("addr", VITALIK.toLowerCase()).value).toBe(VITALIK)
+    expect(decodeRpcValue("key", KEY).value).toBe(KEY)
   })
 
   it("takes an integer however it is rendered", () => {
     // QUANTITY is the spec's encoding; decimal strings and numbers are tolerated.
-    expect(decodeRpcValue(3, "0x2a").value).toBe(42n)
-    expect(decodeRpcValue(3, "42").value).toBe(42n)
-    expect(decodeRpcValue(3, 42).value).toBe(42n)
-    expect(decodeRpcValue(2, "-42").value).toBe(-42)
+    expect(decodeRpcValue("u256", "0x2a").value).toBe(42n)
+    expect(decodeRpcValue("u256", "42").value).toBe(42n)
+    expect(decodeRpcValue("u256", 42).value).toBe(42n)
+    expect(decodeRpcValue("i32", "-42").value).toBe(-42)
   })
 
   it("decodes the system-only bytes type, which only ever arrives as a payload", () => {
-    expect(decodeRpcValue(6, "0xDEADBEEF").value).toBe("0xdeadbeef")
+    expect(decodeRpcValue("bytes", "0xDEADBEEF").value).toBe("0xdeadbeef")
   })
 
-  it("names the typeId it does not recognise, and says to upgrade", () => {
-    expect(() => decodeRpcValue(42, "x")).toThrow(UnknownAttributeTypeError)
-    expect(() => decodeRpcValue(42, "x")).toThrow(/upgrade @arkiv-network\/sdk/)
+  it("names the type it does not recognise, and says to upgrade", () => {
+    expect(() => decodeRpcValue("int", "x")).toThrow(UnknownAttributeTypeError)
+    expect(() => decodeRpcValue("int", "x")).toThrow(/upgrade @arkiv-network\/sdk/)
+    // The pre-spec wire form: a typeId where the JSON-RPC surface names a tag.
+    expect(() => decodeRpcValue(3 as unknown as string, "0x2a")).toThrow(UnknownAttributeTypeError)
+  })
+
+  it("does not mistake an inherited Object key for a type tag", () => {
+    // `type in TYPE_IDS` walks the prototype chain, so these passed the check and then fell off
+    // the end of the exhaustive switch, returning `undefined` — the caller got a TypeError from
+    // `entity.attributes.foo.value` instead of "upgrade the SDK".
+    for (const inherited of ["constructor", "toString", "valueOf", "hasOwnProperty"]) {
+      expect(() => decodeRpcValue(inherited, 1)).toThrow(UnknownAttributeTypeError)
+    }
   })
 
   it("rejects a value whose JSON shape contradicts its declared type", () => {
-    expect(() => decodeRpcValue(3, "not a number")).toThrow(InvalidValueError)
-    expect(() => decodeRpcValue(7, 42)).toThrow(/expected a string/)
-    expect(() => decodeRpcValue(1, "yes")).toThrow(/not a boolean/)
-    expect(() => decodeRpcValue(2, 1.5)).toThrow(/not an integer/)
+    expect(() => decodeRpcValue("u256", "not a number")).toThrow(InvalidValueError)
+    expect(() => decodeRpcValue("str", 42)).toThrow(/expected a string/)
+    expect(() => decodeRpcValue("bool", "yes")).toThrow(/not a boolean/)
+    expect(() => decodeRpcValue("i32", 1.5)).toThrow(/not an integer/)
   })
 })

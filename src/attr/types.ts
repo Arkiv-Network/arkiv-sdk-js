@@ -44,16 +44,6 @@ export type TypeId = (typeof TYPE_IDS)[TypeTag]
  */
 export type UserTypeTag = Exclude<TypeTag, "bytes">
 
-/** typeId -> tag, the inverse of {@link TYPE_IDS}. */
-const TAGS_BY_ID = Object.fromEntries(
-  Object.entries(TYPE_IDS).map(([tag, id]) => [id, tag]),
-) as Record<number, TypeTag | undefined>
-
-/** The tag a typeId names, or `undefined` if no type carries that tag. */
-export function tagFromTypeId(typeId: number): TypeTag | undefined {
-  return TAGS_BY_ID[typeId]
-}
-
 /** Whether a client may set an attribute of this type — everything except `bytes`. */
 export function isUserSettable(tag: TypeTag): tag is UserTypeTag {
   return tag !== "bytes"
@@ -136,7 +126,9 @@ export function makeValue<tag extends TypeTag>(
   return { type, value } as unknown as ValueOf<tag>
 }
 
-/** Whether `input` is an {@link ArkivValue} produced by one of the tagged constructors. */
+/**
+ * Whether `input` has the *shape* of an {@link ArkivValue} — a known type tag and a value.
+ */
 export function isArkivValue(input: unknown): input is AnyArkivValue {
   return (
     typeof input === "object" &&
@@ -144,6 +136,8 @@ export function isArkivValue(input: unknown): input is AnyArkivValue {
     "type" in input &&
     "value" in input &&
     typeof (input as { type: unknown }).type === "string" &&
-    (input as { type: string }).type in TYPE_IDS
+    // `Object.hasOwn`, not `in`: `in` walks the prototype chain, so `{ type: "constructor" }` would
+    // be accepted as a typed value and then decode to nothing.
+    Object.hasOwn(TYPE_IDS, (input as { type: string }).type)
   )
 }

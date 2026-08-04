@@ -170,7 +170,6 @@ export async function sendArkivTransaction(
     })
   })
 
-
   const patchOps = (patches ?? []).map((item) => {
     if (item.contentType !== undefined) validateContentType(item.contentType)
     const mutations = encodeMutations(item)

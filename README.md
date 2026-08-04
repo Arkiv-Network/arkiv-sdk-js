@@ -124,10 +124,17 @@ const result = await publicClient
 
 console.log('Found entities:', result.entities);
 
-// Pagination - fetch next page
+// Pagination
 if (result.hasNextPage()) {
-  await result.next();
-  console.log('Next page:', result.entities);
+  const nextPage = await result.next();
+  console.log('Next page:', nextPage.entities);
+}
+
+// Or walk every page at once
+for await (const entity of publicClient
+  .select({ key: true })
+  .where(eq('category', 'documentation'))) {
+  console.log(entity.key);
 }
 ```
 
@@ -150,7 +157,9 @@ The result type is inferred from your selection: reading a field you didn't sele
 helpers are available only when you select `payload`.
 
 ```typescript
-const [entity] = (await publicClient.select({ owner: true, payload: true }).fetch()).entities;
+const [entity] = (
+  await publicClient.select({ owner: true, payload: true }).where(eq("category", "docs")).fetch()
+).entities;
 entity.owner;     // ✅ Hex
 entity.toJson();  // ✅ payload was selected
 entity.creator;   // ❌ compile error — not selected

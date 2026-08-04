@@ -32,8 +32,15 @@ const result = await publicClient
 
 console.log("Found entities:", result.entities)
 
-// Pagination - fetch next page
+// Pagination
 if (result.hasNextPage()) {
-  await result.next()
-  console.log("Next page:", result.entities)
+  const nextPage = await result.next()
+  console.log("Next page:", nextPage.entities)
+}
+
+// Or walk every page, one entity at a time
+for await (const item of publicClient
+  .select({ key: true, attributes: true })
+  .where(eq("category", "documentation"))) {
+  console.log(item.key, item.attributes)
 }

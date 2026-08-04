@@ -15,6 +15,7 @@ import {
   type ArkivValue,
   type BoolValue,
   type Bytes32Value,
+  type BytesValue,
   type DecValue,
   type I32Value,
   isArkivValue,
@@ -389,9 +390,43 @@ export function toValue(input: ValueInput, attributeName?: string): ArkivValue {
             "Pass the bytes as the entity payload instead.",
           )
         }
-        return candidate
+        return revalidate(candidate)
       }
       throw new UntypedValueError(input)
     }
+  }
+}
+
+/**
+ * Re-runs a tagged value through its own constructor.
+ *
+ * {@link isArkivValue} can only check shape — the `validated` brand is a type-level construct with
+ * no runtime existence, so a hand-written `{ type: "u256", value: "1000" }` (from `JSON.parse`, a
+ * config file, an `as any` boundary) is indistinguishable from a real `u256(1000n)`. Passing it
+ * through unchecked was silent corruption rather than an error: the ABI encoder would take the
+ * *string* "1000" and write its UTF-8 bytes into the word, storing 2.27e76 on chain.
+ *
+ * Running the constructor again is what makes the brand's promise — "every value crossing the wire
+ * has been range-, length- and format-checked" — true at runtime. For a value that really did come
+ * from a constructor it is a no-op that returns an equal value.
+ */
+function revalidate(value: Exclude<AnyArkivValue, BytesValue>): ArkivValue {
+  switch (value.type) {
+    case "bool":
+      return bool(value.value)
+    case "i32":
+      return i32(value.value)
+    case "u256":
+      return u256(value.value)
+    case "dec":
+      return dec(value.value)
+    case "bytes32":
+      return bytes32(value.value)
+    case "str":
+      return str(value.value)
+    case "addr":
+      return addr(value.value)
+    case "key":
+      return key(value.value)
   }
 }

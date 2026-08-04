@@ -4,7 +4,8 @@ import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
 import { type QueryOptions, type QueryReturnType, query } from "../../actions/public/query"
 import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
-import { QueryBuilder, SelectQueryBuilder } from "../../query/queryBuilder"
+import type { Expression } from "../../query/expression"
+import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type { EntitySelection, FullEntity, ProjectedEntity, SelectArg } from "../../query/selection"
 import type { Entity } from "../../types/entity"
 import type {
@@ -56,7 +57,7 @@ export type PublicArkivActions<
    * //   contentType: "application/json",
    * //   payload: Uint8Array,          // entity.toJson() / entity.toText() decode it
    * //   attributes: { category: { type: "str", value: "docs" } },
-   * //   expiresAtBlock: 1_297_000n,
+   * //   expiresAt: 1_297_000n,
    * // }
    */
   getEntity: (key: Hex) => Promise<Entity>
@@ -101,9 +102,11 @@ export type PublicArkivActions<
      * Pick the entity fields to return. Set the ones you want to `true` (at least one is required);
      * the result is typed to exactly those fields, so reading anything else is a compile error.
      *
-     * Available fields: `key`, `owner`, `creator`, `contentType`, `payload`, `attributes`,
-     * `expiresAtBlock`, `createdAtBlock`, `lastModifiedAtBlock`, `transactionIndexInBlock`,
-     * `operationIndexInTransaction`.
+     * Available fields: `key`, `owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt`,
+     * `creationFlags`, `contentType`, `payload`, `attributeSchema` and `attributes`.
+     *
+     * `attributes` also takes a map of names, to fetch only those:
+     * `select({ key: true, attributes: { projectId: true } })`.
      *
      * Pass the selection inline so its fields stay literal `true`. A selection stored in a `let`/
      * `const` variable widens to `boolean` and the result type can no longer be narrowed — annotate
@@ -112,6 +115,7 @@ export type PublicArkivActions<
      * @example
      * client.select({ owner: true, attributes: true }) // entities typed { owner, attributes }
      * client.select({ key: true, payload: true })      // includes payload → toText()/toJson() too
+     * client.select({ key: true, attributeSchema: true }) // what shape is the data?
      */
     <const S extends EntitySelection>(selection: S): SelectQueryBuilder<ProjectedEntity<S>>
     /**
@@ -122,69 +126,38 @@ export type PublicArkivActions<
   }
 
   /**
-   * Returns a QueryBuilder instance for building and executing queries.
-   * The QueryBuilder object follows the Builder pattern, allowing you to chain methods to build a query and then execute it.
+   * Runs one query and returns one page, with no builder in between.
    *
-   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/query
+   * Use {@link select} for anything typed — this returns full {@link Entity} objects whatever the
+   * selection, and takes a raw string as an escape hatch for a query built elsewhere. A raw string
+   * goes to the node exactly as written, with none of the name, type or operator checks the
+   * expression combinators apply.
    *
-   * @deprecated Use {@link select} instead. `buildQuery()` returns only the entity `key` unless
-   * you remember to opt in to data with `withAttributes()`/`withMetadata()`/`withPayload()`, which
-   * is an easy mistake. `select()` makes the selection explicit. This method remains for backwards
-   * compatibility and will be removed in a future release.
-   *
-   * @returns A QueryBuilder instance for building and executing queries. {@link QueryBuilder}
+   * @param query - An {@link Expression}, or the raw query string.
+   * @param queryOptions - Selection, page size, cursor and block. {@link QueryOptions}
+   * @returns One page of entities. {@link QueryReturnType}
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
    * import { braga } from "@arkiv-network/sdk/chains"
-   * import { eq } from "@arkiv-network/sdk/query"
+   * import { and, eq, gte } from "@arkiv-network/sdk/query"
+   * import { i32 } from "@arkiv-network/sdk/attr"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: braga,
    *   transport: http(),
    * })
-   * const query = client.buildQuery()
-   * // Without the with* opt-ins the entities come back carrying only their key.
-   * const entities = await query
-   *   .where(eq("category", "docs"))
-   *   .ownedBy(owner)
-   *   .withAttributes()
-   *   .fetch()
-   */
-  buildQuery: () => QueryBuilder
-
-  /**
-   * Returns a QueryResult instance for fetching the results of a raw query.
-   * If no query options are provided, all payload is included, but no metadata (like owner, expiredAt, etc.) and attributes.
-   * @param query - The raw query string
-   * @param queryOptions - The optional query options - {@link QueryOptions}
-   * @returns A QueryReturnType instance - {@link QueryReturnType}
-   *
-   * @example
-   * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { braga } from "@arkiv-network/sdk/chains"
-   * import { http } from "viem"
-   *
-   * const client = createPublicClient({
-   *   chain: braga,
-   *   transport: http(),
+   * const page = await client.query(and(eq("category", "docs"), gte("level", i32(10))), {
+   *   select: { key: true, attributes: true },
+   *   limit: 100,
    * })
-   * const queryResult = await client.query('category = "docs" && $owner = 0xabc')
-   * // { entities: [Entity], cursor: undefined, blockNumber: undefined }
-   * const queryResultWithOptions = await client.query('category = "docs"', {
-   *   includeData: {
-   *     attributes: false,
-   *     payload: true,
-   *     metadata: true,
-   *   },
-   *   resultsPerPage: 10,
-   *   cursor: undefined,
-   *   atBlock: undefined,
-   * })
-   * // { entities: [Entity], cursor: "...", blockNumber: 32223n }
+   * // { entities: [Entity], cursor: "b64:…", blockNumber: 32223n }
+   *
+   * // The raw form, unchecked:
+   * await client.query("category = str('docs') AND level >= i32(10)")
    */
-  query: (query: string, queryOptions?: QueryOptions) => Promise<QueryReturnType>
+  query: (query: Expression | string, queryOptions?: QueryOptions) => Promise<QueryReturnType>
 
   /**
    * Returns the total number of entities on the chain.
@@ -282,8 +255,8 @@ export function publicArkivActions<
 >(client: Client<transport, chain, account>) {
   return {
     getEntity: (key: Hex) => getEntity(client, key),
-    query: (rawQuery: string, queryOptions?: QueryOptions) => query(client, rawQuery, queryOptions),
-    buildQuery: () => new QueryBuilder(client),
+    query: (rawQuery: Expression | string, queryOptions?: QueryOptions) =>
+      query(client, rawQuery, queryOptions),
     select: (selection?: SelectArg) => new SelectQueryBuilder(client, selection),
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),

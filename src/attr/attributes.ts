@@ -1,7 +1,7 @@
 import { type AbiAttribute, encodeAbiAttribute, encodeTombstone } from "./codec"
 import { ConflictingMutationError, TooManyAttributesError } from "./errors"
 import { validateAttributeName } from "./names"
-import type { AnyArkivValue, ArkivValue } from "./types"
+import type { AnyArkivValue, ArkivValue, TypeTag } from "./types"
 import { makeValue } from "./types"
 import { str, toValue, type ValueInput } from "./values"
 
@@ -38,6 +38,15 @@ export type AttributeInputs = Readonly<Record<string, ValueInput>>
  * same in both directions.
  */
 export type Attributes = Readonly<Record<string, AnyArkivValue>>
+
+/**
+ * The names and types of an entity's attributes, with no values — what the `attributeSchema`
+ * projection returns.
+ *
+ * Useful for asking what shape the data has without paying to transfer it, and for telling apart
+ * two entities that use the same name with different types.
+ */
+export type AttributeSchema = Readonly<Record<string, TypeTag>>
 
 /**
  * The typed form of an attribute map: names validated, bare values resolved to their default type.
@@ -132,9 +141,7 @@ export function encodeMutations({
 
 function resolveUnset(unset: readonly string[] = [], set: AttributeInputs = {}): string[] {
   if (!Array.isArray(unset)) {
-    throw new TypeError(
-      `"unset" must be an array of attribute names`
-    )
+    throw new TypeError(`"unset" must be an array of attribute names`)
   }
   const names = new Set(unset)
   for (const name of names) {

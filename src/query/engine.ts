@@ -1,162 +1,78 @@
-import type { Hex } from "viem"
-import { hexToNumber, isHex, numberToHex } from "viem"
+import { numberToHex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
-import type { RpcIncludeData, RpcOrderByAttribute, RpcQueryOptions } from "../types/rpcSchema"
+import type { Entity } from "../types/entity"
+import type { RpcQueryOptions, RpcSelect } from "../types/rpcSchema"
+import { entityFromRpcResult } from "../utils/entities"
 import { getLogger } from "../utils/logger"
-import type { Predicate } from "./predicate"
+import { asQueryError } from "./errors"
 
 const logger = getLogger("query:engine")
 
+export const MAX_LIMIT = 200
+
+/** One `arkiv_query` call. */
+export type QueryRequest = {
+  /** The query expression, already rendered. */
+  query: string
+  /** What to return. */
+  select: RpcSelect
+  /** Page size, up to {@link MAX_LIMIT}. Defaults to the node's own page size. */
+  limit?: number | undefined
+  /** Cursor from a previous page. */
+  cursor?: string | undefined
+  /** Block height to read at. Defaults to the head. */
+  atBlock?: bigint | undefined
+}
+
+/** One page of results. */
+export type QueryResponse = {
+  entities: Entity[]
+  /** The block the page was read at — the same for every page of a paginated query. */
+  blockNumber: bigint
+  /** The cursor for the next page, or `undefined` when this was the last one. */
+  cursor: string | undefined
+}
+
 /**
- * True only for hex strings that are exactly 32 bytes — an entity key. The node's query language
- * matches entity keys against unquoted hex literals and every other string against a quoted one,
- * so this is the rule deciding how a predicate value is written into the query string.
+ * Runs one query and decodes the page it returns.
+ *
+ * @throws {QueryError} If the node rejects the query.
  */
-function isEntityKeyLiteral(value: string): value is Hex {
-  return isHex(value) && value.length === 66
-}
+export async function runQuery(client: ArkivClient, request: QueryRequest): Promise<QueryResponse> {
+  const { query, select, limit, cursor, atBlock } = request
 
-function processPredicates(predicates: Predicate[]): string {
-  const processValue = (value: string | number) => {
-    if (typeof value === "string") {
-      return isEntityKeyLiteral(value) ? value : `"${value}"`
+  if (limit !== undefined) {
+    if (!Number.isInteger(limit) || limit < 1) {
+      throw new Error(`limit must be a positive integer, got ${limit}.`)
     }
-    return value
-  }
-  return predicates
-    .map((predicate) => {
-      switch (predicate.type) {
-        case "eq":
-          return `${predicate.key} = ${processValue(predicate.value)}`
-        case "neq":
-          return `${predicate.key} != ${processValue(predicate.value)}`
-        case "gt":
-          return `${predicate.key} > ${processValue(predicate.value)}`
-        case "gte":
-          return `${predicate.key} >= ${processValue(predicate.value)}`
-        case "lt":
-          return `${predicate.key} < ${processValue(predicate.value)}`
-        case "lte":
-          return `${predicate.key} <= ${processValue(predicate.value)}`
-        case "not":
-          return `!${predicate.key}`
-        case "or":
-          return `(${predicate.predicates.map((predicate) => processPredicates([predicate])).join(" || ")})`
-        case "and":
-          return `(${predicate.predicates.map((predicate) => processPredicates([predicate])).join(" && ")})`
-        default:
-          return ""
-      }
-    })
-    .join(" && ")
-}
-
-export async function processQuery(
-  client: ArkivClient,
-  queryParams: {
-    predicates: Predicate[]
-    limit: number | undefined
-    cursor: string | undefined
-    ownedBy: Hex | undefined
-    createdBy: Hex | undefined
-    orderBy: RpcOrderByAttribute[] | undefined
-    validAtBlock?: bigint | undefined
-    withAttributes?: boolean | undefined
-    withMetadata?: boolean | undefined
-    withPayload?: boolean | undefined
-    /**
-     * Fully-resolved include-data for fine-grained selection. When provided it takes
-     * precedence over the `withAttributes`/`withMetadata`/`withPayload` booleans.
-     */
-    includeData?: RpcIncludeData | undefined
-  },
-) {
-  const {
-    predicates,
-    limit,
-    cursor,
-    ownedBy,
-    createdBy,
-    orderBy,
-    validAtBlock,
-    withAttributes,
-    withMetadata,
-    withPayload,
-    includeData,
-  } = queryParams
-
-  logger("Processing query with params %o", {
-    predicates,
-    cursor,
-    limit,
-    ownedBy,
-    createdBy,
-    orderBy,
-    validAtBlock,
-    withAttributes,
-    withMetadata,
-    withPayload,
-    includeData,
-  })
-
-  let query = processPredicates(predicates)
-  if (ownedBy) {
-    query += ` && $owner=${ownedBy}`
-  }
-  if (createdBy) {
-    query += ` && $creator=${createdBy}`
-  }
-
-  // remove leading and trailing spaces and leading &&
-  query = query.trim()
-  if (query.startsWith("&& ")) {
-    query = query.slice(3)
+    if (limit > MAX_LIMIT) {
+      throw new Error(
+        `limit ${limit} exceeds the node maximum of ${MAX_LIMIT}. Page through the results with ` +
+          "the cursor instead.",
+      )
+    }
   }
 
   const queryOptions: RpcQueryOptions = {
-    includeData:
-      includeData ??
-      ({
-        key: true,
-        attributes: withAttributes ?? false,
-        payload: withPayload ?? false,
-        contentType: withMetadata ?? false,
-        expiration: withMetadata ?? false,
-        owner: withMetadata ?? false,
-        creator: withMetadata ?? false,
-        createdAtBlock: withMetadata ?? false,
-        lastModifiedAtBlock: withMetadata ?? false,
-        transactionIndexInBlock: withMetadata ?? false,
-        operationIndexInTransaction: withMetadata ?? false,
-      } as RpcIncludeData),
+    select,
+    ...(atBlock !== undefined && { atBlock: numberToHex(atBlock) }),
+    ...(limit !== undefined && { limit: numberToHex(limit) }),
+    ...(cursor !== undefined && { cursor }),
   }
 
-  if (validAtBlock !== undefined) {
-    queryOptions.atBlock = numberToHex(validAtBlock)
-  }
-  if (limit !== undefined) {
-    queryOptions.resultsPerPage = numberToHex(limit)
-  }
-  if (cursor !== undefined) {
-    queryOptions.cursor = cursor
-  }
-  if (orderBy !== undefined) {
-    queryOptions.orderBy = orderBy
-  }
+  logger("arkiv_query %s %o", query, queryOptions)
 
-  logger("Built query to send %s %o", query, {
-    includeData: queryOptions.includeData,
-    atBlock: queryOptions.atBlock ? hexToNumber(queryOptions.atBlock) : undefined,
-    orderBy: queryOptions.orderBy,
-    resultsPerPage: queryOptions.resultsPerPage,
-    cursor: queryOptions.cursor,
-  })
+  const result = await client
+    .request({ method: "arkiv_query", params: [query, queryOptions] })
+    .catch((error: unknown) => {
+      throw asQueryError(error, query) ?? error
+    })
 
-  const result = await client.request({
-    method: "arkiv_query",
-    params: [query, queryOptions],
-  })
   logger("Raw result from query %o", result)
 
-  return result
+  return {
+    entities: result.data.map((rpcEntity) => entityFromRpcResult(rpcEntity)),
+    blockNumber: BigInt(result.blockNumber),
+    cursor: result.cursor,
+  }
 }

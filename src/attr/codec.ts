@@ -1,7 +1,7 @@
 import { bytesToString, type Hex, hexToBytes, pad, size, stringToBytes, toHex } from "viem"
 import { unitsToDecimal } from "./decimal"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
-import { type AnyArkivValue, makeValue, TYPE_IDS, type TypeTag, tagFromTypeId } from "./types"
+import { type AnyArkivValue, makeValue, TYPE_IDS, type TypeTag } from "./types"
 import { addr, bool, bytes32, dec, decUnits, i32, key, str, u256 } from "./values"
 
 /**
@@ -133,16 +133,13 @@ export function encodeTombstone(name: string): AbiAttribute {
  * the byte-shaped types `0x` DATA. Decimal strings are also accepted for the integer types, so this
  * keeps working against a node that renders them that way.
  *
- * @param typeId - The `type` the response declared, as its protocol typeId.
+ * @param type - The type tag the response declared, e.g. `"u256"`.
  * @param value - The JSON value.
- * @throws {UnknownAttributeTypeError} If the typeId names no known type.
+ * @throws {UnknownAttributeTypeError} If the tag names no known type.
  * @throws {InvalidValueError} If the value does not parse as that type.
  */
-export function decodeRpcValue(typeId: number, value: unknown): AnyArkivValue {
-  const tag = tagFromTypeId(typeId)
-  if (tag === undefined) {
-    throw new UnknownAttributeTypeError(typeId)
-  }
+export function decodeRpcValue(type: string, value: unknown): AnyArkivValue {
+  const tag = asTypeTag(type)
   switch (tag) {
     case "bool":
       return bool(asBoolean(value))
@@ -163,6 +160,20 @@ export function decodeRpcValue(typeId: number, value: unknown): AnyArkivValue {
     case "bytes":
       return makeValue("bytes", asString("bytes", value).toLowerCase() as Hex)
   }
+}
+
+/**
+ * Narrows a type tag as the node spelled it.
+ *
+ * @throws {UnknownAttributeTypeError} If it names no type this SDK knows.
+ */
+export function asTypeTag(type: string): TypeTag {
+  // `Object.hasOwn`, not `in`: `in` walks the prototype chain, so "constructor" and "toString"
+  // would pass as type tags and then fall off the end of the exhaustive switch below as `undefined`.
+  if (typeof type !== "string" || !Object.hasOwn(TYPE_IDS, type)) {
+    throw new UnknownAttributeTypeError(type)
+  }
+  return type as TypeTag
 }
 
 function asBoolean(value: unknown): boolean {

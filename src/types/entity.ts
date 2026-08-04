@@ -1,4 +1,6 @@
 import { bytesToString, type Hex } from "viem"
+import type { AttributeSchema, Attributes } from "../attr"
+import type { ResolvedCreationFlags } from "../entity/flags"
 
 export enum EntityOperationType {
   Create = 1,
@@ -9,58 +11,73 @@ export enum EntityOperationType {
   Expire = 6,
 }
 
-import type { Attributes } from "../attr"
-import type { MimeType } from "../types"
+/**
+ * The fields an {@link Entity} can carry. Every one is optional: a query returns exactly the parts
+ * it selected, and `undefined` means "not asked for" rather than "empty".
+ */
+export type EntityFields = {
+  key?: Hex | undefined
+  owner?: Hex | undefined
+  creator?: Hex | undefined
+  /** Block the entity was created at. */
+  createdAt?: bigint | undefined
+  /** Block the entity was last patched at. */
+  updatedAt?: bigint | undefined
+  /** Block the entity expires at. */
+  expiresAt?: bigint | undefined
+  /** The immutable properties the entity was created with. */
+  creationFlags?: ResolvedCreationFlags | undefined
+  contentType?: string | undefined
+  payload?: Uint8Array | undefined
+  /** Attribute names and types, with no values. */
+  attributeSchema?: AttributeSchema | undefined
+  /** Attribute names, types and values. */
+  attributes?: Attributes | undefined
+}
 
-export class Entity {
-  key: Hex
-  contentType: MimeType | `${string}/${string}` | undefined
+/**
+ * An entity as it comes back from a query.
+ *
+ * Which fields are populated is decided by the query's selection — `select({ key: true })` gives
+ * back an entity carrying only its key. The static type of a `select()` result is narrowed to
+ * exactly the selected fields, so in typed code the `undefined`s here are not reachable.
+ */
+export class Entity implements EntityFields {
+  key: Hex | undefined
   owner: Hex | undefined
   creator: Hex | undefined
-  expiresAtBlock: bigint | undefined
-  createdAtBlock: bigint | undefined
-  lastModifiedAtBlock: bigint | undefined
-  transactionIndexInBlock: bigint | undefined
-  operationIndexInTransaction: bigint | undefined
+  createdAt: bigint | undefined
+  updatedAt: bigint | undefined
+  expiresAt: bigint | undefined
+  creationFlags: ResolvedCreationFlags | undefined
+  contentType: string | undefined
   payload: Uint8Array | undefined
-  attributes: Attributes
+  attributeSchema: AttributeSchema | undefined
+  attributes: Attributes | undefined
 
-  constructor(
-    key: Hex,
-    contentType: MimeType | `${string}/${string}` | undefined = undefined,
-    owner: Hex | undefined = undefined,
-    creator: Hex | undefined = undefined,
-    expiresAtBlock: bigint | undefined = undefined,
-    createdAtBlock: bigint | undefined = undefined,
-    lastModifiedAtBlock: bigint | undefined = undefined,
-    transactionIndexInBlock: bigint | undefined = undefined,
-    operationIndexInTransaction: bigint | undefined = undefined,
-    payload: Uint8Array | undefined = undefined,
-    attributes: Attributes = {},
-  ) {
-    this.key = key
-    this.owner = owner
-    this.creator = creator
-    this.expiresAtBlock = expiresAtBlock
-    this.createdAtBlock = createdAtBlock
-    this.lastModifiedAtBlock = lastModifiedAtBlock
-    this.transactionIndexInBlock = transactionIndexInBlock
-    this.operationIndexInTransaction = operationIndexInTransaction
-    this.payload = payload
-    this.attributes = attributes
-    this.contentType = contentType
+  constructor(fields: EntityFields = {}) {
+    this.key = fields.key
+    this.owner = fields.owner
+    this.creator = fields.creator
+    this.createdAt = fields.createdAt
+    this.updatedAt = fields.updatedAt
+    this.expiresAt = fields.expiresAt
+    this.creationFlags = fields.creationFlags
+    this.contentType = fields.contentType
+    this.payload = fields.payload
+    this.attributeSchema = fields.attributeSchema
+    this.attributes = fields.attributes
   }
 
   /**
-   * Converts the entity payload from bytes to a string and returns it.
-   * Throws an error if the payload is undefined, which may occur if the entity was not queried with the withPayload option.
-   * Throws an error if the conversion from bytes to string fails.
-   * @returns The entity payload as a string.
+   * The payload decoded as UTF-8 text.
+   *
+   * @throws If the payload was not selected, or is not valid UTF-8.
    */
   toText(): string {
     if (this.payload === undefined) {
       throw new Error(
-        "Entity has no payload – it was probably queried without withPayload(true) via QueryBuilder",
+        "Entity has no payload — the query did not select it. Use select({ payload: true }).",
       )
     }
     try {
@@ -74,11 +91,11 @@ export class Entity {
   }
 
   /**
-   * Parses the entity payload as JSON and returns the resulting object.
-   * Throws an error if the payload is undefined, which may occur if the entity was not queried with the withPayload option.
-   * Throws an error if the payload is empty or cannot be parsed as JSON.
-   * @returns The parsed JSON object from the entity payload.
+   * The payload parsed as JSON.
+   *
+   * @throws If the payload was not selected, is empty, or is not valid JSON.
    */
+  // biome-ignore lint/suspicious/noExplicitAny: JSON.parse returns whatever the payload holds.
   toJson(): any {
     const text = this.toText()
     if (!text) {

@@ -6,22 +6,24 @@ export class EntityMutationError extends Error {
 }
 export class NoMoreResultsError extends Error {
   constructor() {
-    super("No more results")
+    super("No more results — the last page carried no cursor. Check hasNextPage() before next().")
     this.name = "NoMoreResultsError"
   }
 }
 
-export class NoCursorOrLimitError extends Error {
-  constructor() {
-    super("Cursor and limit must be defined to fetch next")
-    this.name = "NoCursorOrLimitError"
-  }
-}
-
 export class NoEntityFoundError extends Error {
-  constructor() {
-    super("No entity found")
+  /** The key that matched nothing, when the lookup was by key. */
+  readonly entityKey: string | undefined
+
+  constructor(entityKey?: string) {
+    super(
+      entityKey === undefined
+        ? "No entity found"
+        : `No live entity with key ${entityKey}. It was never created, or it has been deleted or ` +
+            "has expired.",
+    )
     this.name = "NoEntityFoundError"
+    this.entityKey = entityKey
   }
 }
 

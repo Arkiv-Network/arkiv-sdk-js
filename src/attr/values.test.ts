@@ -179,9 +179,31 @@ describe("toValue", () => {
     expect(toValue(KEY)).toEqual(str(KEY))
   })
 
-  it("passes tagged values through untouched", () => {
-    const score = dec("3.5")
-    expect(toValue(score)).toBe(score)
+  it("leaves a tagged value's type and value alone", () => {
+    for (const tagged of [dec("3.5"), i32(-42), u256(10n), str("hi"), bool(true), key(KEY)]) {
+      expect(toValue(tagged)).toEqual(tagged)
+    }
+  })
+
+  it("re-validates a tagged value rather than trusting its shape", () => {
+    // The `validated` brand is type-level only, so nothing at runtime distinguishes a real u256
+    // from an object that looks like one — out of JSON.parse, a config file, or an `as any`. Left
+    // unchecked this was silent corruption, not an error: the ABI encoder would take the *string*
+    // "1000" and write its UTF-8 bytes into the word, storing 2.27e76 on chain.
+    const lookAlike = { type: "u256", value: "1000" } as unknown as string
+    expect(toValue(lookAlike)).toEqual(u256(1000n))
+    expect(toValue(lookAlike).value).toBe(1000n)
+
+    // And a look-alike carrying something its type cannot hold is now rejected outright.
+    expect(() => toValue({ type: "i32", value: 2 ** 40 } as unknown as string)).toThrow(
+      InvalidValueError,
+    )
+    expect(() => toValue({ type: "addr", value: "0x1234" } as unknown as string)).toThrow(
+      InvalidValueError,
+    )
+    expect(() => toValue({ type: "str", value: 42 } as unknown as string)).toThrow(
+      InvalidValueError,
+    )
   })
 
   it("rejects values it cannot type", () => {
@@ -189,6 +211,12 @@ describe("toValue", () => {
       UntypedValueError,
     )
     expect(() => toValue(new Uint8Array(32) as unknown as string)).toThrow(UntypedValueError)
+    // `in` would have walked the prototype chain and accepted these as type tags.
+    for (const inherited of ["constructor", "toString", "valueOf", "hasOwnProperty"]) {
+      expect(() => toValue({ type: inherited, value: 1 } as unknown as string)).toThrow(
+        UntypedValueError,
+      )
+    }
   })
 
   it("rejects an absent value by telling you to omit the attribute, not to infer a type", () => {

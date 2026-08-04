@@ -1,209 +1,104 @@
 import type { Hex } from "viem"
+import { addr } from "../attr"
 import type { ArkivClient } from "../clients/baseClient"
 import type { Entity } from "../types/entity"
-import type { RpcEntity, RpcIncludeData, RpcOrderByAttribute } from "../types/rpcSchema"
-import { entityFromRpcResult } from "../utils/entities"
-import { processQuery } from "./engine"
-import type { Predicate } from "./predicate"
+import type { RpcSelect } from "../types/rpcSchema"
+import { type QueryRequest, runQuery } from "./engine"
+import { InvalidPredicateError } from "./errors"
+import { and, type Expression, eq } from "./expression"
 import { QueryResult } from "./queryResult"
-import { type SelectArg, selectionToIncludeData } from "./selection"
+import { type SelectArg, toRpcSelect } from "./selection"
 
 /**
- * @deprecated Server-side ordering is not supported by the network. Sort the fetched
- * entities in JavaScript instead (e.g. `entities.sort(...)`). This type will be removed
- * in a future release.
- */
-export type OrderByAttribute = {
-  name: string
-  type: "string" | "number"
-  order: "asc" | "desc"
-}
-
-/**
- * Helper function to create an ascending order by attribute
- * @param attributeName - The name of the attribute to order by
- * @param attributeType - The type of the attribute to order by (string or number)
- * @returns Input for orderBy method
+ * Builds and runs a query.
  *
- * @deprecated Server-side ordering is not supported by the network, so `orderBy` (and this
- * helper) have no effect on the returned order. Sort the fetched entities in JavaScript
- * instead (e.g. `entities.sort(...)`). This function will be removed in a future release.
+ * The selection is fixed when the builder is created and the filter is added by chaining, so the
+ * result type is known before a single predicate is written. Create one with `client.select(...)`
+ * rather than constructing it directly — that is what infers the entity shape from the selection.
+ *
+ * Every filter added with {@link where}, {@link ownedBy} and {@link createdBy} must hold; use
+ * {@link or} for alternatives inside one call.
+ *
+ * @typeParam TEntity - The projected entity shape, inferred from the selection by `client.select()`.
  *
  * @example
- * const ascAttribute = asc("name", "string")
- */
-export function asc(attributeName: string, attributeType: "string" | "number"): OrderByAttribute {
-  return {
-    name: attributeName,
-    type: attributeType,
-    order: "asc",
-  }
-}
-
-/**
- * Helper function to create a descending order by attribute
- * @param attributeName - The name of the attribute to order by
- * @param attributeType - The type of the attribute to order by (string or number)
- * @returns Input for orderBy method
+ * import { createPublicClient } from "@arkiv-network/sdk"
+ * import { i32 } from "@arkiv-network/sdk/attr"
+ * import { braga } from "@arkiv-network/sdk/chains"
+ * import { eq, gte, or } from "@arkiv-network/sdk/query"
+ * import { http } from "viem"
  *
- * @deprecated Server-side ordering is not supported by the network, so `orderBy` (and this
- * helper) have no effect on the returned order. Sort the fetched entities in JavaScript
- * instead (e.g. `entities.sort(...)`). This function will be removed in a future release.
+ * const client = createPublicClient({ chain: braga, transport: http() })
  *
- * @example
- * const descAttribute = desc("name", "string")
- */
-export function desc(attributeName: string, attributeType: "string" | "number"): OrderByAttribute {
-  return {
-    name: attributeName,
-    type: attributeType,
-    order: "desc",
-  }
-}
-
-/**
- * Data-selection parameters forwarded to the query engine on each fetch.
- * Subclasses of {@link BaseQueryBuilder} decide which parts of an entity are fetched.
- */
-type SelectionParams = {
-  withAttributes?: boolean | undefined
-  withMetadata?: boolean | undefined
-  withPayload?: boolean | undefined
-  includeData?: RpcIncludeData | undefined
-}
-
-/**
- * BaseQueryBuilder holds the query-building logic shared by every query builder
- * (filtering, ordering, pagination, execution). It follows the Builder pattern,
- * allowing methods to be chained. Subclasses decide how data selection is expressed
- * by implementing the protected `selectionParams` method.
+ * const page = await client
+ *   .select({ key: true, attributes: true })
+ *   .where(gte("level", i32(10)), or(eq("status", "open"), eq("status", "review")))
+ *   .ownedBy(owner)
+ *   .limit(100)
+ *   .fetch()
  *
- * Use {@link SelectQueryBuilder} via `client.select()` to build and execute queries.
- *
- * @typeParam TEntity - The shape of each entity produced by {@link BaseQueryBuilder.fetch}.
+ * for (const entity of page.entities) console.log(entity.key, entity.attributes)
  */
-export abstract class BaseQueryBuilder<TEntity> {
-  protected _client: ArkivClient
-  protected _ownedBy: Hex | undefined
-  protected _createdBy: Hex | undefined
-  protected _orderBy: RpcOrderByAttribute[] | undefined
-  protected _validAtBlock: bigint | undefined
-  protected _limit: number | undefined
-  protected _cursor: string | undefined
-  protected _predicates: Predicate[]
+export class SelectQueryBuilder<TEntity = Entity> {
+  private readonly _client: ArkivClient
+  private readonly _select: RpcSelect
+  private readonly _filters: Expression[] = []
+  private _ownedBy: Expression | undefined
+  private _createdBy: Expression | undefined
+  private _limit: number | undefined
+  private _cursor: string | undefined
+  private _atBlock: bigint | undefined
 
-  constructor(client: ArkivClient) {
+  constructor(client: ArkivClient, selection?: SelectArg) {
     this._client = client
-    this._predicates = []
+    this._select = toRpcSelect(selection)
   }
 
   /**
-   * Sets the ownedBy filter
-   * @param ownedBy - The address of the owner
-   * @returns The query builder instance
+   * Adds filters. Everything passed here, and across repeated calls, must hold.
+   *
+   * @param expressions - The expressions, as separate arguments or one array.
    *
    * @example
-   * const builder = client.select()
-   * builder.ownedBy("0x1234567890123456789012345678901234567890")
+   * builder.where(eq("category", "docs"))
+   * builder.where(gte("level", i32(10)), lt("level", i32(20)))
+   * builder.where(or(eq("status", "open"), not(exists("closedAt"))))
    */
-  ownedBy(ownedBy: Hex): this {
-    this._ownedBy = ownedBy
+  where(expressions: readonly Expression[]): this
+  where(...expressions: Expression[]): this
+  where(...expressions: (Expression | readonly Expression[])[]): this {
+    this._filters.push(...expressions.flat())
     return this
   }
 
   /**
-   * Sets the createdBy filter
-   * @param createdBy - The address of the creator
-   * @returns The query builder instance
+   * Restricts the results to entities this account owns — shorthand for
+   * `where(eq("$owner", addr(owner)))`. Calling it again replaces the filter.
    *
    * @example
-   * const builder = client.select()
-   * builder.createdBy("0x1234567890123456789012345678901234567890")
+   * builder.ownedBy("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
    */
-  createdBy(createdBy: Hex): this {
-    this._createdBy = createdBy
+  ownedBy(owner: Hex): this {
+    this._ownedBy = eq("$owner", addr(owner))
     return this
   }
 
   /**
-   * Sets the orderBy for the query.
-   * It can be called multiple times to order by multiple attributes.
-   * The order of the attributes is important. The first attribute is the primary order by attribute.
-   * You can use the helper functions asc() and desc() as input for this method.
-   * @param attributeName - The name of the attribute to order by
-   * @param attributeType - The type of the attribute to order by (string or number)
-   * @param order - The order to set the order by (asc or desc)
-   * @returns The query builder instance
+   * Restricts the results to entities this account created — shorthand for
+   * `where(eq("$creator", addr(creator)))`. Calling it again replaces the filter.
    *
-   * @deprecated Server-side ordering is not supported by the network, so this method has no
-   * effect on the returned order. Sort the fetched entities in JavaScript instead, e.g.
-   * `result.entities.sort((a, b) => ...)`. This method will be removed in a future release.
-   *
-   * @example
-   * const builder = client.select()
-   * builder.orderBy("name", "string", "desc")
-   * builder.orderBy(asc("name", "string"))
-   * builder.orderBy(desc("name", "string"))
+   * The creator never changes; the owner does, so these differ after a transfer.
    */
-  orderBy(attributeName: string, attributeType: "string" | "number", order?: "asc" | "desc"): this
-  /**
-   * Sets the orderBy for the query.
-   * This method takes the OrderByAttribute object as an argument and is mainly
-   * used to use the helper functions asc() and desc() to create the OrderByAttribute instances.
-   * @param orderByAttribute - The OrderByAttribute instance to set
-   * @returns The query builder instance
-   *
-   * @deprecated Server-side ordering is not supported by the network, so this method has no
-   * effect on the returned order. Sort the fetched entities in JavaScript instead, e.g.
-   * `result.entities.sort((a, b) => ...)`. This method will be removed in a future release.
-   *
-   * @example
-   * const builder = client.select()
-   * builder.orderBy(asc("name", "string"))
-   * builder.orderBy(desc("name", "string"))
-   */
-  orderBy(orderByAttribute: OrderByAttribute): this
-  orderBy(
-    attributeNameOrOrderByAttribute: string | OrderByAttribute,
-    attributeType?: "string" | "number",
-    order: "asc" | "desc" = "asc",
-  ): this {
-    if (!this._orderBy) {
-      this._orderBy = []
-    }
-
-    const pushOrderByAttribute = ({ name, type, order }: OrderByAttribute) => {
-      this._orderBy?.push({
-        name,
-        type: type === "number" ? "numeric" : type,
-        desc: order === "desc",
-      })
-    }
-
-    if (typeof attributeNameOrOrderByAttribute === "string") {
-      if (!attributeType) {
-        throw new Error("attributeType is required when using positional orderBy arguments")
-      }
-      pushOrderByAttribute({
-        name: attributeNameOrOrderByAttribute,
-        type: attributeType,
-        order,
-      })
-    } else {
-      pushOrderByAttribute(attributeNameOrOrderByAttribute)
-    }
-
+  createdBy(creator: Hex): this {
+    this._createdBy = eq("$creator", addr(creator))
     return this
   }
 
   /**
-   * Sets the limit for the query
-   * @param limit - The number of entities to return
-   * @returns The query builder instance
+   * Sets the page size, up to the node maximum of 200. Without it the node picks the page size.
    *
    * @example
-   * const builder = client.select()
-   * builder.limit(10)
+   * builder.limit(100)
    */
   limit(limit: number): this {
     this._limit = limit
@@ -211,13 +106,11 @@ export abstract class BaseQueryBuilder<TEntity> {
   }
 
   /**
-   * Sets the cursor for the query - it is advances setting which rather shouldn't be used manually but it is provided from query result if limit is used (pagination).
-   * @param cursor - The cursor to set which tells to RPC Query server where to start or continue the query.
-   * @returns The query builder instance
+   * Starts from a cursor returned by an earlier page.
    *
-   * @example
-   * const builder = client.select()
-   * builder.cursor("0xABC123")
+   * Pagination normally goes through {@link QueryResult.next}, which carries the cursor for you;
+   * this is for resuming a walk in a later process. A cursor is bound to the query, block and
+   * selection it came from, so it must be used with an identically-built query.
    */
   cursor(cursor: string): this {
     this._cursor = cursor
@@ -225,223 +118,97 @@ export abstract class BaseQueryBuilder<TEntity> {
   }
 
   /**
-   * Sets the validAtBlock for the query which tells at which block height the state we are intested.
-   * If not set, the latest block is  used.
-   * @param validAtBlock - The block number to set
-   * @returns The query builder instance
+   * Reads the state as of a given block rather than the head. The block must be within the range
+   * the node retains.
    *
    * @example
-   * const builder = client.select()
-   * builder.validAtBlock(10000)
+   * builder.atBlock(1_297_000n)
    */
-  validAtBlock(validAtBlock: bigint): this {
-    this._validAtBlock = validAtBlock
+  atBlock(block: bigint): this {
+    this._atBlock = block
     return this
   }
 
   /**
-   * Sets the predicates for the query limiting the results. It can be a single predicate,
-   * multiple predicates passed as separate arguments, or an array of predicates - all combined with 'and'.
-   * Predicates can be nested using 'or' and 'and' predicates.
-   * @param predicates - The predicates to set, either as a single array or as separate arguments
-   * @returns The query builder instance
+   * The query string this builder will send — the same text the node parses.
    *
-   * @example
-   * const builder = client.select()
-   * builder.where(eq("name", "John"))
-   * builder.where(eq("name", "John"), eq("age", 30))
-   * builder.where([eq("name", "John"), eq("age", 30)])
-   * builder.where(eq("name", "John"), or(eq("age", 30), eq("age", 31)))
-   * builder.where(eq("name", "John"), and(eq("age", 30), eq("age", 31)))
-   * builder.where(eq("name", "John"), or(eq("age", 30), and(eq("age", 31), eq("age", 32))))
-   * builder.where(eq("name", "John"), and(eq("age", 30), or(eq("age", 31), eq("age", 32))))
+   * @throws {InvalidPredicateError} If no filter has been added.
    */
-  where(predicates: Predicate[]): this
-  where(...predicates: Predicate[]): this
-  where(...predicates: (Predicate | Predicate[])[]) {
-    this._predicates.push(...predicates.flat())
-    return this
+  toString(): string {
+    const filters = [...this._filters]
+    if (this._ownedBy) filters.push(this._ownedBy)
+    if (this._createdBy) filters.push(this._createdBy)
+    if (filters.length === 0) {
+      throw new InvalidPredicateError(
+        "A query needs at least one filter — the language has no spelling for 'match every " +
+          'entity". Add a where(...) predicate, or narrow by ownedBy(...) / createdBy(...).',
+      )
+    }
+    return and(filters).toString()
   }
 
   /**
-   * Returns the data-selection parameters forwarded to the query engine.
-   * Subclasses decide which parts of an entity are fetched.
-   */
-  protected abstract selectionParams(): SelectionParams
-
-  /**
-   * Builds a single result entity from a raw RPC entity. Subclasses decide the produced shape
-   * (a full {@link Entity}, or a projected object inferred from the selection).
-   */
-  protected abstract projectEntity(rpcEntity: RpcEntity): TEntity | Promise<TEntity>
-
-  /**
-   * Fetches the entities from the query.
-   * It will return a QueryResult instance which can be used to fetch the next and previous pages.
-   * @returns The QueryResult instance {@link QueryResult}
+   * Runs the query and returns the first page.
+   *
+   * @throws {InvalidPredicateError} If no filter has been added.
+   * @throws {QueryError} If the node rejects the query.
    *
    * @example
-   * const builder = client.select()
-   * const result = await builder.where(eq("name", "John")).fetch()
-   * // result = { entities: [Entity, Entity, Entity], next: async () => QueryResult, previous: async () => QueryResult }
+   * const page = await client.select({ key: true }).where(eq("category", "docs")).fetch()
+   * page.entities        // this page
+   * await page.next()    // the next one
    */
+  // Async so that a builder with no filter rejects like every other failure here, rather than
+  // throwing synchronously out of a call the caller is awaiting.
   async fetch(): Promise<QueryResult<TEntity>> {
-    const queryResult = await processQuery(this._client, {
-      predicates: this._predicates,
+    // Snapshot the request here, so the pages of one walk are all pages of the *same* query. The
+    // builder stays mutable and reusable; a cursor is bound to the query, block and selection it
+    // was issued for, so re-reading a since-edited builder would page with a mismatched cursor.
+    const request = Object.freeze({
+      query: this.toString(),
+      select: this._select,
       limit: this._limit,
-      cursor: this._cursor,
-      ownedBy: this._ownedBy,
-      createdBy: this._createdBy,
-      orderBy: this._orderBy,
-      validAtBlock: this._validAtBlock,
-      ...this.selectionParams(),
+      atBlock: this._atBlock,
     })
-
-    const entities = await Promise.all(queryResult.data.map((entity) => this.projectEntity(entity)))
-
-    this.cursor(queryResult.cursor)
-    this.validAtBlock(BigInt(queryResult.blockNumber ?? 0))
-
-    return new QueryResult<TEntity>(entities, this, this._cursor, this._limit, this._validAtBlock)
+    return fetchPage<TEntity>(this._client, request, this._cursor)
   }
 
   /**
-   * Counts the entities from the query.
-   * @returns The number of entities
+   * Walks every page, yielding one entity at a time.
    *
    * @example
-   * const builder = client.select()
-   * const result = await builder.where(eq("name", "John")).count()
-   * // result = 10
+   * for await (const entity of client.select({ key: true }).where(eq("category", "docs"))) {
+   *   console.log(entity.key)
+   * }
    */
-  async count() {
-    const queryResult = await processQuery(this._client, {
-      predicates: this._predicates,
-      limit: this._limit,
-      cursor: this._cursor,
-      ownedBy: this._ownedBy,
-      createdBy: this._createdBy,
-      orderBy: undefined,
-      validAtBlock: this._validAtBlock,
-      withAttributes: false,
-      withMetadata: false,
-      withPayload: false,
-    })
-
-    return queryResult.data.length ?? 0
-  }
-}
-
-/**
- * QueryBuilder is a helper class to build queries against Arkiv.
- * It fetches entities from the chain, following the Builder pattern allowing chaining of methods.
- *
- * By default the result includes only the entity `key`. Additional data is opt-in through
- * `withAttributes()`, `withMetadata()` and `withPayload()`.
- *
- * @deprecated Use {@link SelectQueryBuilder} via `client.select()` instead. Declaring the
- * selection up front avoids the common mistake of forgetting to opt in to data and getting back
- * entities with only their `key` populated. This class remains for backwards compatibility and
- * will be removed in a future release.
- *
- * @param client - The Arkiv client
- * @returns The QueryBuilder instance {@link QueryBuilder}
- */
-export class QueryBuilder extends BaseQueryBuilder<Entity> {
-  private _withAttributes: boolean | undefined
-  private _withMetadata: boolean | undefined
-  private _withPayload: boolean | undefined
-
-  /**
-   * Sets the withAttributes flag which will return the attributes for the entities if true
-   * @param withAttributes - The boolean value to set
-   * @returns The QueryBuilder instance
-   *
-   * @example
-   * const builder = client.buildQuery()
-   * builder.withAttributes(true)
-   */
-  withAttributes(withAttributes: boolean = true): this {
-    this._withAttributes = withAttributes
-    return this
-  }
-
-  /**
-   * Sets the withMetadata flag which will return the metadata (like owner, expiredAt, etc.) for the entities if true
-   * @param withMetadata - The boolean value to set
-   * @returns The QueryBuilder instance
-   *
-   * @example
-   * const builder = client.buildQuery()
-   * builder.withMetadata(true)
-   */
-  withMetadata(withMetadata: boolean = true): this {
-    this._withMetadata = withMetadata
-    return this
-  }
-
-  /**
-   * Sets the withPayload flag which will return the payload for the entities if true
-   * @param withPayload - The boolean value to set
-   * @returns The QueryBuilder instance
-   *
-   * @example
-   * const builder = client.buildQuery()
-   * builder.withPayload(true)
-   */
-  withPayload(withPayload: boolean = true): this {
-    this._withPayload = withPayload
-    return this
-  }
-
-  protected selectionParams(): SelectionParams {
-    return {
-      withAttributes: this._withAttributes,
-      withMetadata: this._withMetadata,
-      withPayload: this._withPayload,
+  async *[Symbol.asyncIterator](): AsyncGenerator<TEntity> {
+    let page: QueryResult<TEntity> | undefined = await this.fetch()
+    while (page) {
+      yield* page.entities
+      page = page.hasNextPage() ? await page.next() : undefined
     }
   }
-
-  protected projectEntity(rpcEntity: RpcEntity): Promise<Entity> {
-    return entityFromRpcResult(rpcEntity)
-  }
 }
 
 /**
- * SelectQueryBuilder is the recommended query builder. It requires the selection to be declared
- * up front, so results always contain exactly the data you asked for — and the type of each
- * returned entity is narrowed to exactly the selected fields.
+ * Fetches one page and wires up the next.
  *
- * The selection is fixed at construction time and is flat — each field maps to an entity field.
- * Create one via `client.select(...)` rather than constructing it directly, so the result type is
- * inferred from the selection.
- *
- * @typeParam TEntity - The projected entity shape, inferred from the selection by `client.select()`.
- *
- * @example
- * // everything
- * await client.select().where(eq("name", "John")).fetch()
- * await client.select("*").where(eq("name", "John")).fetch()
- * // specific fields
- * await client.select({ owner: true, attributes: true }).fetch()
- * // a single field — result is typed (flat) { owner: Hex }
- * await client.select({ owner: true }).fetch()
+ * Free-standing rather than a method: a page holds this closure for its lifetime, and closing over
+ * a frozen request keeps the builder — and everything it references — out of that reference.
  */
-export class SelectQueryBuilder<TEntity> extends BaseQueryBuilder<TEntity> {
-  private _includeData: RpcIncludeData
+async function fetchPage<TEntity>(
+  client: ArkivClient,
+  request: Readonly<Omit<QueryRequest, "cursor">>,
+  cursor: string | undefined,
+): Promise<QueryResult<TEntity>> {
+  const response = await runQuery(client, { ...request, cursor })
 
-  constructor(client: ArkivClient, selection?: SelectArg) {
-    super(client)
-    this._includeData = selectionToIncludeData(selection)
-  }
-
-  protected selectionParams(): SelectionParams {
-    return { includeData: this._includeData }
-  }
-
-  protected async projectEntity(rpcEntity: RpcEntity): Promise<TEntity> {
-    // The runtime value is a full Entity (with methods); the static type is narrowed to the
-    // selected fields via `client.select()`'s inference.
-    return (await entityFromRpcResult(rpcEntity)) as unknown as TEntity
-  }
+  return new QueryResult<TEntity>(
+    // Every row decodes to a full Entity; the static narrowing to the selected fields comes from
+    // `client.select()`'s inference and nothing at runtime depends on it.
+    response.entities as unknown as TEntity[],
+    response.blockNumber,
+    response.cursor,
+    (next) => fetchPage<TEntity>(client, request, next),
+  )
 }

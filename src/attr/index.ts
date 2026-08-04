@@ -1,4 +1,4 @@
-export type { AttributeInputs, Attributes } from "./attributes"
+export type { AttributeInputs, AttributeSchema, Attributes } from "./attributes"
 export { MAX_ATTRIBUTES } from "./attributes"
 export { DECIMAL_SCALE, DECIMAL_UNIT } from "./decimal"
 export {
@@ -24,6 +24,7 @@ export type {
   StrValue,
   TypeTag,
   U256Value,
+  UserTypeTag,
 } from "./types"
 export { isArkivValue } from "./types"
 export type { ValueInput } from "./values"

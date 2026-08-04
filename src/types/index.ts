@@ -1,10 +1,5 @@
 export type { GetBlockTimingReturnType } from "../actions/public/getBlockTiming"
-export type {
-  QueryOptions,
-  QueryOptionsIncludeData,
-  QueryOptionsOrderBy,
-  QueryReturnType,
-} from "../actions/public/query"
+export type { QueryOptions, QueryReturnType } from "../actions/public/query"
 export type {
   ChangeOwnershipParameters,
   ChangeOwnershipReturnType,
@@ -17,8 +12,8 @@ export type {
   MutateEntitiesReturnType,
 } from "../actions/wallet/mutateEntities"
 export type { PatchEntityParameters, PatchEntityReturnType } from "../actions/wallet/patchEntity"
-export type { Entity } from "./entity"
-export { EntityOperationType } from "./entity"
+export type { EntityFields } from "./entity"
+export { Entity, EntityOperationType } from "./entity"
 export type {
   OnEntityCreatedEvent,
   OnEntityDeletedEvent,
@@ -30,9 +25,11 @@ export type {
 export type { MimeType } from "./mimeTypes"
 export type {
   ArkivRpcSchema,
+  RpcAttribute,
+  RpcAttributeSchemaEntry,
+  RpcCreationFlags,
   RpcEntity,
-  RpcIncludeData,
-  RpcOrderByAttribute,
   RpcQueryOptions,
+  RpcSelect,
 } from "./rpcSchema"
 export type { TxParams } from "./txParams"
