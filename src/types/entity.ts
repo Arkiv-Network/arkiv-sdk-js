@@ -2,15 +2,6 @@ import { bytesToString, type Hex } from "viem"
 import type { AttributeSchema, Attributes } from "../attr"
 import type { ResolvedCreationFlags } from "../entity/flags"
 
-export enum EntityOperationType {
-  Create = 1,
-  Update = 2,
-  Extend = 3,
-  Transfer = 4,
-  Delete = 5,
-  Expire = 6,
-}
-
 /**
  * The fields an {@link Entity} can carry. Every one is optional: a query returns exactly the parts
  * it selected, and `undefined` means "not asked for" rather than "empty".

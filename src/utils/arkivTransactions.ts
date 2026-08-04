@@ -46,30 +46,6 @@ function validateContentType(contentType: string): void {
   }
 }
 
-/**
- * The events the spec defines: one per applied operation, in application order, so an off-chain
- * replica can replay a transaction operation by operation. Purge emits nothing — apps watch the
- * indexed `$expiresAt` instead.
- */
-export const ENTITY_EVENTS_ABI = parseAbi([
-  "event EntityCreated(bytes32 indexed entityKey, address indexed owner, uint256 expiresAt)",
-  "event EntityPatched(bytes32 indexed entityKey, address indexed owner)",
-  "event ExpiryExtended(bytes32 indexed entityKey, uint256 expiresAt)",
-  "event OwnershipTransferred(bytes32 indexed entityKey, address indexed from, address indexed to)",
-  "event EntityDeleted(bytes32 indexed entityKey, address indexed owner)",
-])
-
-/**
- * The single pre-spec event, still used by `subscribeEntityEvents`.
- *
- * @deprecated The spec replaces this with the five events in {@link ENTITY_EVENTS_ABI}. The
- * subscription surface has not been migrated yet, so this stays until it is — it will not decode
- * logs from an engine that emits the spec's events.
- */
-export const ENTITY_OPERATION_EVENT_ABI = parseAbi([
-  "event EntityOperation(bytes32 indexed entityKey, uint8 indexed operationType, address indexed owner, uint32 expiresAt, bytes32 entityHash)",
-])
-
 export const ENTITY_ERRORS_ABI = parseAbi([
   "error EmptyBatch()",
   "error UnknownOperation(uint8 operation)",

@@ -1,5 +1,6 @@
 export type { GetBlockTimingReturnType } from "../actions/public/getBlockTiming"
 export type { QueryOptions, QueryReturnType } from "../actions/public/query"
+export type { WatchEntityEventsParameters } from "../actions/public/watchEntityEvents"
 export type {
   ChangeOwnershipParameters,
   ChangeOwnershipReturnType,
@@ -13,14 +14,16 @@ export type {
 } from "../actions/wallet/mutateEntities"
 export type { PatchEntityParameters, PatchEntityReturnType } from "../actions/wallet/patchEntity"
 export type { EntityFields } from "./entity"
-export { Entity, EntityOperationType } from "./entity"
+export { Entity } from "./entity"
 export type {
-  OnEntityCreatedEvent,
-  OnEntityDeletedEvent,
-  OnEntityExpiredEvent,
-  OnEntityExpiresInExtendedEvent,
-  OnEntityOwnerChangedEvent,
-  OnEntityUpdatedEvent,
+  EntityCreatedEvent,
+  EntityDeletedEvent,
+  EntityEvent,
+  EntityEventContext,
+  EntityExpiredEvent,
+  EntityPatchedEvent,
+  ExpiryExtendedEvent,
+  OwnershipTransferredEvent,
 } from "./events"
 export type { MimeType } from "./mimeTypes"
 export type {

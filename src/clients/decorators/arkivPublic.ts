@@ -3,18 +3,14 @@ import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
 import { type QueryOptions, type QueryReturnType, query } from "../../actions/public/query"
-import { subscribeEntityEvents } from "../../actions/public/subscribeEntityEvents"
+import {
+  type WatchEntityEventsParameters,
+  watchEntityEvents,
+} from "../../actions/public/watchEntityEvents"
 import type { Expression } from "../../query/expression"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type { EntitySelection, FullEntity, ProjectedEntity, SelectArg } from "../../query/selection"
 import type { Entity } from "../../types/entity"
-import type {
-  OnEntityCreatedEvent,
-  OnEntityDeletedEvent,
-  OnEntityExpiredEvent,
-  OnEntityExpiresInExtendedEvent,
-  OnEntityUpdatedEvent,
-} from "../../types/events"
 
 export type PublicArkivActions<
   transport extends Transport = Transport,
@@ -31,6 +27,9 @@ export type PublicArkivActions<
   | "getTransactionCount"
   | "getTransactionReceipt"
   | "waitForTransactionReceipt"
+  // `watchBlockNumber` is what turns a block height passing into an event, which is how
+  // `watchEntityEvents` synthesizes an expiry the chain never announces.
+  | "watchBlockNumber"
   | "watchEvent"
 > & {
   /**
@@ -204,14 +203,19 @@ export type PublicArkivActions<
   }>
 
   /**
-   * Subscribes to entity events.
+   * Watches entity events, calling the handlers you pass as they arrive.
    *
-   * Takes an object of handlers, all optional: `onError`, `onEntityCreated`, `onEntityUpdated`,
-   * `onEntityDeleted`, `onEntityExpired` and `onEntityExpiresInExtended`.
+   * Five of the six are decoded from logs — `onEntityCreated`, `onEntityPatched`,
+   * `onExpiryExtended`, `onOwnershipTransferred`, `onEntityDeleted` — and each carries the block,
+   * transaction and log index it came from, which is the order the operations were applied in.
+   * `onEvent` receives all of them, whatever their type.
    *
-   * @param pollingInterval - The polling interval in milliseconds
-   * @param fromBlock - The block number to start from
-   * @returns A function to unsubscribe from the events
+   * The sixth, `onEntityExpired`, is **synthesized**: an expiry emits no log, so the watcher tracks
+   * the `expiresAt` it sees and fires when the block height reaches one. It therefore only covers
+   * entities this watcher saw created or extended; for an existing set, query `$expiresAt` instead.
+   *
+   * @param parameters - Handlers and options, all optional. {@link WatchEntityEventsParameters}
+   * @returns A function that stops the watcher.
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
@@ -222,30 +226,13 @@ export type PublicArkivActions<
    *   chain: braga,
    *   transport: http(),
    * })
-   * const unsubscribe = await client.subscribeEntityEvents({
-   *   onError: (error) => console.error("subscribeEntityEvents error", error),
+   * const unwatch = client.watchEntityEvents({
+   *   onEntityCreated: ({ entityKey, expiresAt }) => console.log(entityKey, "until", expiresAt),
+   *   onError: (error) => console.error("watchEntityEvents error", error),
    * })
-   * unsubscribe() // unsubscribe from the events
+   * unwatch() // stop watching
    */
-  subscribeEntityEvents: (
-    {
-      onError,
-      onEntityCreated,
-      onEntityUpdated,
-      onEntityDeleted,
-      onEntityExpired,
-      onEntityExpiresInExtended,
-    }: {
-      onError?: (error: Error) => void
-      onEntityCreated?: (event: OnEntityCreatedEvent) => void
-      onEntityUpdated?: (event: OnEntityUpdatedEvent) => void
-      onEntityDeleted?: (event: OnEntityDeletedEvent) => void
-      onEntityExpired?: (event: OnEntityExpiredEvent) => void
-      onEntityExpiresInExtended?: (event: OnEntityExpiresInExtendedEvent) => void
-    },
-    pollingInterval?: number,
-    fromBlock?: bigint,
-  ) => Promise<() => void>
+  watchEntityEvents: (parameters: WatchEntityEventsParameters) => () => void
 }
 
 export function publicArkivActions<
@@ -260,37 +247,7 @@ export function publicArkivActions<
     select: (selection?: SelectArg) => new SelectQueryBuilder(client, selection),
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),
-    subscribeEntityEvents: (
-      {
-        onError,
-        onEntityCreated,
-        onEntityUpdated,
-        onEntityDeleted,
-        onEntityExpired,
-        onEntityExpiresInExtended,
-      }: {
-        onError?: (error: Error) => void
-        onEntityCreated?: (event: OnEntityCreatedEvent) => void
-        onEntityUpdated?: (event: OnEntityUpdatedEvent) => void
-        onEntityDeleted?: (event: OnEntityDeletedEvent) => void
-        onEntityExpired?: (event: OnEntityExpiredEvent) => void
-        onEntityExpiresInExtended?: (event: OnEntityExpiresInExtendedEvent) => void
-      },
-      pollingInterval?: number,
-      fromBlock?: bigint,
-    ) =>
-      subscribeEntityEvents(
-        client,
-        {
-          onError,
-          onEntityCreated,
-          onEntityUpdated,
-          onEntityDeleted,
-          onEntityExpired,
-          onEntityExpiresInExtended,
-        },
-        pollingInterval,
-        fromBlock,
-      ),
+    watchEntityEvents: (parameters: WatchEntityEventsParameters) =>
+      watchEntityEvents(client, parameters),
   }
 }
