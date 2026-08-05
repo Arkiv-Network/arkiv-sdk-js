@@ -1,17 +1,18 @@
 import { describe, expect, it } from "bun:test"
-import { decodeAbiParameters, parseAbiParameters, toHex } from "viem"
+import { concat, decodeAbiParameters, keccak256, pad, parseAbiParameters, toHex } from "viem"
 import { encodeAttributes } from "../attr/attributes"
 import { dec, i32, str, u256 } from "../attr/values"
+import { ARKIV_ADDRESS } from "../consts"
 import { InvalidCreationFlagsError } from "./errors"
 import { decodeCreationFlags, encodeCreationFlags } from "./flags"
 import { MAX_SALT, predictEntityKey, randomSalt, validateSalt } from "./key"
 import { createOperation } from "./operations"
-import { OperationType, DEFAULT_PROTOCOL_PARAMS as PARAMS } from "./params"
+import { OperationType } from "./params"
 
 const OWNER = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
 
 const CREATE_PARAMS = parseAbiParameters(
-  "(uint128 salt, uint256 expiresAt, uint256 minLifetime, uint8 creationFlags, (bytes32 name, uint8 typeId, bytes value)[] attributes)",
+  "(uint128 salt, uint64 expiresAt, uint64 minLifetime, uint8 creationFlags, (bytes32 name, uint8 typeId, bytes value)[] attributes)",
 )
 
 /** Decodes an operation's payload back into the Create struct it encodes. */
@@ -41,9 +42,9 @@ describe("creation flags", () => {
     }
   })
 
-  it("refuses to guess at a reserved bit it does not understand", () => {
-    expect(() => decodeCreationFlags(0b100)).toThrow(InvalidCreationFlagsError)
-    expect(() => decodeCreationFlags(0b100)).toThrow(/upgrade @arkiv-network\/sdk/)
+  it("refuses a value that is not a byte at all", () => {
+    // Malformed input
+    expect(() => decodeCreationFlags(256)).toThrow(InvalidCreationFlagsError)
     expect(() => decodeCreationFlags(256)).toThrow(/not a byte/)
     expect(() => decodeCreationFlags(-1)).toThrow(/not a byte/)
   })
@@ -77,7 +78,7 @@ describe("salt", () => {
 
 describe("predictEntityKey", () => {
   it("is deterministic in owner, nonce and salt", () => {
-    const base = { owner: OWNER, nonce: 0n, salt: 7n, params: PARAMS } as const
+    const base = { owner: OWNER, nonce: 0n, salt: 7n, chainId: 1 } as const
     expect(predictEntityKey(base)).toBe(predictEntityKey(base))
     expect(predictEntityKey({ ...base, nonce: 1n })).not.toBe(predictEntityKey(base))
     expect(predictEntityKey({ ...base, salt: 8n })).not.toBe(predictEntityKey(base))
@@ -86,16 +87,15 @@ describe("predictEntityKey", () => {
     ).not.toBe(predictEntityKey(base))
   })
 
-  it("separates chains and protocol versions through the domain", () => {
+  it("separates chains through the domain", () => {
     const base = { owner: OWNER, nonce: 0n, salt: 0n } as const
-    const other = { ...PARAMS, domain: `0x${"11".repeat(32)}` } as const
-    expect(predictEntityKey({ ...base, params: PARAMS })).not.toBe(
-      predictEntityKey({ ...base, params: other }),
+    expect(predictEntityKey({ ...base, chainId: 1 })).not.toBe(
+      predictEntityKey({ ...base, chainId: 2 }),
     )
   })
 
   it("returns a 32-byte key", () => {
-    expect(predictEntityKey({ owner: OWNER, nonce: 0n, salt: 0n, params: PARAMS })).toMatch(
+    expect(predictEntityKey({ owner: OWNER, nonce: 0n, salt: 0n, chainId: 1 })).toMatch(
       /^0x[0-9a-f]{64}$/,
     )
   })
@@ -137,7 +137,7 @@ describe("the Create operation", () => {
     )
     const names = create.attributes.map((a) => a.name)
     expect(names).toEqual([...names].sort())
-    expect(create.attributes.map((a) => a.typeId)).toEqual([7, 3, 2]) // apple, mango, zebra
+    expect(create.attributes.map((a) => a.typeId)).toEqual([8, 4, 2]) // apple str, mango u256, zebra i32
   })
 
   it("sends the payload and content type as system cells, ahead of user attributes", () => {
@@ -155,8 +155,8 @@ describe("the Create operation", () => {
     expect(create.attributes[0].name).toBe(toHex("$contentType", { size: 32 }))
     expect(create.attributes[1].name).toBe(toHex("$payload", { size: 32 }))
 
-    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 6, value: "0xdead" })
-    expect(byName[toHex("$contentType", { size: 32 })].typeId).toBe(7)
+    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 7, value: "0xdead" })
+    expect(byName[toHex("$contentType", { size: 32 })].typeId).toBe(8)
     expect(byName[toHex("level", { size: 32 })].typeId).toBe(2)
   })
 

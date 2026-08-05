@@ -2,10 +2,10 @@ import { describe, expect, it } from "bun:test"
 import { ExpirationTime } from "../utils/expirationTime"
 import { InvalidExpiryError } from "./errors"
 import { type Expiry, type ExpiryContext, resolveExpiry, toBlocks } from "./expiry"
-import { DEFAULT_PROTOCOL_PARAMS as params } from "./params"
+import { MAX_EXPIRES_AT } from "./params"
 
 const CURRENT_BLOCK = 1000n
-const ctx: ExpiryContext = { currentBlock: CURRENT_BLOCK, params }
+const ctx: ExpiryContext = { currentBlock: CURRENT_BLOCK }
 
 describe("what ExpirationTime builds", () => {
   it("is the wire pair itself, so what you write is what is sent", () => {
@@ -170,21 +170,16 @@ describe("bounds and misuse", () => {
     )
   })
 
-  it("enforces the protocol bounds", () => {
-    expect(() => resolveExpiry(ExpirationTime.atBlock(params.maxExpiresAt + 1n), ctx)).toThrow(
-      /beyond the protocol maximum/,
+  it("bounds an expiry only by the width of the wire field", () => {
+    expect(() => resolveExpiry(ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n), ctx)).toThrow(
+      /does not fit the uint64/,
     )
-    const tooLong = ExpirationTime.fromBlocks(Number(params.maxLifetime + 1n))
-    expect(() => resolveExpiry(tooLong, ctx)).toThrow(/beyond the protocol maximum/)
-    // Something that must outlive the bound has to be extended, since nothing is permanent.
-    expect(() => resolveExpiry(tooLong, ctx)).toThrow(/extend it later/)
-  })
-
-  it("allows exactly the bound", () => {
-    const atBound = ExpirationTime.atBlock(CURRENT_BLOCK + params.maxLifetime)
-    expect(resolveExpiry(atBound, ctx).target).toBe(CURRENT_BLOCK + params.maxLifetime)
+    expect(() => resolveExpiry(ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n), ctx)).toThrow(
+      /ExpirationTime\.permanent\(\)/,
+    )
   })
 })
+
 
 describe("toBlocks", () => {
   it("converts whole blocks' worth of seconds", () => {

@@ -3,12 +3,12 @@ import type { ArkivClient } from "../../clients/baseClient"
 import type { PublicArkivClient } from "../../clients/createPublicClient"
 import { ARKIV_ADDRESS, BLOCK_TIME } from "../../consts"
 import { ENTITY_EVENTS_ABI } from "../../entity/events"
+import { decodeCreationFlags } from "../../entity/flags"
 import type {
   EntityCreatedEvent,
   EntityDeletedEvent,
   EntityEvent,
   EntityEventContext,
-  EntityExpiredEvent,
   EntityPatchedEvent,
   ExpiryExtendedEvent,
   OwnershipTransferredEvent,
@@ -36,21 +36,11 @@ export type WatchEntityEventsParameters = {
   onOwnershipTransferred?: ((event: OwnershipTransferredEvent) => void) | undefined
   onEntityDeleted?: ((event: EntityDeletedEvent) => void) | undefined
   /**
-   * An entity reached its expiry. Synthesized rather than decoded — see {@link EntityExpiredEvent}.
-   *
-   * It covers only entities created or extended **while this watcher was running**. Replayed
-   * history is deliberately excluded: a create from before you started watching may since have been
-   * extended, deleted or already purged, and the watcher cannot tell which from the log alone. To
-   * cover entities that already exist, query `$expiresAt` for them instead.
-   */
-  onEntityExpired?: ((event: EntityExpiredEvent) => void) | undefined
-  /**
-   * Every on-chain event, in application order, whatever its type. Runs *before* the per-event
-   * handler for the same event.
+   * Every event, in application order, whatever its type. Runs *before* the per-event handler for
+   * the same event.
    *
    * This is the replay seam: operations apply in batch order and emit one event each, so an
-   * off-chain replica that consumes this in order sees exactly what the engine did. Synthesized
-   * expiries are not included — they are not operations.
+   * off-chain replica that consumes this in order sees exactly what the engine did.
    */
   onEvent?: ((event: EntityEvent) => void) | undefined
   /**
@@ -66,33 +56,16 @@ export type WatchEntityEventsParameters = {
   pollingInterval?: number | undefined
 }
 
-/** What the watcher remembers about an entity it may have to announce the expiry of. */
-type TrackedExpiry = {
-  /** The block the entity is set to expire at. */
-  expiresAt: bigint
-  /** The block whose log taught us that — how a replayed create is told from a live one. */
-  learnedAtBlock: bigint
-}
-
 /**
  * Watches entity events, calling the handlers you pass as they arrive.
  *
- * The five on-chain events are decoded from logs emitted by the Arkiv operation address. The sixth,
- * {@link EntityExpiredEvent}, is **synthesized**: a purge emits no log, so the watcher tracks the
- * `expiresAt` it sees on creates and extensions and fires when the block height reaches one.
+ * Every event here is decoded from a log the Arkiv operation address emitted, and carries the
+ * block, transaction and log index it came from — so consuming them in order replays exactly what
+ * the engine did.
  *
  * @param parameters - Handlers and options. {@link WatchEntityEventsParameters}
  * @returns A function that stops the watcher.
  *
- * @remarks
- * Two limits worth knowing before you rely on `onEntityExpired`:
- *
- * - It only covers entities created or extended **while the watcher was running**. Events replayed
- *   from `fromBlock` are dispatched to the other handlers as normal, but are not tracked for
- *   expiry: their `expiresAt` may have been superseded long ago by an extension the watcher has not
- *   replayed yet, and announcing an expiry for a live entity is worse than announcing none.
- * - The tracking map holds one entry per live, unexpired entity the watcher has seen, so a
- *   long-running watcher on a busy chain holds a proportionally large map until those expiries pass.
  *
  * @example
  * import { createPublicClient } from "@arkiv-network/sdk"
@@ -120,7 +93,6 @@ export function watchEntityEvents(
     onExpiryExtended,
     onOwnershipTransferred,
     onEntityDeleted,
-    onEntityExpired,
     onEvent,
     onError,
     fromBlock,
@@ -130,39 +102,7 @@ export function watchEntityEvents(
   const publicClient = client as PublicArkivClient
   const reportError = onError ?? logToConsole
 
-  /**
-   * The expiry of every entity this watcher has seen created or extended and not yet seen expire.
-   * Only maintained when someone is listening — an unused watcher should not grow a map.
-   */
-  const expiries = onEntityExpired ? new Map<Hex, TrackedExpiry>() : undefined
-
-  /**
-   * The head when this watcher started, learned from the block watcher's first tick. Everything at
-   * or below it is history being replayed, whose expiries are not this watcher's to announce.
-   */
-  let headAtStart: bigint | undefined
-
   function emit(event: EntityEvent): void {
-    // Bookkeeping happens before dispatch and outside every handler's reach: a consumer that throws
-    // must not be able to leave the expiry map disagreeing with the events it was built from.
-    if (expiries !== undefined) {
-      switch (event.type) {
-        case "EntityCreated":
-        case "ExpiryExtended":
-          // An extension replaces the deadline, so this is a `set` even for an entity whose creation
-          // the watcher missed: the new expiry is knowledge it did not have a moment ago.
-          expiries.set(event.entityKey, {
-            expiresAt: event.expiresAt,
-            learnedAtBlock: event.blockNumber,
-          })
-          break
-        case "EntityDeleted":
-          // Deleted before its expiry, so the expiry it was carrying will never arrive.
-          expiries.delete(event.entityKey)
-          break
-      }
-    }
-
     deliver(onEvent, event)
     switch (event.type) {
       case "EntityCreated":
@@ -236,48 +176,7 @@ export function watchEntityEvents(
     onError: (error) => reportError(error),
   })
 
-  // Expiry is a block height passing, not something that happens, so it needs its own clock. Only
-  // started when someone is listening — otherwise it is a poller doing nothing.
-  const unwatchBlocks = onEntityExpired
-    ? publicClient.watchBlockNumber({
-        emitOnBegin: true,
-        pollingInterval,
-        onBlockNumber: (blockNumber) => {
-          if (expiries === undefined) return
-          if (headAtStart === undefined) {
-            // The first tick establishes where "now" was when the watcher started; it sweeps
-            // nothing, because at this point every entry can only have come from replayed history.
-            headAtStart = blockNumber
-            return
-          }
-          // Deleting the current entry during iteration is well-defined for a Map, and every entry
-          // fires at most once because it is removed as it does.
-          for (const [entityKey, tracked] of expiries) {
-            if (tracked.learnedAtBlock <= headAtStart) {
-              // Replayed history. The log stream may not have reached the extension that moved this
-              // entity's expiry out, so the deadline on record is not evidence of anything yet.
-              expiries.delete(entityKey)
-              continue
-            }
-            if (tracked.expiresAt > blockNumber) continue
-            expiries.delete(entityKey)
-            onEntityExpired({
-              type: "EntityExpired",
-              entityKey,
-              expiresAt: tracked.expiresAt,
-              observedAtBlock: blockNumber,
-            })
-          }
-        },
-        onError: (error) => reportError(error),
-      })
-    : undefined
-
-  return () => {
-    unwatchLogs()
-    unwatchBlocks?.()
-    expiries?.clear()
-  }
+  return unwatchLogs
 }
 
 /** The fallback when no `onError` was given — see {@link WatchEntityEventsParameters.onError}. */
@@ -308,7 +207,12 @@ function toEntityEvent(
 
   switch (decoded.eventName) {
     case "EntityCreated":
-      return { type: "EntityCreated", ...context, ...decoded.args }
+      return {
+        type: "EntityCreated",
+        ...context,
+        ...decoded.args,
+        creationFlags: decodeCreationFlags(decoded.args.creationFlags),
+      }
     case "EntityPatched":
       return { type: "EntityPatched", ...context, ...decoded.args }
     case "ExpiryExtended":

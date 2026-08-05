@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { encodeAttributes, MAX_ATTRIBUTES, resolveAttributes } from "./attributes"
+import { encodeAttributes, encodeMutations, MAX_ATTRIBUTES, resolveAttributes } from "./attributes"
 import { InvalidAttributeNameError, TooManyAttributesError } from "./errors"
 import { isValidAttributeName, validateAttributeName } from "./names"
 import { dec, i32, str, u256 } from "./values"
@@ -29,6 +29,40 @@ describe("resolveAttributes", () => {
   })
 })
 
+describe("the attribute cap", () => {
+  const attributes = (count: number) =>
+    Object.fromEntries(Array.from({ length: count }, (_, i) => [`a${i}`, i]))
+
+  it("counts the payload and content-type cells, which the engine also counts", () => {
+    // Under the cap on its own, over it once the two system cells are appended. Letting this
+    // through would spend gas on a transaction the engine answers with TooManyAttributes(34, 32).
+    expect(() =>
+      encodeAttributes(attributes(MAX_ATTRIBUTES), {
+        payload: new Uint8Array([1]),
+        contentType: "application/json",
+      }),
+    ).toThrow(/at most 32 attributes, got 34/)
+  })
+
+  it("leaves room for them rather than rejecting a full-but-legal operation", () => {
+    expect(
+      encodeAttributes(attributes(MAX_ATTRIBUTES - 2), {
+        payload: new Uint8Array([1]),
+        contentType: "application/json",
+      }),
+    ).toHaveLength(MAX_ATTRIBUTES)
+  })
+
+  it("counts tombstones in a patch — a removal occupies a cell like any other", () => {
+    expect(() =>
+      encodeMutations({
+        set: attributes(MAX_ATTRIBUTES - 1),
+        unset: ["gone_a", "gone_b"],
+      }),
+    ).toThrow(/at most 32 attributes, got 33/)
+  })
+})
+
 describe("encodeAttributes", () => {
   it("sorts strictly ascending by the encoded name, whatever order they were written in", () => {
     const encoded = encodeAttributes({ zebra: 1, apple: 2, mango: 3 })
@@ -39,7 +73,7 @@ describe("encodeAttributes", () => {
 
   it("carries each value's typeId", () => {
     const ids = encodeAttributes({ level: i32(1), score: dec("1"), tag: "x" }).map((a) => a.typeId)
-    expect([...ids].sort()).toEqual([2, 4, 7])
+    expect([...ids].sort()).toEqual([2, 5, 8]) // i32, dec, str
   })
 
   it("accepts an empty attribute set", () => {

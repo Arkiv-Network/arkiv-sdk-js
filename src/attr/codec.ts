@@ -1,8 +1,12 @@
 import { bytesToString, type Hex, hexToBytes, pad, size, stringToBytes, toHex } from "viem"
 import { unitsToDecimal } from "./decimal"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
-import { type AnyArkivValue, makeValue, TYPE_IDS, type TypeTag } from "./types"
-import { addr, bool, bytes32, dec, decUnits, i32, key, str, u256 } from "./values"
+import { type AnyArkivValue, makeValue, type StrValue, TYPE_IDS, type TypeTag } from "./types"
+import { addr, bool, bytes32, dec, decUnits, i32, key, u64, u256 } from "./values"
+
+function strFromChain(value: string): StrValue {
+  return makeValue("str", value)
+}
 
 /**
  * The `typeId` marking a tombstone — an attribute being unset. It carries a zero-length value and
@@ -27,8 +31,8 @@ export type AbiAttribute = {
  *
  * This and {@link decodeValueBytes} are the only place the value/wire mapping is written down.
  *
- * - Word types (`bool`, `i32`, `u256`, `dec`, `bytes32`, `addr`, `key`) become exactly 32 bytes, in
- *   the encoding Solidity would use — right-aligned, and sign-extended for `i32`.
+ * - Word types (`bool`, `i32`, `u64`, `u256`, `dec`, `bytes32`, `addr`, `key`) become exactly 32
+ *   bytes, in the encoding Solidity would use — right-aligned, and sign-extended for `i32`.
  * - `str` becomes its raw UTF-8 bytes, and `bytes` its raw bytes: variable length, no padding.
  */
 export function encodeValueBytes(value: AnyArkivValue): Hex {
@@ -38,6 +42,7 @@ export function encodeValueBytes(value: AnyArkivValue): Hex {
     case "i32":
       // int32 is sign-extended across the whole word, as Solidity encodes it.
       return toHex(BigInt.asUintN(256, BigInt(value.value)), { size: 32 })
+    case "u64":
     case "u256":
       return toHex(value.value, { size: 32 })
     case "dec":
@@ -62,7 +67,7 @@ export function encodeValueBytes(value: AnyArkivValue): Hex {
  * silently truncating it.
  */
 export function decodeValueBytes(tag: TypeTag, value: Hex): AnyArkivValue {
-  if (tag === "str") return str(bytesToString(hexToBytes(value)))
+  if (tag === "str") return strFromChain(bytesToString(hexToBytes(value)))
   if (tag === "bytes") return makeValue("bytes", value.toLowerCase() as Hex)
 
   const width = size(value)
@@ -84,6 +89,11 @@ export function decodeValueBytes(tag: TypeTag, value: Hex): AnyArkivValue {
       }
       return i32(narrowed)
     }
+    case "u64":
+      if (raw >> 64n !== 0n) {
+        throw new InvalidValueError("u64", value, "a u64 word must be zero-padded to 8 bytes")
+      }
+      return u64(raw)
     case "u256":
       return u256(raw)
     case "dec":
@@ -129,7 +139,8 @@ export function encodeTombstone(name: string): AbiAttribute {
  * Decodes an attribute value as it comes back over JSON-RPC.
  *
  * The JSON encoding follows the value's **declared type**, never its magnitude: `bool` is a JSON
- * boolean, `i32` a JSON number, `u256` a `0x` QUANTITY, `dec` a decimal string, `str` a string, and
+ * boolean, `i32` a JSON number, `u64`/`u256` a `0x` QUANTITY, `dec` a decimal string, `str` a
+ * string, and
  * the byte-shaped types `0x` DATA. Decimal strings are also accepted for the integer types, so this
  * keeps working against a node that renders them that way.
  *
@@ -145,6 +156,8 @@ export function decodeRpcValue(type: string, value: unknown): AnyArkivValue {
       return bool(asBoolean(value))
     case "i32":
       return i32(Number(asIntegerish("i32", value)))
+    case "u64":
+      return u64(asIntegerish("u64", value))
     case "u256":
       return u256(asIntegerish("u256", value))
     case "dec":
@@ -156,7 +169,7 @@ export function decodeRpcValue(type: string, value: unknown): AnyArkivValue {
     case "addr":
       return addr(asString("addr", value))
     case "str":
-      return str(asString("str", value))
+      return strFromChain(asString("str", value))
     case "bytes":
       return makeValue("bytes", asString("bytes", value).toLowerCase() as Hex)
   }

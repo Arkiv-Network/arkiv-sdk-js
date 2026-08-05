@@ -14,7 +14,9 @@ import {
   key,
   str,
   toValue,
+  U64_MAX,
   U256_MAX,
+  u64,
   u256,
 } from "./values"
 
@@ -42,8 +44,8 @@ describe("tagged constructors", () => {
   it("keep the tag distinct from the wire typeId", () => {
     // The tag is what a client says; the typeId is what the wire carries.
     expect(TYPE_IDS[i32(1).type]).toBe(2)
-    expect(TYPE_IDS[key(KEY).type]).toBe(9)
-    expect(TYPE_IDS[bytes32(KEY).type]).toBe(5)
+    expect(TYPE_IDS[key(KEY).type]).toBe(10)
+    expect(TYPE_IDS[bytes32(KEY).type]).toBe(6)
   })
 })
 
@@ -57,7 +59,7 @@ describe("i32", () => {
 
   it("rejects values outside the range, naming the type that fits", () => {
     expect(() => i32(I32_MAX + 1)).toThrow(InvalidValueError)
-    expect(() => i32(Date.now())).toThrow(/use u256/)
+    expect(() => i32(Date.now())).toThrow(/use u64/)
     expect(() => i32(I32_MIN - 1)).toThrow(/use dec/)
     expect(() => i32(2n ** 40n)).toThrow(InvalidValueError)
   })
@@ -66,6 +68,33 @@ describe("i32", () => {
     expect(() => i32(3.5)).toThrow(/dec\("3\.5"\)/)
     expect(() => i32(Number.NaN)).toThrow(InvalidValueError)
     expect(() => i32(Number.POSITIVE_INFINITY)).toThrow(InvalidValueError)
+  })
+})
+
+describe("u64", () => {
+  it("accepts bigints, safe numbers, and decimal or hex strings", () => {
+    expect(u64(0n).value).toBe(0n)
+    expect(u64(U64_MAX).value).toBe(U64_MAX)
+    expect(u64(1_200_000).value).toBe(1_200_000n)
+    expect(u64("1200000").value).toBe(1_200_000n)
+    expect(u64("0x124f80").value).toBe(1_200_000n)
+  })
+
+  it("rejects negatives, overflow, and lossy numbers", () => {
+    expect(() => u64(-1n)).toThrow(/unsigned/)
+    expect(() => u64(U64_MAX + 1n)).toThrow(/wider than 64 bits/)
+    expect(() => u64(2 ** 53)).toThrow(/safe integer/)
+    expect(() => u64(1.5)).toThrow(/dec\("1\.5"\)/)
+    expect(() => u64("12abc")).toThrow(InvalidValueError)
+  })
+
+  it("points at u256 when the value is simply too wide", () => {
+    expect(() => u64(U64_MAX + 1n)).toThrow(/Use u256/)
+  })
+
+  it("is a distinct type from u256, not an alias for a small one", () => {
+    expect(TYPE_IDS[u64(1n).type]).toBe(3)
+    expect(TYPE_IDS[u256(1n).type]).toBe(4)
   })
 })
 

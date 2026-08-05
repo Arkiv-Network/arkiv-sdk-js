@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import type { Hex } from "viem"
+import { type Hex, toHex } from "viem"
 import {
   decodeRpcValue,
   decodeValueBytes,
@@ -9,7 +9,7 @@ import {
 } from "./codec"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
 import type { ArkivValue } from "./types"
-import { addr, bool, bytes32, dec, i32, key, str, u256 } from "./values"
+import { addr, bool, bytes32, dec, i32, key, str, u64, u256 } from "./values"
 
 const ZERO = `0x${"00".repeat(32)}` as Hex
 const KEY = `0x${"ab".repeat(32)}` as Hex
@@ -23,6 +23,8 @@ const SAMPLES: ArkivValue[] = [
   i32(-42),
   i32(2147483647),
   i32(-2147483648),
+  u64(0n),
+  u64(2n ** 64n - 1n),
   u256(0n),
   u256(2n ** 256n - 1n),
   dec("0"),
@@ -88,6 +90,8 @@ describe("ABI value encoding", () => {
     expect(() => decodeValueBytes("i32", `0xff${"00".repeat(31)}`)).toThrow(/sign-extended/)
     // An address with junk above its 20 bytes.
     expect(() => decodeValueBytes("addr", `0x${"ab".repeat(32)}`)).toThrow(/zero-padded/)
+    // A u64 with junk above its 8 bytes — truncating it would invent a plausible block height.
+    expect(() => decodeValueBytes("u64", `0x${"ab".repeat(32)}`)).toThrow(/zero-padded/)
   })
 })
 

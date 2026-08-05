@@ -22,6 +22,7 @@ import {
   type KeyValue,
   makeValue,
   type StrValue,
+  type U64Value,
   type U256Value,
 } from "./types"
 
@@ -29,11 +30,12 @@ import {
 export const I32_MAX = 2147483647
 /** The narrowest `i32`. */
 export const I32_MIN = -2147483648
+/** The widest `u64`. */
+export const U64_MAX = 2n ** 64n - 1n
 /** The widest `u256`. */
 export const U256_MAX = 2n ** 256n - 1n
 /**
- * The longest `str`, in UTF-8 bytes. A string value occupies the four words of the ABI attribute
- * slot, so 128 bytes is a wire limit rather than a policy one.
+ * The longest `str`, in UTF-8 bytes
  */
 export const MAX_STRING_BYTES = 128
 
@@ -102,13 +104,15 @@ export function i32(value: number | bigint): I32Value {
 function outOfI32Range(nonNegative: boolean): string {
   const range = `outside the i32 range [${I32_MIN}, ${I32_MAX}]`
   return nonNegative
-    ? `${range} — use u256(...) for large counters and timestamps (Date.now() does not fit an i32)`
+    ? `${range} — use u64(...) for large counters, timestamps and block heights (Date.now() does ` +
+        `not fit an i32), or u256(...) beyond 2**64 - 1`
     : `${range} — use dec(...) for values that need more range than an i32`
 }
 
 /**
- * A 256-bit unsigned integer, indexed for equality and range queries. The type for counters,
- * timestamps, token amounts and block heights.
+ * A 256-bit unsigned integer, indexed for equality and range queries. The type for token amounts
+ * and anything else that can outgrow 2⁶⁴ — reach for {@link u64} first for counters, timestamps
+ * and block heights.
  *
  * @param value - A non-negative integer, as a `bigint`, a safe `number`, or a decimal or `0x` hex
  * string.
@@ -120,27 +124,63 @@ function outOfI32Range(nonNegative: boolean): string {
  * u256("0xf4240")         // hex, as it comes back over JSON-RPC
  */
 export function u256(value: bigint | number | string): U256Value {
-  const parsed = toU256Bigint(value)
+  return makeValue("u256", toUnsigned("u256", value, U256_MAX))
+}
+
+/**
+ * A 64-bit unsigned integer, indexed for equality and range queries.
+ *
+ * This is the width the protocol counts in: block heights, `$expiresAt` and the entity-nonce are
+ * all `u64`, so it is the type to reach for when a value has to line up with one of them. Use
+ * {@link u256} for token amounts and anything else that can exceed 2⁶⁴.
+ *
+ * @param value - A non-negative integer, as a `bigint`, a safe `number`, or a decimal or `0x` hex
+ * string.
+ * @throws {InvalidValueError} If the value is negative, non-integral, or wider than 64 bits.
+ *
+ * @example
+ * u64(1_200_000n)     // a block height
+ * u64(Date.now())     // safe integers are accepted
+ * u64("0x124f80")     // hex, as it comes back over JSON-RPC
+ */
+export function u64(value: bigint | number | string): U64Value {
+  return makeValue("u64", toUnsigned("u64", value, U64_MAX))
+}
+
+/**
+ * Parses and range-checks an unsigned integer for `tag`, whose widest value is `max`.
+ *
+ * Shared by {@link u64} and {@link u256} so the two differ in exactly one thing — their width —
+ * rather than in how they read a string or how they explain a failure.
+ */
+function toUnsigned(tag: "u64" | "u256", value: bigint | number | string, max: bigint): bigint {
+  const parsed = toUnsignedBigint(tag, value)
   if (parsed < 0n) {
     throw new InvalidValueError(
-      "u256",
+      tag,
       value,
-      "negative — u256 is unsigned",
+      `negative — ${tag} is unsigned`,
       "Use i32(...) for small signed integers, or dec(...) for a signed fixed-point value.",
     )
   }
-  if (parsed > U256_MAX) {
-    throw new InvalidValueError("u256", value, "wider than 256 bits")
+  if (parsed > max) {
+    const bits = tag === "u64" ? 64 : 256
+    throw new InvalidValueError(
+      tag,
+      value,
+      `wider than ${bits} bits`,
+      tag === "u64" ? "Use u256(...) for values beyond 2**64 - 1." : undefined,
+    )
   }
-  return makeValue("u256", parsed)
+  return parsed
 }
 
-function toU256Bigint(value: bigint | number | string): bigint {
+function toUnsignedBigint(tag: "u64" | "u256", value: bigint | number | string): bigint {
   if (typeof value === "bigint") return value
   if (typeof value === "number") {
     if (!Number.isInteger(value)) {
       throw new InvalidValueError(
-        "u256",
+        tag,
         value,
         "not an integer",
         `Use dec(${JSON.stringify(String(value))}) for a fixed-point decimal.`,
@@ -148,7 +188,7 @@ function toU256Bigint(value: bigint | number | string): bigint {
     }
     if (!Number.isSafeInteger(value)) {
       throw new InvalidValueError(
-        "u256",
+        tag,
         value,
         "beyond the safe integer range, so it may already have lost precision",
         "Pass it as a bigint literal (e.g. 12345678901234567890n) or a string instead.",
@@ -158,11 +198,11 @@ function toU256Bigint(value: bigint | number | string): bigint {
   }
   if (typeof value === "string") {
     if (!/^(0x[0-9a-fA-F]+|\d+)$/.test(value)) {
-      throw new InvalidValueError("u256", value, "not a decimal or 0x-hex integer")
+      throw new InvalidValueError(tag, value, "not a decimal or 0x-hex integer")
     }
     return BigInt(value)
   }
-  throw new InvalidValueError("u256", value, "not a bigint, number or string")
+  throw new InvalidValueError(tag, value, "not a bigint, number or string")
 }
 
 /**
@@ -360,6 +400,11 @@ function asFixedHex(tag: "key" | "bytes32", value: Hex | Uint8Array, size: numbe
  *
  * Anything else — a large number, a decimal, an address, an entity key — must name its type, which
  * is what keeps `"0x1234..."` a string rather than silently becoming a key.
+ *
+ * These defaults apply identically when writing and when querying, so a value written bare and
+ * queried bare always agrees with itself. The mismatch to watch for is mixing the two: an attribute
+ * written as {@link u64} does not match a bare `bigint` predicate, because that predicate asserts
+ * `u256`. A type mismatch is not an error to the engine — it simply matches nothing.
  */
 export type ValueInput = ArkivValue | boolean | number | bigint | string
 
@@ -439,6 +484,8 @@ function revalidate(value: Exclude<AnyArkivValue, BytesValue>): ArkivValue {
       return bool(value.value)
     case "i32":
       return i32(value.value)
+    case "u64":
+      return u64(value.value)
     case "u256":
       return u256(value.value)
     case "dec":

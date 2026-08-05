@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from "bun:test"
-import { decodeAbiParameters, parseAbiParameters, toHex } from "viem"
+import {
+  type Abi,
+  BaseError,
+  ContractFunctionRevertedError,
+  decodeAbiParameters,
+  encodeAbiParameters,
+  encodeEventTopics,
+  getAbiItem,
+  type Hex,
+  parseAbiParameters,
+  toHex,
+} from "viem"
 import {
   type AttributeInputs,
   ConflictingMutationError,
@@ -11,44 +22,110 @@ import {
   u256,
 } from "../attr"
 import type { ArkivClient } from "../clients/baseClient"
+import { ARKIV_ADDRESS } from "../consts"
 import { InvalidExpiryError } from "../entity"
-import { OperationType, DEFAULT_PROTOCOL_PARAMS as PARAMS } from "../entity/params"
+import { ENTITY_EVENTS_ABI, type EntityEventName } from "../entity/events"
+import { MAX_EXPIRES_AT, OperationType } from "../entity/params"
 import { EmptyPatchError, EntityMutationError } from "../errors"
 import { sendArkivTransaction } from "./arkivTransactions"
 import { ExpirationTime } from "./expirationTime"
 
 const ENTITY_KEY = `0x${"ab".repeat(32)}` as const
+const OWNER = "0x1111111111111111111111111111111111111111" as const
 const CURRENT_BLOCK = 100n
 const OWNER_NONCE = 7n
 
 const CREATE_PARAMS = parseAbiParameters(
-  "(uint128 salt, uint256 expiresAt, uint256 minLifetime, uint8 creationFlags, (bytes32 name, uint8 typeId, bytes value)[] attributes)",
+  "(uint128 salt, uint64 expiresAt, uint64 minLifetime, uint8 creationFlags, (bytes32 name, uint8 typeId, bytes value)[] attributes)",
 )
 
 const EXTEND_PARAMS = parseAbiParameters(
-  "(bytes32 entityKey, uint256 expiresAt, uint256 minLifetime)",
+  "(bytes32 entityKey, uint64 expiresAt, uint64 minLifetime)",
 )
 
 const PATCH_PARAMS = parseAbiParameters(
   "(bytes32 entityKey, (bytes32 name, uint8 typeId, bytes value)[] mutations)",
 )
 
+const mintedKey = (index: number) =>
+  `0x${(index + 1).toString(16).padStart(2, "0").repeat(32)}` as Hex
+
+/** What the engine stores: `max(expiresAt, currentBlock + minLifetime)`, resolved at execution. */
+const engineExpiry = (expiresAt: bigint, minLifetime: bigint) =>
+  expiresAt > CURRENT_BLOCK + minLifetime ? expiresAt : CURRENT_BLOCK + minLifetime
+
+/** One receipt log, built from the same ABI the SDK reads it back with. */
+function entityLog(eventName: EntityEventName, args: Record<string, unknown>) {
+  const item = getAbiItem({ abi: ENTITY_EVENTS_ABI as Abi, name: eventName })
+  if (item === undefined || item.type !== "event") throw new Error(`no event ${eventName}`)
+  const unindexed = item.inputs.filter((input) => !("indexed" in input && input.indexed))
+  return {
+    address: ARKIV_ADDRESS,
+    // biome-ignore lint/suspicious/noExplicitAny: the arg shape varies per event by design.
+    topics: encodeEventTopics({ abi: ENTITY_EVENTS_ABI, eventName, args: args as any }),
+    data:
+      unindexed.length === 0
+        ? "0x"
+        : encodeAbiParameters(
+            unindexed,
+            unindexed.map((input) => args[input.name ?? ""]),
+          ),
+  }
+}
+
+/**
+ * The events the engine would emit for what was actually put on the wire: one `EntityCreated` per
+ * create and one `ExpiryExtended` per extension, each carrying the expiry the engine resolved
+ * rather than the one the SDK asked for.
+ */
+function emittedLogs(writeContract: ReturnType<typeof vi.fn>) {
+  const logs: ReturnType<typeof entityLog>[] = []
+  let createIndex = 0
+  for (const op of sentOperations(writeContract)) {
+    if (op.operation === OperationType.Create) {
+      const create = decodeAbiParameters(CREATE_PARAMS, op.operationData)[0]
+      logs.push(
+        entityLog("EntityCreated", {
+          entityKey: mintedKey(createIndex++),
+          owner: OWNER,
+          expiresAt: engineExpiry(create.expiresAt, create.minLifetime),
+          creationFlags: create.creationFlags,
+        }),
+      )
+    } else if (op.operation === OperationType.ExtendExpiry) {
+      const extend = decodeAbiParameters(EXTEND_PARAMS, op.operationData)[0]
+      logs.push(
+        entityLog("ExpiryExtended", {
+          entityKey: extend.entityKey,
+          owner: OWNER,
+          expiresAt: engineExpiry(extend.expiresAt, extend.minLifetime),
+        }),
+      )
+    }
+  }
+  return logs
+}
+
 function makeClient() {
   const writeContract = vi.fn().mockResolvedValue("0xdeadbeef")
-  const waitForTransactionReceipt = vi.fn().mockResolvedValue({
+  const waitForTransactionReceipt = vi.fn(async () => ({
     status: "success",
     transactionHash: "0xdeadbeef",
-  })
+    logs: emittedLogs(writeContract),
+  }))
+  const readContract = vi.fn().mockResolvedValue(OWNER_NONCE)
   return {
     client: {
-      account: { address: "0x1111111111111111111111111111111111111111" },
+      account: { address: OWNER },
       chain: { id: 1 },
       getBlockNumber: vi.fn().mockResolvedValue(CURRENT_BLOCK),
-      readContract: vi.fn().mockResolvedValue(OWNER_NONCE),
+      readContract,
       writeContract,
       waitForTransactionReceipt,
     } as unknown as ArkivClient,
     writeContract,
+    waitForTransactionReceipt,
+    readContract,
   }
 }
 
@@ -173,12 +250,12 @@ describe("extend expiry", () => {
     expect(absolute.extendedExpiries[0]).toBe(5_000n)
   })
 
-  it("checks the protocol bounds before spending gas, as a create does", async () => {
+  it("checks the wire bounds before spending gas, as a create does", async () => {
     const { client, writeContract } = makeClient()
-    const tooLong = ExpirationTime.fromBlocks(Number(PARAMS.maxLifetime + 1n))
+    const tooFar = ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n)
     await expect(
-      sendArkivTransaction(client, { extensions: [{ entityKey: ENTITY_KEY, expires: tooLong }] }),
-    ).rejects.toThrow(/beyond the protocol maximum/)
+      sendArkivTransaction(client, { extensions: [{ entityKey: ENTITY_KEY, expires: tooFar }] }),
+    ).rejects.toThrow(/does not fit the uint64/)
     expect(writeContract).not.toHaveBeenCalled()
   })
 
@@ -236,7 +313,7 @@ describe("creation flags and salt", () => {
 })
 
 describe("entity keys", () => {
-  it("predicts a distinct key per create, advancing the nonce across the batch", async () => {
+  it("reports the key the engine minted, in batch order", async () => {
     const { client } = makeClient()
     const result = await sendArkivTransaction(client, {
       creates: [
@@ -245,23 +322,76 @@ describe("entity keys", () => {
         { ...validCreate, salt: 1n },
       ],
     })
-    expect(result.createdEntityKeys).toHaveLength(3)
-    // Same salt, different nonce — the nonce is what guarantees uniqueness.
-    expect(new Set(result.createdEntityKeys).size).toBe(3)
+    // These come from the EntityCreated logs, so they are what the engine recorded rather than
+    // what the SDK guessed — and the same salt three times cannot make them collide.
+    expect(result.createdEntityKeys).toEqual([mintedKey(0), mintedKey(1), mintedKey(2)])
   })
 
-  it("derives the key from the owner's entity nonce", async () => {
-    const { client } = makeClient()
-    const result = await sendArkivTransaction(client, { creates: [{ ...validCreate, salt: 5n }] })
-    const { predictEntityKey } = await import("../entity/key")
-    expect(result.createdEntityKeys[0]).toBe(
-      predictEntityKey({
-        owner: "0x1111111111111111111111111111111111111111",
-        nonce: OWNER_NONCE,
-        salt: 5n,
-        params: PARAMS,
-      }),
-    )
+  it("never reads the entity nonce, so two creates in flight cannot collide", async () => {
+    // The nonce read was the race: two creates issued before either was mined both read the same
+    // value, and one of them then returned a key the engine never minted. Reading the key back
+    // from the receipt removes the window rather than narrowing it — and saves a round trip.
+    const { client, readContract } = makeClient()
+    await sendArkivTransaction(client, { creates: [validCreate] })
+    expect(readContract).not.toHaveBeenCalled()
+  })
+
+  it("reports the expiry the engine resolved, not the one the SDK asked for", async () => {
+    // The engine applies max(expiresAt, currentBlock + minLifetime) against the block the batch
+    // actually lands on. Computing it here is a guess about which block that is.
+    const { client, waitForTransactionReceipt } = makeClient()
+    waitForTransactionReceipt.mockResolvedValue({
+      status: "success",
+      transactionHash: "0xdeadbeef",
+      logs: [
+        entityLog("EntityCreated", {
+          entityKey: mintedKey(0),
+          owner: OWNER,
+          expiresAt: 999_999n,
+          creationFlags: 0,
+        }),
+      ],
+    })
+
+    const result = await sendArkivTransaction(client, { creates: [validCreate] })
+    expect(result.createdExpiries[0]).toBe(999_999n)
+  })
+
+  it("ignores logs from another contract in the same transaction", async () => {
+    const { client, waitForTransactionReceipt } = makeClient()
+    const created = entityLog("EntityCreated", {
+      entityKey: mintedKey(0),
+      owner: OWNER,
+      expiresAt: 500n,
+      creationFlags: 0,
+    })
+    waitForTransactionReceipt.mockResolvedValue({
+      status: "success",
+      transactionHash: "0xdeadbeef",
+      logs: [{ ...created, address: "0x9999999999999999999999999999999999999999" }, created],
+    })
+
+    const result = await sendArkivTransaction(client, { creates: [validCreate] })
+    expect(result.createdEntityKeys).toEqual([mintedKey(0)])
+  })
+
+  it("refuses to guess when the events do not account for every create", async () => {
+    const { client, waitForTransactionReceipt } = makeClient()
+    waitForTransactionReceipt.mockResolvedValue({
+      status: "success",
+      transactionHash: "0xdeadbeef",
+      logs: [],
+    })
+
+    const failure = await sendArkivTransaction(client, {
+      creates: [validCreate, validCreate],
+    }).catch((error: Error) => error)
+
+    expect(failure).toBeInstanceOf(EntityMutationError)
+    // This throws *after* a successful write, so the message has to stop a caller reading it as a
+    // failure and retrying — which would create the entities a second time.
+    expect(failure.message).toContain("do not retry")
+    expect(failure.message).toContain("0xdeadbeef")
   })
 })
 
@@ -310,7 +440,7 @@ describe("attribute typing through the write path", () => {
       creates: [{ ...validCreate, payload: new Uint8Array() }],
     })
     const byName = Object.fromEntries(sentCreate(writeContract).attributes.map((a) => [a.name, a]))
-    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 6, value: "0x" })
+    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 7, value: "0x" })
   })
 
   it("carries the protocol typeId of whichever type the value names", async () => {
@@ -324,8 +454,8 @@ describe("attribute typing through the write path", () => {
       sentCreate(writeContract).attributes.map((a) => [a.name, a.typeId]),
     )
     expect(byName[toHex("count", { size: 32 })]).toBe(2)
-    expect(byName[toHex("balance", { size: 32 })]).toBe(3)
-    expect(byName[toHex("score", { size: 32 })]).toBe(4)
+    expect(byName[toHex("balance", { size: 32 })]).toBe(4)
+    expect(byName[toHex("score", { size: 32 })]).toBe(5)
   })
 
   it("sends the payload and content type as system cells", async () => {
@@ -341,8 +471,8 @@ describe("attribute typing through the write path", () => {
       ],
     })
     const byName = Object.fromEntries(sentCreate(writeContract).attributes.map((a) => [a.name, a]))
-    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 6, value: "0x010203" })
-    expect(byName[toHex("$contentType", { size: 32 })].typeId).toBe(7)
+    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 7, value: "0x010203" })
+    expect(byName[toHex("$contentType", { size: 32 })].typeId).toBe(8)
   })
 
   it("rejects a content type that is not a MIME token", async () => {
@@ -515,5 +645,60 @@ describe("failures that are not reverts", () => {
     expect(failure).toBeInstanceOf(EntityMutationError)
     expect(failure.message).toContain("0xabc")
     expect(failure.cause).toBe(timeout)
+  })
+})
+
+describe("a revert the node catches before there is a receipt", () => {
+  /** A decoded engine revert, wrapped the way viem delivers one out of `writeContract`. */
+  function preflightRevert(errorName: string, args: readonly unknown[]) {
+    const inner = new ContractFunctionRevertedError({ abi: [], functionName: "execute" })
+    Object.assign(inner, { data: { errorName, args } })
+    return new BaseError('The contract function "execute" reverted.', { cause: inner })
+  }
+
+  it("explains it, rather than leaving the explainer to the rarer post-receipt path", async () => {
+    // Most reverts never reach the receipt: the node rejects them during gas estimation, so
+    // `writeContract` throws and there is nothing to replay. Wiring the named-error decoder only
+    // into the replay path would explain the rare case and stay silent on the common one.
+    const { client } = makeClient()
+    ;(client.writeContract as ReturnType<typeof vi.fn>).mockRejectedValue(
+      preflightRevert("ReadOnlyEntity", [ENTITY_KEY]),
+    )
+
+    const failure = await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+    }).catch((error: Error) => error)
+
+    expect(failure).toBeInstanceOf(EntityMutationError)
+    expect(failure.message).toContain("readonly")
+    // viem's own rendering prints the decoded args positionally — the right data, none of the
+    // meaning — so the point is that it is *not* what surfaces.
+    expect(failure.message).not.toContain('The contract function "execute" reverted')
+  })
+
+  it("still names the uppercase problem, which only ever fails at estimation", async () => {
+    const { client } = makeClient()
+    ;(client.writeContract as ReturnType<typeof vi.fn>).mockRejectedValue(
+      preflightRevert("Ident32InvalidByte", [2n, "0x41"]),
+    )
+
+    const failure = await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+    }).catch((error: Error) => error)
+
+    expect(failure.message).toContain("uppercase")
+  })
+
+  it("leaves an error it cannot decode to the existing handling", async () => {
+    const { client } = makeClient()
+    const opaque = new BaseError("nonce too low")
+    ;(client.writeContract as ReturnType<typeof vi.fn>).mockRejectedValue(opaque)
+
+    const failure = await sendArkivTransaction(client, {
+      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+    }).catch((error: Error) => error)
+
+    expect(failure.message).toContain("nonce too low")
+    expect(failure.cause).toBe(opaque)
   })
 })

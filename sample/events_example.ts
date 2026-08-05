@@ -15,15 +15,17 @@ const fromBlock = (await publicClient.getBlockNumber()) - 100n
 // you pass. Each event carries the block, transaction and log index it came from, which is the
 // order the operations were applied in.
 const unwatch = publicClient.watchEntityEvents({
-  onEntityCreated: ({ entityKey, owner, expiresAt, blockNumber }) => {
+  onEntityCreated: ({ entityKey, owner, expiresAt, creationFlags, blockNumber }) => {
     console.log(`created ${entityKey} by ${owner}, expires at block ${expiresAt} (@${blockNumber})`)
+    if (creationFlags.readonly) console.log("  readonly — its contents can never change")
+    if (creationFlags.permissionlessExtension) console.log("  anyone may extend its expiry")
   },
   onEntityPatched: ({ entityKey }) => {
     // The event says *that* the entity changed, not what to — read it back to see the new state.
     console.log("patched", entityKey)
   },
-  onExpiryExtended: ({ entityKey, expiresAt }) => {
-    console.log(`${entityKey} now lives until block ${expiresAt}`)
+  onExpiryExtended: ({ entityKey, owner, expiresAt }) => {
+    console.log(`${entityKey} (owned by ${owner}) now lives until block ${expiresAt}`)
   },
   onOwnershipTransferred: ({ entityKey, previousOwner, newOwner }) => {
     console.log(`${entityKey}: ${previousOwner} -> ${newOwner}`)
@@ -31,19 +33,21 @@ const unwatch = publicClient.watchEntityEvents({
   onEntityDeleted: ({ entityKey }) => {
     console.log("deleted", entityKey)
   },
-  // An expiry emits no event on chain, so the SDK synthesizes this one: it tracks the expiresAt it
-  // sees on creates and extensions, and fires when the block height reaches one. It covers only
-  // entities created or extended while the watcher is running — replayed history is excluded,
-  // because an old create may since have been extended. For entities that already exist, query
-  // $expiresAt instead.
-  onEntityExpired: ({ entityKey, expiresAt, observedAtBlock }) => {
-    console.log(`${entityKey} expired at block ${expiresAt}, noticed at ${observedAtBlock}`)
-  },
   // Defaults to console.error if you leave it out — a watcher that goes quiet because the node
   // dropped its filter looks exactly like a quiet chain, so the failure is never silent.
   onError: (error) => console.error("watchEntityEvents error", error),
   fromBlock,
 })
+
+// There is deliberately no expiry handler: an entity reaching its expiry block is not an operation,
+// so it emits no log and nothing can watch for it. To find what has expired — or is about to —
+// query $expiresAt, which answers for every entity rather than only the ones a watcher happened to
+// see created:
+//
+//   const expiringSoon = await publicClient
+//     .select({ key: true, expiresAt: true })
+//     .where(lt("$expiresAt", await publicClient.getBlockNumber() + 1000n))
+//     .fetch()
 
 // Or take every event in one handler — the shape a replica replaying operation by operation wants.
 const unwatchAll = publicClient.watchEntityEvents({

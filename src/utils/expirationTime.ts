@@ -1,5 +1,6 @@
 import { InvalidExpiryError } from "../entity/errors"
 import { type Expiry, type Lifetime, makeExpiry, toBlocks } from "../entity/expiry"
+import { MAX_EXPIRES_AT } from "../entity/params"
 
 /**
  * The optional floor a deadline can carry.
@@ -104,4 +105,13 @@ export const ExpirationTime = {
     }
     return deadlineOf(date, options)
   },
+
+  /**
+   * An entity that should never expire.
+   *
+   * This is `atBlock(MAX_EXPIRES_AT)` — the largest expiry the `uint64` field holds — and the
+   * engine treats it as an ordinary deadline rather than a special case. There is no permanence
+   * flag; a block height no chain will reach is what permanence is.
+   */
+  permanent: (): Expiry => deadlineOf(MAX_EXPIRES_AT),
 }

@@ -1,12 +1,6 @@
 import { BLOCK_TIME } from "../consts"
 import { InvalidExpiryError } from "./errors"
-import type { ProtocolParams } from "./params"
-
-/**
- * The remedy whenever a lifetime is too long. Nothing on Arkiv is permanent — an entity that must
- * outlive the bound is kept alive by extending it, not by asking for forever up front.
- */
-const EXTEND_INSTEAD = "Create it for less and extend it later."
+import { MAX_EXPIRES_AT } from "./params"
 
 /**
  * The brand. Module-private and never exported, so the only way to obtain an {@link Expiry} is to
@@ -72,7 +66,6 @@ export type ResolvedExpiry = EncodedExpiry & {
 /** What the SDK needs to know about the chain to resolve an expiry. */
 export type ExpiryContext = {
   currentBlock: bigint
-  params: ProtocolParams
 }
 
 /**
@@ -83,11 +76,11 @@ export type ExpiryContext = {
  * chain runs fast or slow. The block it was converted to comes back as
  * {@link ResolvedExpiry.target}, so the approximation is always observable rather than assumed.
  *
- * @throws {InvalidExpiryError} If the expiry is malformed, exceeds a protocol bound, or would leave
- * the entity dead on arrival.
+ * @throws {InvalidExpiryError} If the expiry is malformed, does not fit the `uint64` the wire
+ * carries, or would leave the entity dead on arrival.
  */
 export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedExpiry {
-  const { currentBlock, params } = context
+  const { currentBlock } = context
 
   if (typeof expiry?.minLifetime !== "bigint" || expiry.expiresAt === undefined) {
     throw new InvalidExpiryError(
@@ -110,16 +103,17 @@ export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedE
     )
   }
 
-  if (absolute > params.maxExpiresAt) {
+  if (absolute > MAX_EXPIRES_AT) {
     throw new InvalidExpiryError(
-      `expiresAt resolves to block ${absolute}, beyond the protocol maximum ` +
-        `${params.maxExpiresAt}. ${EXTEND_INSTEAD}`,
+      `expiresAt resolves to block ${absolute}, which does not fit the uint64 the wire carries ` +
+        `(max ${MAX_EXPIRES_AT}). Use ExpirationTime.permanent() for an entity that should not ` +
+        "expire.",
     )
   }
-  if (minLifetime > params.maxLifetime) {
+  if (minLifetime > MAX_EXPIRES_AT) {
     throw new InvalidExpiryError(
-      `the lifetime is ${minLifetime} blocks, beyond the protocol maximum ${params.maxLifetime}. ` +
-        EXTEND_INSTEAD,
+      `the lifetime is ${minLifetime} blocks, which does not fit the uint64 the wire carries ` +
+        `(max ${MAX_EXPIRES_AT})`,
     )
   }
 
@@ -132,10 +126,10 @@ export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedE
         `${currentBlock}, so it would be dead on arrival`,
     )
   }
-  if (target > currentBlock + params.maxLifetime) {
+  if (target > MAX_EXPIRES_AT) {
     throw new InvalidExpiryError(
-      `the entity would live ${target - currentBlock} blocks, beyond the protocol maximum ` +
-        `${params.maxLifetime}. ${EXTEND_INSTEAD}`,
+      `a lifetime of ${minLifetime} blocks from block ${currentBlock} lands at ${target}, past ` +
+        `the largest expiry the wire carries (${MAX_EXPIRES_AT})`,
     )
   }
 

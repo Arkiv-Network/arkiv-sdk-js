@@ -244,7 +244,7 @@ const { entityKey, txHash } = await client.createEntity({
   }),
   contentType: 'application/json',
   // Attributes are keyed by name. Values carry their type: use the tagged constructors from
-  // "@arkiv-network/sdk/attr" (i32, u256, dec, str, addr, key, bytes32, bool), or pass a bare
+  // "@arkiv-network/sdk/attr" (i32, u64, u256, dec, str, addr, key, bytes32, bool), or pass a bare
   // boolean, number, bigint or string where the type is unambiguous.
   attributes: {
     category: 'documentation',   // bare string -> str

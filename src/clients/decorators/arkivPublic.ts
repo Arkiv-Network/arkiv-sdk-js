@@ -27,9 +27,6 @@ export type PublicArkivActions<
   | "getTransactionCount"
   | "getTransactionReceipt"
   | "waitForTransactionReceipt"
-  // `watchBlockNumber` is what turns a block height passing into an event, which is how
-  // `watchEntityEvents` synthesizes an expiry the chain never announces.
-  | "watchBlockNumber"
   | "watchEvent"
 > & {
   /**
@@ -205,14 +202,10 @@ export type PublicArkivActions<
   /**
    * Watches entity events, calling the handlers you pass as they arrive.
    *
-   * Five of the six are decoded from logs — `onEntityCreated`, `onEntityPatched`,
-   * `onExpiryExtended`, `onOwnershipTransferred`, `onEntityDeleted` — and each carries the block,
-   * transaction and log index it came from, which is the order the operations were applied in.
-   * `onEvent` receives all of them, whatever their type.
-   *
-   * The sixth, `onEntityExpired`, is **synthesized**: an expiry emits no log, so the watcher tracks
-   * the `expiresAt` it sees and fires when the block height reaches one. It therefore only covers
-   * entities this watcher saw created or extended; for an existing set, query `$expiresAt` instead.
+   * All five are decoded from logs — `onEntityCreated`, `onEntityPatched`, `onExpiryExtended`,
+   * `onOwnershipTransferred`, `onEntityDeleted` — and each carries the block, transaction and log
+   * index it came from, which is the order the operations were applied in. `onEvent` receives all
+   * of them, whatever their type.
    *
    * @param parameters - Handlers and options, all optional. {@link WatchEntityEventsParameters}
    * @returns A function that stops the watcher.

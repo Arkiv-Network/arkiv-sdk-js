@@ -87,7 +87,6 @@ const QUERYABLE_SYSTEM_ATTRIBUTES = {
   $key: "key",
   $owner: "addr",
   $creator: "addr",
-  /** Block heights are u256 on the query surface */
   $expiresAt: "u256",
 } as const satisfies Record<string, TypeTag>
 
@@ -103,7 +102,7 @@ const RESULT_ONLY_SYSTEM_ATTRIBUTES = [
 ]
 
 /** The types that carry an ordered index, and so accept `<` `<=` `>` `>=`. */
-const ORDERED_TAGS: ReadonlySet<TypeTag> = new Set<TypeTag>(["i32", "u256", "dec"])
+const ORDERED_TAGS: ReadonlySet<TypeTag> = new Set<TypeTag>(["i32", "u64", "u256", "dec"])
 
 const RANGE_OPERATORS: ReadonlySet<ComparisonOperator> = new Set<ComparisonOperator>([
   "<",
@@ -178,7 +177,7 @@ function comparison(name: string, operator: ComparisonOperator, input: ValueInpu
       name,
       operator,
       value.type,
-      `Only i32, u256 and dec carry an ordered index; ${value.type} is equality-only.`,
+      `Only i32, u64, u256 and dec carry an ordered index; ${value.type} is equality-only.`,
     )
   }
   return node({ kind: "comparison", name, operator, value })
@@ -475,6 +474,8 @@ function renderLiteral(value: ArkivValue): string {
       return value.value ? "true" : "false"
     case "i32":
       return `i32(${value.value})`
+    case "u64":
+      return `u64(${value.value})`
     case "u256":
       return `u256(${value.value})`
     case "dec":

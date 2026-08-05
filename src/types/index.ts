@@ -20,7 +20,6 @@ export type {
   EntityDeletedEvent,
   EntityEvent,
   EntityEventContext,
-  EntityExpiredEvent,
   EntityPatchedEvent,
   ExpiryExtendedEvent,
   OwnershipTransferredEvent,

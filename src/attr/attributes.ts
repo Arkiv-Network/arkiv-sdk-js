@@ -1,12 +1,16 @@
 import { type AbiAttribute, encodeAbiAttribute, encodeTombstone } from "./codec"
-import { ConflictingMutationError, TooManyAttributesError } from "./errors"
+import { ConflictingMutationError, InvalidValueError, TooManyAttributesError } from "./errors"
 import { validateAttributeName } from "./names"
 import type { AnyArkivValue, ArkivValue, TypeTag } from "./types"
 import { makeValue } from "./types"
 import { str, toValue, type ValueInput } from "./values"
 
-/** The most attributes one entity may carry, excluding the system cells the SDK adds. */
+/**
+ * The most attribute cells one operation may carry.
+ */
 export const MAX_ATTRIBUTES = 32
+
+export const MAX_PAYLOAD_BYTES = 128 * 1024
 
 /** The system attribute holding an entity's opaque payload. */
 const PAYLOAD_CELL = "$payload"
@@ -104,10 +108,22 @@ export function encodeAttributes(
   // it would mean the entity does not hold what the caller passed. Absence is for the operations
   // that genuinely leave a cell alone, not for a value that happens to be empty.
   if (system.payload !== undefined) {
+    if (system.payload.length > MAX_PAYLOAD_BYTES) {
+      throw new InvalidValueError(
+        "bytes",
+        `<${system.payload.length} bytes>`,
+        `${system.payload.length} bytes exceeds the ${MAX_PAYLOAD_BYTES}-byte payload limit`,
+        "Store the bulk elsewhere and keep a reference to it on the entity.",
+      )
+    }
     cells.push([PAYLOAD_CELL, makeValue("bytes", toHexBytes(system.payload))])
   }
   if (system.contentType !== undefined) {
     cells.push([CONTENT_TYPE_CELL, str(system.contentType)])
+  }
+
+  if (cells.length > MAX_ATTRIBUTES) {
+    throw new TooManyAttributesError(cells.length, MAX_ATTRIBUTES)
   }
 
   return cells.map(([name, value]) => encodeAbiAttribute(name, value)).sort(byName)
@@ -136,7 +152,11 @@ export function encodeMutations({
 }: MutationInputs): AbiAttribute[] {
   const written = encodeAttributes(set, { payload, contentType })
   const tombstones = resolveUnset(unset, set).map(encodeTombstone)
-  return [...written, ...tombstones].sort(byName)
+  const mutations = [...written, ...tombstones]
+  if (mutations.length > MAX_ATTRIBUTES) {
+    throw new TooManyAttributesError(mutations.length, MAX_ATTRIBUTES)
+  }
+  return mutations.sort(byName)
 }
 
 function resolveUnset(unset: readonly string[] = [], set: AttributeInputs = {}): string[] {

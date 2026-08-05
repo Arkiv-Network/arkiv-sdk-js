@@ -1,6 +1,6 @@
 import { type Address, encodePacked, type Hex, keccak256 } from "viem"
+import { ARKIV_ADDRESS } from "../consts"
 import { InvalidSaltError, NoRandomSourceError } from "./errors"
-import type { ProtocolParams } from "./params"
 
 /** The widest salt the `uint128` wire field carries. */
 export const MAX_SALT = 2n ** 128n - 1n
@@ -40,15 +40,12 @@ export function validateSalt(salt: bigint): bigint {
  * Deriving it client-side is what lets a batch compose: predict the key of a create, then have a
  * later operation in the same transaction reference it, or store it as a `key` attribute on a
  * sibling entity.
- *
- * @remarks The `domain` in {@link ProtocolParams} is provisional, so a key predicted here will not
- * match the engine until it is pinned.
  */
 export function predictEntityKey({
   owner,
   nonce,
   salt,
-  params,
+  chainId,
 }: {
   /** The account creating the entity. */
   owner: Address
@@ -59,13 +56,13 @@ export function predictEntityKey({
   nonce: bigint
   /** The salt the create will carry. */
   salt: bigint
-  /** The chain's protocol parameters, which supply the derivation `domain`. */
-  params: ProtocolParams
+  /** The chain the entity is being created on — half of the derivation domain. */
+  chainId: number
 }): Hex {
   return keccak256(
     encodePacked(
-      ["bytes32", "address", "uint256", "uint128"],
-      [params.domain, owner, nonce, validateSalt(salt)],
+      ["uint256", "address", "address", "uint64", "uint128"],
+      [BigInt(chainId), ARKIV_ADDRESS, owner, nonce, validateSalt(salt)],
     ),
   )
 }

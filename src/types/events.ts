@@ -1,4 +1,5 @@
 import type { Address, Hex } from "viem"
+import type { ResolvedCreationFlags } from "../entity/flags"
 
 /**
  * Where an event sits in the chain — carried by every on-chain entity event.
@@ -23,6 +24,10 @@ export type EntityCreatedEvent = EntityEventContext & {
   owner: Address
   /** The block the entity is set to expire at. */
   expiresAt: bigint
+  /**
+   * The immutable properties the entity was created with, decoded from its `creationFlags` byte.
+   */
+  creationFlags: ResolvedCreationFlags
 }
 
 /**
@@ -40,6 +45,12 @@ export type EntityPatchedEvent = EntityEventContext & {
 export type ExpiryExtendedEvent = EntityEventContext & {
   type: "ExpiryExtended"
   entityKey: Hex
+  /**
+   * The entity's owner — **not** whoever extended it. An entity created with
+   * `permissionlessExtension` can be extended by anyone, and the event does not say by whom; read
+   * the transaction's sender if you need that.
+   */
+  owner: Address
   /** The block the entity is now set to expire at. */
   expiresAt: bigint
 }
@@ -61,9 +72,6 @@ export type EntityDeletedEvent = EntityEventContext & {
 
 /**
  * Every event the engine emits, discriminated by `type`.
- *
- * This is the on-chain set only. {@link EntityExpiredEvent} is not part of it: an expiry emits no
- * log, so it has no place in a replay of what the chain did.
  */
 export type EntityEvent =
   | EntityCreatedEvent
@@ -71,21 +79,3 @@ export type EntityEvent =
   | ExpiryExtendedEvent
   | OwnershipTransferredEvent
   | EntityDeletedEvent
-
-/**
- * An entity reached its expiry — **synthesized by the SDK**, not emitted by the chain.
- *
- * A purge is not an operation and produces no log, so there is nothing to decode. What the SDK has
- * instead is the `expiresAt` it saw on the entity's create or extension, and the block height as it
- * advances; when the height reaches that block, the entity is gone.
- *
- * There is no transaction or log index here because there is no transaction or log.
- */
-export type EntityExpiredEvent = {
-  type: "EntityExpired"
-  entityKey: Hex
-  /** The block the entity was set to expire at. */
-  expiresAt: bigint
-  /** The first block at or after `expiresAt` that the watcher observed. */
-  observedAtBlock: bigint
-}

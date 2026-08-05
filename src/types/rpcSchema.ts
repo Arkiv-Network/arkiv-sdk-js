@@ -3,7 +3,7 @@ import type { Hex, PublicRpcSchema } from "viem"
 /**
  * An attribute as the node renders it: the name, the type **tag** (not the wire typeId), and the
  * value in the JSON encoding that type prescribes — a JSON number for `i32`, a `0x` QUANTITY for
- * `u256`, a decimal string for `dec`, `0x` DATA for the byte-shaped types, and a plain string for
+ * `u64` and `u256`, a decimal string for `dec`, `0x` DATA for the byte-shaped types, and a string for
  * `str`.
  *
  * The encoding follows the *declared type*, never the magnitude, so a decoder dispatches on `type`
@@ -21,10 +21,12 @@ export type RpcAttributeSchemaEntry = {
   type: string
 }
 
-/** The `creationFlags` projection: the named flags, plus the raw byte they were read from. */
+/**
+ * The `creationFlags` projection.
+ */
 export type RpcCreationFlags = {
-  readonly: boolean
-  permissionlessExtension: boolean
+  readonly?: boolean
+  permissionlessExtension?: boolean
   raw: number
 }
 
@@ -39,7 +41,7 @@ export type RpcEntity = {
   createdAt?: Hex
   updatedAt?: Hex
   expiresAt?: Hex
-  creationFlags?: RpcCreationFlags
+  creationFlags?: RpcCreationFlags | number
   contentType?: string
   payload?: Hex
   attributeSchema?: RpcAttributeSchemaEntry[]

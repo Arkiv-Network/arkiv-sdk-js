@@ -3,7 +3,6 @@ import { InvalidCreationFlagsError } from "./errors"
 /** Bit positions in the `creationFlags` byte. Bits 2-7 are reserved and must be zero. */
 const READONLY_BIT = 0b0000_0001
 const PERMISSIONLESS_EXTENSION_BIT = 0b0000_0010
-const RESERVED_BITS = 0b1111_1100
 
 /**
  * The immutable properties an entity is created with. Both default to `false`.
@@ -28,7 +27,6 @@ export type CreationFlags = {
 export type ResolvedCreationFlags = {
   readonly: boolean
   permissionlessExtension: boolean
-  /** The underlying byte, so a flag this SDK version does not know about is still visible. */
   raw: number
 }
 
@@ -52,19 +50,12 @@ export function encodeCreationFlags(flags: CreationFlags = {}): number {
 /**
  * Reads the `creationFlags` byte back.
  *
- * @throws {InvalidCreationFlagsError} If the byte is out of range or sets a reserved bit — a
- * reserved bit means the entity was written by something that knows a flag this SDK does not, so
- * guessing at its meaning would be worse than saying so.
+ * @param raw - The `creationFlags` byte.
+ * @throws {InvalidCreationFlagsError} Malformed input
  */
 export function decodeCreationFlags(raw: number): ResolvedCreationFlags {
   if (!Number.isInteger(raw) || raw < 0 || raw > 0xff) {
     throw new InvalidCreationFlagsError(`${raw} is not a byte`)
-  }
-  if ((raw & RESERVED_BITS) !== 0) {
-    throw new InvalidCreationFlagsError(
-      `reserved bits are set in 0b${raw.toString(2).padStart(8, "0")} — the entity uses a ` +
-        "creation flag this SDK version does not know about; upgrade @arkiv-network/sdk",
-    )
   }
   return {
     readonly: (raw & READONLY_BIT) !== 0,

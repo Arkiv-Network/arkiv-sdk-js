@@ -2,6 +2,11 @@ import { hexToBytes } from "viem"
 import type { AttributeSchema, Attributes } from "../attr"
 // Internal seam: the JSON-RPC decoder is not part of the package's public surface.
 import { asTypeTag, decodeRpcValue } from "../attr/codec"
+import {
+  decodeCreationFlags,
+  encodeCreationFlags,
+  type ResolvedCreationFlags,
+} from "../entity/flags"
 import { Entity, type EntityFields } from "../types/entity"
 import type { RpcEntity } from "../types/rpcSchema"
 import { getLogger } from "./logger"
@@ -47,7 +52,7 @@ export function entityFromRpcResult(rpcEntity: RpcEntity): Entity {
     createdAt: toBlock(rpcEntity.createdAt),
     updatedAt: toBlock(rpcEntity.updatedAt),
     expiresAt: toBlock(rpcEntity.expiresAt),
-    creationFlags: rpcEntity.creationFlags,
+    creationFlags: decodeFlags(rpcEntity.creationFlags),
     contentType: rpcEntity.contentType,
     payload: rpcEntity.payload !== undefined ? hexToBytes(rpcEntity.payload) : undefined,
     attributeSchema:
@@ -61,4 +66,45 @@ export function entityFromRpcResult(rpcEntity: RpcEntity): Entity {
 
 function toBlock(value: string | undefined): bigint | undefined {
   return value === undefined ? undefined : BigInt(value)
+}
+
+/**
+ * Resolves the `creationFlags` projection, preferring the byte.
+ */
+function decodeFlags(
+  value: NonNullable<RpcEntity["creationFlags"]> | undefined,
+): ResolvedCreationFlags | undefined {
+  if (value === undefined) return undefined
+
+  const raw = toFlagsByte(typeof value === "number" ? value : value.raw)
+  if (raw !== undefined) return decodeCreationFlags(raw)
+
+  if (
+    typeof value === "object" &&
+    (value.readonly ?? value.permissionlessExtension) !== undefined
+  ) {
+    return decodeCreationFlags(
+      encodeCreationFlags({
+        readonly: value.readonly ?? false,
+        permissionlessExtension: value.permissionlessExtension ?? false,
+      }),
+    )
+  }
+
+  logger("unreadable creationFlags %o", value)
+  return undefined
+}
+
+/**
+ * A flags byte in whichever spelling arrived: a JSON number, or the `0x` QUANTITY that every other
+ * numeric field on {@link RpcEntity} already uses. `undefined` for anything that is not a byte.
+ */
+function toFlagsByte(value: unknown): number | undefined {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^(0x[0-9a-fA-F]+|\d+)$/.test(value)
+        ? Number(value)
+        : Number.NaN
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 0xff ? parsed : undefined
 }

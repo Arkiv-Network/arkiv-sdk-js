@@ -34,6 +34,7 @@ const RESERVED = new Set([
   // type tags
   "bool",
   "i32",
+  "u64",
   "u256",
   "dec",
   "bytes32",

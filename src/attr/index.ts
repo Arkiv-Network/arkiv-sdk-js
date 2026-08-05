@@ -1,5 +1,5 @@
 export type { AttributeInputs, AttributeSchema, Attributes } from "./attributes"
-export { MAX_ATTRIBUTES } from "./attributes"
+export { MAX_ATTRIBUTES, MAX_PAYLOAD_BYTES } from "./attributes"
 export { DECIMAL_SCALE, DECIMAL_UNIT } from "./decimal"
 export {
   ConflictingMutationError,
@@ -23,6 +23,7 @@ export type {
   KeyValue,
   StrValue,
   TypeTag,
+  U64Value,
   U256Value,
   UserTypeTag,
 } from "./types"
@@ -42,6 +43,8 @@ export {
   MAX_STRING_BYTES,
   str,
   toValue,
+  U64_MAX,
   U256_MAX,
+  u64,
   u256,
 } from "./values"

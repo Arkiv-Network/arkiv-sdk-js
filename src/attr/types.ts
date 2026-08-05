@@ -12,30 +12,32 @@ import type { Address, Hex } from "viem"
  * | --------- | ------ | ------------------- | ----------------- |
  * | `bool`    | 1      | `bool`              | equality          |
  * | `i32`     | 2      | `int32`             | equality + range  |
- * | `u256`    | 3      | `uint256`           | equality + range  |
- * | `dec`     | 4      | `int256` (18 dp)    | equality + range  |
- * | `bytes32` | 5      | `bytes32`           | equality          |
- * | `bytes`   | 6      | `bytes`             | none — system-only |
- * | `str`     | 7      | `string` (<= 128 B) | equality + prefix |
- * | `addr`    | 8      | `address`           | equality          |
- * | `key`     | 9      | `bytes32`           | equality          |
+ * | `u64`     | 3      | `uint64`            | equality + range  |
+ * | `u256`    | 4      | `uint256`           | equality + range  |
+ * | `dec`     | 5      | `int256` (18 dp)    | equality + range  |
+ * | `bytes32` | 6      | `bytes32`           | equality          |
+ * | `bytes`   | 7      | `bytes`             | none — system-only |
+ * | `str`     | 8      | `string` (<= 128 B) | equality + prefix |
+ * | `addr`    | 9      | `address`           | equality          |
+ * | `key`     | 10     | `bytes32`           | equality          |
  */
 export const TYPE_IDS = {
   bool: 1,
   i32: 2,
-  u256: 3,
-  dec: 4,
-  bytes32: 5,
-  bytes: 6,
-  str: 7,
-  addr: 8,
-  key: 9,
+  u64: 3,
+  u256: 4,
+  dec: 5,
+  bytes32: 6,
+  bytes: 7,
+  str: 8,
+  addr: 9,
+  key: 10,
 } as const
 
 /** Every type tag, including the system-only `bytes`. */
 export type TypeTag = keyof typeof TYPE_IDS
 
-/** Every typeId, including the system-only `6` (`bytes`). */
+/** Every typeId, including the system-only `7` (`bytes`). */
 export type TypeId = (typeof TYPE_IDS)[TypeTag]
 
 /**
@@ -74,6 +76,10 @@ export type Value<tag extends TypeTag, value> = {
 export type BoolValue = Value<"bool", boolean>
 /** A 32-bit signed integer — the default for an untagged number. */
 export type I32Value = Value<"i32", number>
+/**
+ * A 64-bit unsigned integer — block heights, the
+ * entity-nonce and `$expiresAt` are all `u64` */
+export type U64Value = Value<"u64", bigint>
 /** A 256-bit unsigned integer. */
 export type U256Value = Value<"u256", bigint>
 /**
@@ -99,6 +105,7 @@ export type BytesValue = Value<"bytes", Hex>
 export type ArkivValue =
   | BoolValue
   | I32Value
+  | U64Value
   | U256Value
   | DecValue
   | Bytes32Value

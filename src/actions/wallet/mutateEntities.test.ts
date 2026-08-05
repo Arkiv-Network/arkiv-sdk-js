@@ -17,6 +17,7 @@ function makeClient() {
       waitForTransactionReceipt: vi.fn().mockResolvedValue({
         status: "success",
         transactionHash: "0xdeadbeef",
+        logs: [],
       }),
     } as unknown as ArkivClient,
     writeContract,

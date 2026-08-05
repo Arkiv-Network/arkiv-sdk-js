@@ -24,11 +24,11 @@ const ATTRIBUTE_TUPLE = "(bytes32 name, uint8 typeId, bytes value)[]"
  */
 const PAYLOAD_PARAMS = {
   [OperationType.Create]: parseAbiParameters(
-    `(uint128 salt, uint256 expiresAt, uint256 minLifetime, uint8 creationFlags, ${ATTRIBUTE_TUPLE} attributes)`,
+    `(uint128 salt, uint64 expiresAt, uint64 minLifetime, uint8 creationFlags, ${ATTRIBUTE_TUPLE} attributes)`,
   ),
   [OperationType.Patch]: parseAbiParameters(`(bytes32 entityKey, ${ATTRIBUTE_TUPLE} mutations)`),
   [OperationType.ExtendExpiry]: parseAbiParameters(
-    "(bytes32 entityKey, uint256 expiresAt, uint256 minLifetime)",
+    "(bytes32 entityKey, uint64 expiresAt, uint64 minLifetime)",
   ),
   [OperationType.TransferOwnership]: parseAbiParameters("(bytes32 entityKey, address newOwner)"),
   [OperationType.Delete]: parseAbiParameters("(bytes32 entityKey)"),
