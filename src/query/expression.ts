@@ -87,7 +87,7 @@ const QUERYABLE_SYSTEM_ATTRIBUTES = {
   $key: "key",
   $owner: "addr",
   $creator: "addr",
-  $expiresAt: "u256",
+  $expiresAt: "u64",
 } as const satisfies Record<string, TypeTag>
 
 type SystemAttributeName = keyof typeof QUERYABLE_SYSTEM_ATTRIBUTES
@@ -221,8 +221,8 @@ export function ne(name: string, value: ValueInput): ComparisonNode {
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
- * gt("level", i32(10))               // level > i32(10)
- * gt("$expiresAt", u256(1_200_000n)) // $expiresAt > u256(1200000)
+ * gt("level", i32(10))              // level > i32(10)
+ * gt("$expiresAt", u64(1_200_000n)) // $expiresAt > u64(1200000)
  */
 export function gt(name: string, value: ValueInput): ComparisonNode {
   return comparison(name, ">", value)

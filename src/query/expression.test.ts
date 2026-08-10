@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes32, dec, i32, key, str, u256 } from "../attr"
+import { addr, bytes32, dec, i32, key, str, u64, u256 } from "../attr"
 import { InvalidAttributeNameError } from "../attr/errors"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 import {
@@ -115,7 +115,7 @@ describe("system attributes", () => {
     expect(String(eq("$key", key(ENTITY_KEY)))).toBe(`$key = key(${ENTITY_KEY})`)
     expect(String(eq("$owner", addr(ACCOUNT)))).toBe(`$owner = addr(${ACCOUNT})`)
     expect(String(ne("$creator", addr(ACCOUNT)))).toBe(`$creator != addr(${ACCOUNT})`)
-    expect(String(lt("$expiresAt", u256(1_200_000n)))).toBe("$expiresAt < u256(1200000)")
+    expect(String(lt("$expiresAt", u64(1_200_000n)))).toBe("$expiresAt < u64(1200000)")
   })
 
   it("holds each one to its fixed type", () => {
@@ -124,7 +124,8 @@ describe("system attributes", () => {
     expect(() => eq("$owner", ACCOUNT)).toThrow(InvalidPredicateError)
     expect(() => eq("$owner", ACCOUNT)).toThrow(/is a addr, but the value is a str/)
     expect(() => eq("$key", ENTITY_KEY)).toThrow(/write key\(\.\.\.\) around the value/)
-    expect(() => eq("$expiresAt", 1_200_000)).toThrow(/is a u256, but the value is a i32/)
+    expect(() => eq("$expiresAt", 1_200_000)).toThrow(/is a u64, but the value is a i32/)
+    expect(() => eq("$expiresAt", 1_200_000n)).toThrow(/write u64\(\.\.\.\) around the value/)
   })
 
   it("allows range comparisons only on $expiresAt", () => {
@@ -255,12 +256,12 @@ describe("precedence", () => {
       eq("flagged", true),
       startsWith("desc", str("ab")),
       or(eq("status", str("open")), not(exists("closedAt"))),
-      lt("$expiresAt", u256(1_200_000n)),
+      lt("$expiresAt", u64(1_200_000n)),
     )
     expect(q.toString()).toBe(
       "level >= i32(10) AND score >= dec(3.5) AND score <= dec(5) AND " +
         `parent = key(${ENTITY_KEY}) AND flagged = true AND desc STARTSWITH str('ab') AND ` +
-        "(status = str('open') OR NOT EXISTS(closedAt)) AND $expiresAt < u256(1200000)",
+        "(status = str('open') OR NOT EXISTS(closedAt)) AND $expiresAt < u64(1200000)",
     )
   })
 })

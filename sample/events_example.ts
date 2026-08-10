@@ -46,7 +46,7 @@ const unwatch = publicClient.watchEntityEvents({
 //
 //   const expiringSoon = await publicClient
 //     .select({ key: true, expiresAt: true })
-//     .where(lt("$expiresAt", await publicClient.getBlockNumber() + 1000n))
+//     .where(lt("$expiresAt", u64(await publicClient.getBlockNumber() + 1000n)))
 //     .fetch()
 
 // Or take every event in one handler — the shape a replica replaying operation by operation wants.
