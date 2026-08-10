@@ -17,7 +17,7 @@ describe("Entity", () => {
     })
     expect(entity.key).toBe(KEY)
     expect(entity.expiresAt).toBe(1_297_000n)
-    expect(entity.attributes?.level?.value).toBe(10)
+    expect(entity.attributes?.level.value).toBe(10)
     // Not selected is not the same as empty: nothing here stands in for data that was not asked for.
     expect(entity.owner).toBeUndefined()
     expect(entity.payload).toBeUndefined()

@@ -35,7 +35,7 @@ export type PublicArkivActions<
    * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
    *
    * @param key - The entity key (hex string)
-   * @returns The entity with the given key. {@link Entity}
+   * @returns The entity with the given key, with every field populated. {@link FullEntity}
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
@@ -56,7 +56,7 @@ export type PublicArkivActions<
    * //   expiresAt: 1_297_000n,
    * // }
    */
-  getEntity: (key: Hex) => Promise<Entity>
+  getEntity: (key: Hex) => Promise<FullEntity>
 
   /**
    * Returns a SelectQueryBuilder for building and executing queries — the recommended way to

@@ -25,7 +25,7 @@ function makeClient(...pages: Page[]) {
 
 /** The `[queryString, options]` of the nth `arkiv_query` call. */
 function sent(request: ReturnType<typeof makeClient>["request"], call = 0) {
-  const params = request.mock.calls[call]?.[0] as unknown as {
+  const params = request.mock.calls[call][0] as unknown as {
     method: string
     params: [string, Record<string, unknown>]
   }
@@ -158,24 +158,24 @@ describe("decoding", () => {
     const page = await new SelectQueryBuilder(client, "*").where(eq("a", 1)).fetch()
     const entity = page.entities[0]
 
-    expect(entity?.key).toBe(KEY)
-    expect(entity?.expiresAt).toBe(0x92e21n)
-    expect(entity?.creationFlags).toEqual({
+    expect(entity.key).toBe(KEY)
+    expect(entity.expiresAt).toBe(0x92e21n)
+    expect(entity.creationFlags).toEqual({
       readonly: false,
       permissionlessExtension: true,
       raw: 2,
     })
-    expect(entity?.attributes).toEqual({
+    expect(entity.attributes).toEqual({
       projectId: { type: "str", value: "alice-123" },
       version: { type: "i32", value: 4 },
       balance: { type: "u256", value: 1_000_000n },
       score: { type: "dec", value: "3.5" },
     })
-    expect(entity?.attributeSchema).toEqual({ version: "i32" })
-    expect(entity?.toJson()).toEqual({})
+    expect(entity.attributeSchema).toEqual({ version: "i32" })
+    expect(entity.toJson()).toEqual({})
     // Unselected stays undefined rather than becoming an empty value.
-    expect(entity?.creator).toBeUndefined()
-    expect(entity?.createdAt).toBeUndefined()
+    expect(entity.creator).toBeUndefined()
+    expect(entity.createdAt).toBeUndefined()
     expect(page.blockNumber).toBe(0x8e1ffn)
   })
 })
@@ -330,12 +330,12 @@ describe("the projected type", () => {
       .fetch()
 
     const entity = page.entities[0]
-    expectType<Hex | undefined>(entity?.key)
-    expectType<Hex | undefined>(entity?.owner)
+    expectType<Hex>(entity.key)
+    expectType<Hex>(entity.owner)
     // @ts-expect-error - creator was not selected
-    entity?.creator
+    entity.creator
     // @ts-expect-error - toJson comes with the payload, which was not selected
-    entity?.toJson()
+    entity.toJson()
   })
 
   it("keeps the payload helpers when the payload is selected", async () => {
@@ -346,8 +346,8 @@ describe("the projected type", () => {
       .where(eq("a", 1))
       .fetch()
 
-    expect(page.entities[0]?.toJson()).toEqual({})
-    expectType<Uint8Array | undefined>(page.entities[0]?.payload)
+    expect(page.entities[0].toJson()).toEqual({})
+    expectType<Uint8Array>(page.entities[0].payload)
   })
 
   it("treats a named attribute subset as a selection of attributes", async () => {
@@ -361,8 +361,8 @@ describe("the projected type", () => {
       .where(eq("a", 1))
       .fetch()
 
-    expectType<Attributes | undefined>(page.entities[0]?.attributes)
-    expect(page.entities[0]?.attributes).toEqual({ version: { type: "i32", value: 4 } })
+    expectType<Attributes>(page.entities[0].attributes)
+    expect(page.entities[0].attributes).toEqual({ version: { type: "i32", value: 4 } })
   })
 })
 
