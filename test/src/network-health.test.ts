@@ -1210,4 +1210,114 @@ describe(`Network health check (${chain.name})`, () => {
     },
     { timeout: 180_000 },
   )
+
+  test(
+    "a deeply nested query returns exactly the right set",
+    async () => {
+      //   id | color | flag 
+      //    0 | red   | true
+      //    1 | green | false
+      //    2 | blue  | true
+      //    3 | red   | false
+      //    4 | green | true
+      //    5 | blue  | false
+      //    6 | red   | true
+      //    7 | green | false
+      //    8 | blue  | true
+      //    9 | -     | -
+      const rows = [
+        { id: i32(0), color: str("red"), flag: true },
+        { id: i32(1), color: str("green"), flag: false },
+        { id: i32(2), color: str("blue"), flag: true },
+        { id: i32(3), color: str("red"), flag: false },
+        { id: i32(4), color: str("green"), flag: true },
+        { id: i32(5), color: str("blue"), flag: false },
+        { id: i32(6), color: str("red"), flag: true },
+        { id: i32(7), color: str("green"), flag: false },
+        { id: i32(8), color: str("blue"), flag: true },
+        { id: i32(9) }
+      ] as const;
+
+      const group = `nested-query-${Date.now()}`
+      const created = await walletClient.mutateEntities({
+        creates: rows.map((row) => ({
+          payload: jsonToPayload({ id: row.id }),
+          contentType: "application/json" as const,
+          attributes: {
+            group,
+            ...row,
+          },
+          expires: SHORT,
+        })),
+      })
+      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      expect(created.createdEntities).toHaveLength(rows.length)
+
+      const inGroup = eq("group", str(group))
+
+      const cases: { query: Expression; expected: number[] }[] = [
+        {
+          // (3 <= id < 7) OR blue
+          query: or(and(gte("id", i32(3)), lt("id", i32(7))), eq("color", str("blue"))),
+          expected: [2, 3, 4, 5, 6, 8],
+        },
+        {
+          // red OR (id >= 6 AND flagged)
+          query: or(eq("color", str("red")), and(gte("id", i32(6)), eq("flag", true))),
+          expected: [0, 3, 6, 8],
+        },
+        {
+          // NOT (red OR flagged)
+          query: not(or(eq("color", str("red")), eq("flag", true))),
+          expected: [1, 5, 7, 9],
+        },
+        {
+          // NOT red AND NOT flagged
+          query: and(not(eq("color", str("red"))), not(eq("flag", true))),
+          expected: [1, 5, 7, 9],
+        },
+        {
+          // (id >= 2 AND (red OR green)) OR id = 9
+          query: or(
+            and(gte("id", i32(2)), or(eq("color", str("red")), eq("color", str("green")))),
+            eq("id", i32(9)),
+          ),
+          expected: [3, 4, 6, 7, 9],
+        },
+        {
+          // id >= 1 AND NOT ((blue AND flagged) OR id < 3)
+          query: and(
+            gte("id", i32(1)),
+            not(or(and(eq("color", str("blue")), eq("flag", true)), lt("id", i32(3)))),
+          ),
+          expected: [3, 4, 5, 6, 7, 9],
+        },
+        {
+          // (id < 3 AND (flagged OR green)) OR (id >= 7 AND NOT (green AND not flagged))
+          query: or(
+            and(lt("id", i32(3)), or(eq("flag", true), eq("color", str("green")))),
+            and(gte("id", i32(7)), not(and(eq("color", str("green")), eq("flag", false)))),
+          ),
+          expected: [0, 1, 2, 8, 9],
+        },
+        {
+          // id >= 8 AND NOT blue.
+          query: and(gte("id", i32(8)), not(eq("color", str("blue")))),
+          expected: [9],
+        },
+      ]
+
+      for (const { query, expected } of cases) {
+        const page = await publicClient
+          .select({ key: true, attributes: { id: true } })
+          .where(inGroup, query)
+          .limit(200)
+          .fetch()
+        const ids = page.entities.map((e) => Number(e.attributes.id?.value)).sort((a, b) => a - b)
+        expect({ query: String(query), ids }).toEqual({ query: String(query), ids: expected })
+      }
+      console.log(`  NESTED  ${cases.length} nested queries returned exactly the expected ids`)
+    },
+    { timeout: 240_000 },
+  )
 })
