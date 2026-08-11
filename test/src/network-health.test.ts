@@ -7,17 +7,7 @@ import {
   jsonToPayload,
   NoEntityFoundError,
 } from "@arkiv-network/sdk"
-import {
-  addr,
-  bool,
-  bytes32,
-  dec,
-  i32,
-  key,
-  str,
-  u64,
-  u256,
-} from "@arkiv-network/sdk/attr"
+import { addr, bool, bytes32, dec, i32, key, str, u64, u256 } from "@arkiv-network/sdk/attr"
 import { braga, kaolin, localhost } from "@arkiv-network/sdk/chains"
 import {
   and,
@@ -35,7 +25,7 @@ import {
   QueryError,
   startsWith,
 } from "@arkiv-network/sdk/query"
-import { type Chain, defineChain, type Hex, http, isHex } from "viem"
+import { type Chain, defineChain, getAddress, type Hex, http, isHex } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY
@@ -138,8 +128,8 @@ describe(`Network health check (${chain.name})`, () => {
       expect(entity.payload).toEqual(payload)
       expect(entity.toJson()).toMatchObject({ healthCheck: true, tag })
       expect(entity.contentType).toBe("application/json")
-      expect(entity.owner.toLowerCase()).toBe(account.address.toLowerCase())
-      expect(entity.creator.toLowerCase()).toBe(account.address.toLowerCase())
+      expect(entity.owner).toBe(account.address)
+      expect(entity.creator).toBe(account.address)
       expect(entity.expiresAt).toBe(expiresAt)
       expect(entity.createdAt).toBeGreaterThan(0n)
 
@@ -324,8 +314,8 @@ describe(`Network health check (${chain.name})`, () => {
       await publicClient.waitForTransactionReceipt({ hash: transfer.txHash })
 
       const after = await publicClient.getEntity(entityKey)
-      expect(after.owner.toLowerCase()).toBe(newOwner.toLowerCase())
-      expect(after.creator.toLowerCase()).toBe(account.address.toLowerCase())
+      expect(after.owner).toBe(getAddress(newOwner))
+      expect(after.creator).toBe(account.address)
 
       const byTag = eq("tag", str(tag))
       expect(
@@ -442,9 +432,7 @@ describe(`Network health check (${chain.name})`, () => {
       )
       await expect(publicClient.getEntity(toDelete)).rejects.toThrow(NoEntityFoundError)
       expect((await publicClient.getEntity(toExtend)).expiresAt).toBeGreaterThan(expiryBefore)
-      expect((await publicClient.getEntity(toTransfer)).owner.toLowerCase()).toBe(
-        newOwner.toLowerCase(),
-      )
+      expect((await publicClient.getEntity(toTransfer)).owner).toBe(getAddress(newOwner))
       console.log(`  BATCH  all five kinds applied in one transaction`)
     },
     { timeout: 240_000 },
@@ -1099,7 +1087,6 @@ describe(`Network health check (${chain.name})`, () => {
     { timeout: 180_000 },
   )
 
- 
   test(
     "every event type reaches its own handler",
     async () => {
@@ -1198,20 +1185,25 @@ describe(`Network health check (${chain.name})`, () => {
       })
       await publicClient.waitForTransactionReceipt({ hash: txHash })
 
-      const seen: Hex[] = []
+      const seen: { at: string; entityKey: Hex }[] = []
       const unwatch = publicClient.watchEntityEvents({
-        onEntityCreated: (event) => seen.push(event.entityKey),
+        onEntityCreated: (event) =>
+          seen.push({ at: `${event.blockNumber}:${event.logIndex}`, entityKey: event.entityKey }),
         onError: (error) => console.log(`  WATCH  error: ${error.message}`),
         fromBlock: from,
       })
 
       try {
         const deadline = Date.now() + 60_000
-        while (Date.now() < deadline && !seen.includes(entityKey)) {
+        while (Date.now() < deadline && !seen.some((e) => e.entityKey === entityKey)) {
           await new Promise((r) => setTimeout(r, 2_000))
         }
-        expect(seen).toContain(entityKey)
-        console.log(`  BACKFILL  replayed a create from block ${from}`)
+        expect(seen.map((e) => e.entityKey)).toContain(entityKey)
+
+        // Keep watching across a few more blocks.
+        await new Promise((r) => setTimeout(r, 10_000))
+        expect(new Set(seen.map((e) => e.at)).size).toBe(seen.length)
+        console.log(`  BACKFILL  replayed ${seen.length} create(s) from block ${from}, no repeats`)
       } finally {
         unwatch()
       }

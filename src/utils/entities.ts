@@ -1,4 +1,4 @@
-import { hexToBytes } from "viem"
+import { checksumAddress, type Hex, hexToBytes } from "viem"
 import type { AttributeSchema, Attributes } from "../attr"
 // Internal seam: the JSON-RPC decoder is not part of the package's public surface.
 import { asTypeTag, decodeRpcValue } from "../attr/codec"
@@ -47,8 +47,8 @@ export function entityFromRpcResult(rpcEntity: RpcEntity): Entity {
 
   const fields: EntityFields = {
     key: rpcEntity.key,
-    owner: rpcEntity.owner,
-    creator: rpcEntity.creator,
+    owner: toAddress(rpcEntity.owner),
+    creator: toAddress(rpcEntity.creator),
     createdAt: toBlock(rpcEntity.createdAt),
     updatedAt: toBlock(rpcEntity.updatedAt),
     expiresAt: toBlock(rpcEntity.expiresAt),
@@ -66,6 +66,15 @@ export function entityFromRpcResult(rpcEntity: RpcEntity): Entity {
 
 function toBlock(value: string | undefined): bigint | undefined {
   return value === undefined ? undefined : BigInt(value)
+}
+
+function toAddress(value: Hex | undefined): Hex | undefined {
+  if (value === undefined) return undefined
+  if (!/^0x[0-9a-fA-F]{40}$/.test(value)) {
+    logger("unreadable address %o", value)
+    return value
+  }
+  return checksumAddress(value)
 }
 
 /**
