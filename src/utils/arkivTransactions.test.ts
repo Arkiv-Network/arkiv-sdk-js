@@ -676,17 +676,18 @@ describe("a revert the node catches before there is a receipt", () => {
     expect(failure.message).not.toContain('The contract function "execute" reverted')
   })
 
-  it("still names the uppercase problem, which only ever fails at estimation", async () => {
+  it("still names a bad attribute-name byte, which only ever fails at estimation", async () => {
     const { client } = makeClient()
     ;(client.writeContract as ReturnType<typeof vi.fn>).mockRejectedValue(
-      preflightRevert("Ident32InvalidByte", [2n, "0x41"]),
+      preflightRevert("Ident32InvalidByte", [2n, "0x2f"]),
     )
 
     const failure = await sendArkivTransaction(client, {
       patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
     }).catch((error: Error) => error)
 
-    expect(failure.message).toContain("uppercase")
+    expect(failure.message).toContain('"/"')
+    expect(failure.message).toContain("byte 2")
   })
 
   it("leaves an error it cannot decode to the existing handling", async () => {

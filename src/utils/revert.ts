@@ -24,23 +24,19 @@ export function describeEntityRevert(error: unknown): string | undefined {
   return explain(name, args) ?? `the engine rejected the batch with ${name}`
 }
 
-/** The engine's attribute-name charset, quoted the way an error message should read. */
-const CHARSET = '"a"-"z", "0"-"9", ".", "-" and "_", with a letter first'
+/** The attribute-name charset, quoted the way an error message should read. */
+const CHARSET = '"A"-"Z", "a"-"z", "0"-"9", ".", "-" and "_", with a letter first'
 
 function explain(name: string, args: readonly unknown[]): string | undefined {
   switch (name) {
     // ── attribute names ──────────────────────────────────────────────────────
     case "Ident32InvalidByte": {
       const position = Number(args[0] ?? 0)
-      const byte = String(args[1] ?? "0x00")
-      const char = printable(byte)
-      const base =
+      const char = printable(String(args[1] ?? "0x00"))
+      return (
         `an attribute name holds ${char} at byte ${position}, which is outside the ` +
-        `engine's name charset (${CHARSET})`
-      return isUppercase(byte)
-        ? `${base}. The engine does not accept uppercase in attribute names, even though the ` +
-            "specification allows it — use a lowercase name for now"
-        : base
+        `name charset (${CHARSET})`
+      )
     }
     case "Ident32Empty":
       return "an attribute name is empty"
@@ -146,9 +142,4 @@ function printable(byte: string): string {
   if (!Number.isFinite(code)) return `byte ${byte}`
   const char = String.fromCharCode(code)
   return code >= 0x21 && code <= 0x7e ? `"${char}" (${byte})` : `byte ${byte}`
-}
-
-function isUppercase(byte: string): boolean {
-  const code = Number.parseInt(byte.replace(/^0x/, ""), 16)
-  return code >= 0x41 && code <= 0x5a
 }

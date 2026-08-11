@@ -38,18 +38,11 @@ describe("describeEntityRevert", () => {
       expect(message).toContain("byte 5")
     })
 
-    it("calls out uppercase specifically, because the SDK accepted it", () => {
-      // The spec's grammar is [A-Za-z] and this SDK validates against it, so a camelCase name
-      // passes validation and then reverts on chain. That is the one rejection a caller cannot
-      // reasonably guess, so the message has to say it outright.
-      const message = describeEntityRevert(reverted("Ident32InvalidByte", [2n, "0x41"]))
-      expect(message).toContain("uppercase")
-      expect(message).toContain("specification allows it")
-    })
-
-    it("does not claim uppercase for a byte that is not one", () => {
+    it("quotes the name charset the SDK itself validates against", () => {
       const message = describeEntityRevert(reverted("Ident32InvalidByte", [0n, "0x2f"]))
-      expect(message).not.toContain("uppercase")
+      expect(message).toContain('"A"-"Z"')
+      expect(message).toContain('"a"-"z"')
+      expect(message).toContain("with a letter first")
     })
 
     it("renders an unprintable byte as a byte", () => {
