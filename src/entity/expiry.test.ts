@@ -180,7 +180,6 @@ describe("bounds and misuse", () => {
   })
 })
 
-
 describe("toBlocks", () => {
   it("converts whole blocks' worth of seconds", () => {
     expect(toBlocks(2)).toBe(1n)

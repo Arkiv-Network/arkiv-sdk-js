@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { type Hex, toHex } from "viem"
+import type { Hex } from "viem"
 import {
   decodeRpcValue,
   decodeValueBytes,
