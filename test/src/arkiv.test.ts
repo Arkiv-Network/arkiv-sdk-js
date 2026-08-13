@@ -28,7 +28,7 @@ const transports: TransportName[] = ["http", "webSocket"]
 /** A lifetime long enough to outlive any test here. */
 const LIFETIME = ExpirationTime.fromBlocks(10_000)
 
-const SOMEONE_ELSE = checksumAddress("0x123123123123123123123123123123123123123");
+const SOMEONE_ELSE = checksumAddress("0x1231231231231231231231231231231231231231")
 
 describe("Arkiv Integration Tests for public client", () => {
   let arkivNode: StartedTestContainer | undefined
