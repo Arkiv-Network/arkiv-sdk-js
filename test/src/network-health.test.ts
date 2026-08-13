@@ -439,6 +439,59 @@ describe(`Network health check (${chain.name})`, () => {
   )
 
   test(
+    "the keys a batch will mint can be worked out before it is sent",
+    async () => {
+      const tag = `predicted-${Date.now()}`
+      const nonceBefore = await publicClient.getEntityNonce(account.address)
+
+      // A literal count is a tuple, so the pairs destructure into names — no length check needed.
+      const [parent, child] = await publicClient.predictEntityKeys({
+        owner: account.address,
+        count: 2,
+      })
+      expect(parent.key).not.toBe(child.key)
+
+      // The second entity points at the first, whose key does not exist yet — which is the whole
+      // reason to predict one.
+      const batch = await walletClient.mutateEntities({
+        creates: [
+          {
+            payload: jsonToPayload({ role: "parent" }),
+            contentType: "application/json",
+            attributes: { tag, role: "parent" },
+            expires: SHORT,
+            salt: parent.salt,
+          },
+          {
+            payload: jsonToPayload({ role: "child" }),
+            contentType: "application/json",
+            attributes: { tag, role: "child", parent: key(parent.key) },
+            expires: SHORT,
+            salt: child.salt,
+          },
+        ],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+
+      // The engine minted exactly the keys that were predicted, in order.
+      expect(batch.createdEntities).toEqual([parent.key, child.key])
+      expect((await publicClient.getEntity(parent.key)).attributes.role).toEqual(str("parent"))
+
+      // And the pointer the child was created with resolves to a real entity.
+      const children = await publicClient
+        .select({ key: true, attributes: { parent: true } })
+        .where(and(eq("tag", str(tag)), eq("role", str("child"))))
+        .fetch()
+      expect(children.entities.map((entity) => entity.attributes.parent)).toEqual([key(parent.key)])
+
+      // Two creates, two nonces.
+      expect(await publicClient.getEntityNonce(account.address)).toBe(nonceBefore + 2n)
+      console.log(`  KEYS  predicted 2 keys and the batch minted exactly them`)
+    },
+    { timeout: 120_000 },
+  )
+
+  test(
     "queries filter with every operator the language offers",
     async () => {
       const group = `filter-${Date.now()}`
