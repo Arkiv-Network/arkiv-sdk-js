@@ -1,3 +1,2 @@
-export { braga } from "./braga"
-export { kaolin } from "./kaolin"
+export { cheesecake } from "./cheesecake"
 export { localhost } from "./localhost"

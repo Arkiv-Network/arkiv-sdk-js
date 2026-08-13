@@ -65,11 +65,11 @@ export type WalletArkivActions<
      * @example
      * import { createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk"
      * import { i32 } from "@arkiv-network/sdk/attr"
-     * import { braga } from "@arkiv-network/sdk/chains"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
      * const { entityKey, txHash, expiresAt } = await client.createEntity({
@@ -103,11 +103,11 @@ export type WalletArkivActions<
      * @example
      * import { createWalletClient, jsonToPayload } from "@arkiv-network/sdk"
      * import { i32 } from "@arkiv-network/sdk/attr"
-     * import { braga } from "@arkiv-network/sdk/chains"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
      * // Publish the entity: one attribute changes, one goes away, the payload is replaced.
@@ -135,11 +135,11 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient } from "@arkiv-network/sdk"
-     * import { braga } from "@arkiv-network/sdk/chains"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
      * // entityKey is the bytes32 key returned by createEntity.
@@ -169,11 +169,11 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
-     * import { braga } from "@arkiv-network/sdk/chains"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
      * const { txHash, expiresAt } = await client.extendEntity({
@@ -220,11 +220,11 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk"
-     * import { braga } from "@arkiv-network/sdk/chains"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
      * const { txHash, createdEntities } = await client.mutateEntities({

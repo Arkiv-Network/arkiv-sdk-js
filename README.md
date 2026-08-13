@@ -97,12 +97,12 @@ You can now use Arkiv's public client to query data. Paste the following in `rea
 
 ```typescript
 import { createPublicClient } from "@arkiv-network/sdk"
-import { braga } from "@arkiv-network/sdk/chains"
+import { cheesecake } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
 import { http } from "viem"
 
 const publicClient = createPublicClient({
-  chain: braga, // "braga" is Arkiv's testnet
+  chain: cheesecake, // "cheesecake" is Arkiv's testnet
   transport: http(),
 });
 
@@ -216,19 +216,19 @@ Create a file named `write_example.ts` with the following content:
 ```typescript
 import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
 import { dec, i32 } from "@arkiv-network/sdk/attr"
-import { braga } from "@arkiv-network/sdk/chains"
+import { cheesecake } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import { http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: braga, // braga is the Arkiv testnet
+  chain: cheesecake, // cheesecake is the Arkiv testnet
   transport: http(),
 })
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: braga,
+  chain: cheesecake,
   transport: http(),
   account: privateKeyToAccount('0x...'), // Replace with your private key
 });
@@ -281,8 +281,7 @@ Now you can run it in the same way as in the previous example:
 **Note:**  
 You must provide your own private key with a minimum balance on the Arkiv L3 network.  
 You can generate a private key using any tool, for example: https://vanity-eth.tk/  
-Once you have a key, you can paste it into the example above and fund its address using the Arkiv Braga testnet faucet at:  
-https://braga.hoodi.arkiv.network/faucet/
+Once you have a key, you can paste it into the example above and fund its address on the Arkiv Cheesecake testnet.
 
 For quick testing, you may use this example key:
 ```

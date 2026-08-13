@@ -69,10 +69,10 @@ export type WatchEntityEventsParameters = {
  *
  * @example
  * import { createPublicClient } from "@arkiv-network/sdk"
- * import { braga } from "@arkiv-network/sdk/chains"
+ * import { cheesecake } from "@arkiv-network/sdk/chains"
  * import { http } from "viem"
  *
- * const client = createPublicClient({ chain: braga, transport: http() })
+ * const client = createPublicClient({ chain: cheesecake, transport: http() })
  *
  * const unwatch = client.watchEntityEvents({
  *   onEntityCreated: ({ entityKey, owner, expiresAt }) =>
