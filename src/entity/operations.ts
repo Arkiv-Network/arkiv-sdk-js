@@ -13,6 +13,17 @@ export const EXECUTE_ABI = parseAbi([
 ])
 
 /**
+ * The engine's one read-only view: an owner's entity-minting nonce, which is the input
+ * {@link predictEntityKey} needs and the only part of the derivation the caller cannot know.
+ *
+ * It is a `view` on the same address `execute` is called on, so it answers over `eth_call` without
+ * a transaction.
+ */
+export const ENTITY_NONCE_ABI = parseAbi([
+  "function entityNonce(address owner) external view returns (uint64)",
+])
+
+/**
  * The shared attribute shape, used by `create` (attributes) and `patch` (mutations). Written out
  * once and reused by every payload that carries attributes.
  */

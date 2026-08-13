@@ -1,7 +1,13 @@
-import type { Account, Chain, Client, Hex, PublicActions, Transport } from "viem"
+import type { Account, Address, Chain, Client, Hex, PublicActions, Transport } from "viem"
 import { getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
+import { getEntityNonce } from "../../actions/public/getEntityNonce"
+import {
+  type PredictEntityKeysParameters,
+  type PredictEntityKeysReturnType,
+  predictEntityKeys,
+} from "../../actions/public/predictEntityKeys"
 import { type QueryOptions, type QueryReturnType, query } from "../../actions/public/query"
 import {
   type WatchEntityEventsParameters,
@@ -174,6 +180,71 @@ export type PublicArkivActions<
   getEntityCount: () => Promise<number>
 
   /**
+   * Returns how many entities an account has created — its entity-minting nonce.
+   *
+   * Not the account's transaction nonce: the engine keeps its own counter per creator and mixes it
+   * into every key it mints, which is why two identical creates from one account never collide.
+   *
+   * @param owner - The account whose nonce to read.
+   * @returns The nonce the account's next create will use.
+   *
+   * @example
+   * import { createPublicClient } from "@arkiv-network/sdk"
+   * import { braga } from "@arkiv-network/sdk/chains"
+   * import { http } from "viem"
+   *
+   * const client = createPublicClient({
+   *   chain: braga,
+   *   transport: http(),
+   * })
+   * const nonce = await client.getEntityNonce("0xabc…")
+   * // 7n — the next entity this account creates is its eighth
+   */
+  getEntityNonce: (owner: Address) => Promise<bigint>
+
+  /**
+   * Works out the keys an account's next creates will be given, before sending them.
+   *
+   * The engine derives a key from the chain, the registry, the owner, the owner's nonce and a
+   * salt — everything but the nonce is known to the caller, and the nonce is read here. This is
+   * what lets a batch reference an entity it is about to mint.
+   *
+   * Each key arrives paired with the salt that mints it, because a create defaults to a *random*
+   * salt: a predicted key only holds if the create carries the salt it was predicted with. And the
+   * prediction holds only while nothing else from this owner is in flight — for a key you can rely
+   * on unconditionally, read it back from the create instead.
+   *
+   * A literal `count` comes back as a fixed-length tuple, so the pairs destructure into names.
+   *
+   * @param parameters - Owner, and either a count or the salts. {@link PredictEntityKeysParameters}
+   * @returns One `{ key, salt }` pair per create, in batch order.
+   *   {@link PredictEntityKeysReturnType}
+   *
+   * @example A batch whose second entity points at its first.
+   * import { key } from "@arkiv-network/sdk/attr"
+   *
+   * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
+   * await wallet.mutateEntities({
+   *   creates: [
+   *     { payload, contentType, expires, salt: parent.salt },
+   *     {
+   *       payload,
+   *       contentType,
+   *       expires,
+   *       salt: child.salt,
+   *       attributes: { parent: key(parent.key) },
+   *     },
+   *   ],
+   * })
+   */
+  predictEntityKeys: <
+    const TCount extends number = number,
+    const TSalts extends readonly bigint[] | undefined = undefined,
+  >(
+    parameters: PredictEntityKeysParameters<TCount, TSalts>,
+  ) => Promise<PredictEntityKeysReturnType<TCount, TSalts>>
+
+  /**
    * Returns the current block timing.
    * @returns The current block timing. {@link GetBlockTimingReturnType}
    *
@@ -240,6 +311,13 @@ export function publicArkivActions<
     select: (selection?: SelectArg) => new SelectQueryBuilder(client, selection),
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),
+    getEntityNonce: (owner: Address) => getEntityNonce(client, owner),
+    predictEntityKeys: <
+      const TCount extends number = number,
+      const TSalts extends readonly bigint[] | undefined = undefined,
+    >(
+      parameters: PredictEntityKeysParameters<TCount, TSalts>,
+    ) => predictEntityKeys(client, parameters),
     watchEntityEvents: (parameters: WatchEntityEventsParameters) =>
       watchEntityEvents(client, parameters),
   }

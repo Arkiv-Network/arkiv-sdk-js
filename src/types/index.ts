@@ -1,4 +1,9 @@
 export type { GetBlockTimingReturnType } from "../actions/public/getBlockTiming"
+export type {
+  PredictEntityKeysParameters,
+  PredictEntityKeysReturnType,
+  PredictedEntityKey,
+} from "../actions/public/predictEntityKeys"
 export type { QueryOptions, QueryReturnType } from "../actions/public/query"
 export type { WatchEntityEventsParameters } from "../actions/public/watchEntityEvents"
 export type {
