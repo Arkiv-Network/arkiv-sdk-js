@@ -2,6 +2,7 @@ import type { Hash, Hex } from "viem"
 import type { AttributeInputs } from "../../attr"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { CreationFlags, Expiry } from "../../entity"
+import { EntityMutationError } from "../../errors"
 import type { MimeType, TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
@@ -119,9 +120,17 @@ export async function createEntity(
 
   logger("Receipt from createEntity %o", receipt)
 
+  const [entityKey] = createdEntityKeys
+  const [expiresAt] = createdExpiries
+  if (entityKey === undefined || expiresAt === undefined) {
+    throw new EntityMutationError(
+      `Transaction ${receipt.transactionHash} succeeded, but the receipt did not carry the expected entity key or expiry.`,
+    )
+  }
+
   return {
     txHash: receipt.transactionHash as Hash,
-    entityKey: createdEntityKeys[0],
-    expiresAt: createdExpiries[0],
+    entityKey,
+    expiresAt,
   }
 }

@@ -1,6 +1,7 @@
 import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { Expiry } from "../../entity"
+import { EntityMutationError } from "../../errors"
 import type { TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
@@ -56,9 +57,16 @@ export async function extendEntity(
 
   logger("Receipt from extendEntity %o", receipt)
 
+  const [expiresAt] = extendedExpiries
+  if (expiresAt === undefined) {
+    throw new EntityMutationError(
+      `Transaction ${receipt.transactionHash} succeeded, but the receipt did not carry the expected entity expiry.`,
+    )
+  }
+
   return {
     txHash: receipt.transactionHash as Hash,
     entityKey: data.entityKey,
-    expiresAt: extendedExpiries[0],
+    expiresAt,
   }
 }

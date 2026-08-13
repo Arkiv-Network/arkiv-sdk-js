@@ -144,8 +144,8 @@ function getColorForNamespace(namespace: string): { css: string; ansi: string } 
 
   // Use absolute value and modulo to get index
   const colorIndex = Math.abs(hash) % COLOR_PALETTE.length
-  const cssColor = COLOR_PALETTE[colorIndex]
-  const ansiColor = ANSI_COLORS[colorIndex % ANSI_COLORS.length]
+  const cssColor = COLOR_PALETTE[colorIndex] ?? "inherit"
+  const ansiColor = ANSI_COLORS[colorIndex % ANSI_COLORS.length] ?? ""
 
   const color = { css: cssColor, ansi: ansiColor }
 

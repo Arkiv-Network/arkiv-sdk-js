@@ -168,8 +168,8 @@ describe(`Network health check (${chain.name})`, () => {
         .fetch()
 
       expect(found.entities).toHaveLength(1)
-      expect(found.entities[0].key).toBe(entityKey)
-      expect(found.entities[0].attributes.category).toEqual(str("docs"))
+      expect(found.entities[0]?.key).toBe(entityKey)
+      expect(found.entities[0]?.attributes.category).toEqual(str("docs"))
 
       // Something that does not match must not come back.
       const missing = await publicClient
@@ -490,7 +490,7 @@ describe(`Network health check (${chain.name})`, () => {
       const where = eq("tag", str(tag))
 
       const keyOnly = await publicClient.select({ key: true }).where(where).fetch()
-      expect(keyOnly.entities[0].key).toBeDefined()
+      expect(keyOnly.entities[0]?.key).toBeDefined()
       // @ts-expect-error payload was not selected
       expect(keyOnly.entities[0].payload).toBeUndefined()
       // @ts-expect-error owner was not selected
@@ -499,7 +499,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(keyOnly.entities[0].attributes).toBeUndefined()
 
       const payloadOnly = await publicClient.select({ payload: true }).where(where).fetch()
-      expect(payloadOnly.entities[0].toJson()).toMatchObject({ projection: true, tag })
+      expect(payloadOnly.entities[0]?.toJson()).toMatchObject({ projection: true, tag })
 
       const metadata = await publicClient
         .select({
@@ -514,6 +514,7 @@ describe(`Network health check (${chain.name})`, () => {
         .where(where)
         .fetch()
       const meta = metadata.entities[0]
+      if (!meta) throw new Error("no entity returned for metadata projection")
       expect(meta.owner).toBeDefined()
       expect(meta.creator).toBeDefined()
       expect(meta.contentType).toBe("application/json")
@@ -525,18 +526,18 @@ describe(`Network health check (${chain.name})`, () => {
       expect(meta.payload).toBeUndefined()
 
       const schema = await publicClient.select({ attributeSchema: true }).where(where).fetch()
-      expect(schema.entities[0].attributeSchema.tag).toBe("str")
+      expect(schema.entities[0]?.attributeSchema.tag).toBe("str")
 
       const oneAttribute = await publicClient
         .select({ key: true, attributes: { color: true } })
         .where(where)
         .fetch()
-      expect(oneAttribute.entities[0].attributes.color).toEqual(str("blue"))
-      expect(oneAttribute.entities[0].attributes.tag).toBeUndefined()
+      expect(oneAttribute.entities[0]?.attributes.color).toEqual(str("blue"))
+      expect(oneAttribute.entities[0]?.attributes.tag).toBeUndefined()
 
       const everything = await publicClient.select("*").where(where).fetch()
-      expect(everything.entities[0].payload.length).toBeGreaterThan(0)
-      expect(everything.entities[0].attributes.tag).toEqual(str(tag))
+      expect(everything.entities[0]?.payload.length).toBeGreaterThan(0)
+      expect(everything.entities[0]?.attributes.tag).toEqual(str(tag))
       console.log(`  SELECT  projections returned exactly what was asked for`)
     },
     { timeout: 180_000 },
@@ -675,8 +676,8 @@ describe(`Network health check (${chain.name})`, () => {
         select: { key: true, payload: true },
       })
       expect(result.entities).toHaveLength(1)
-      expect(result.entities[0].key).toBe(entityKey)
-      expect(result.entities[0].payload).toBeDefined()
+      expect(result.entities[0]?.key).toBe(entityKey)
+      expect(result.entities[0]?.payload).toBeDefined()
 
       const negated = await publicClient.query(
         `tag = str('${tag}') AND NOT (status = str('active'))`,
@@ -1214,7 +1215,7 @@ describe(`Network health check (${chain.name})`, () => {
   test(
     "a deeply nested query returns exactly the right set",
     async () => {
-      //   id | color | flag 
+      //   id | color | flag
       //    0 | red   | true
       //    1 | green | false
       //    2 | blue  | true
@@ -1235,8 +1236,8 @@ describe(`Network health check (${chain.name})`, () => {
         { id: i32(6), color: str("red"), flag: true },
         { id: i32(7), color: str("green"), flag: false },
         { id: i32(8), color: str("blue"), flag: true },
-        { id: i32(9) }
-      ] as const;
+        { id: i32(9) },
+      ] as const
 
       const group = `nested-query-${Date.now()}`
       const created = await walletClient.mutateEntities({
