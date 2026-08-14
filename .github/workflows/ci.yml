@@ -124,7 +124,7 @@ jobs:
           password: ${{ secrets.GHCR_PULL_TOKEN }}
 
       - name: Pull Arkiv Docker image
-        run: docker pull ghcr.io/arkiv-network/arkiv-dev:latest
+        run: docker pull ghcr.io/arkiv-network/arkiv-reth-dev:latest
 
       # Using a test private key (randomly generated for testing purposes only)
       - name: Run component tests

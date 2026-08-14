@@ -1,12 +1,20 @@
-import { createPublicClient, createWalletClient, defineChain, type Hex, http, parseEther } from "viem"
-import { privateKeyToAccount } from "viem/accounts"
 import { GenericContainer, type StartedTestContainer, Wait } from "testcontainers"
+import {
+  createPublicClient,
+  createWalletClient,
+  defineChain,
+  type Hex,
+  http,
+  parseEther,
+} from "viem"
+import { privateKeyToAccount } from "viem/accounts"
 
 // First account of the standard test mnemonic, pre-funded by the node in --dev mode.
-const DEV_FUNDED_PRIVATE_KEY: Hex = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+const DEV_FUNDED_PRIVATE_KEY: Hex =
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 
 export async function launchLocalArkivNode(withFundingAddress: Hex | undefined = undefined) {
-  const container = await new GenericContainer("ghcr.io/arkiv-network/arkiv-dev:latest")
+  const container = await new GenericContainer("ghcr.io/arkiv-network/arkiv-reth-dev:latest")
     .withExposedPorts(8545)
     .withExposedPorts(8546)
     .withWaitStrategy(Wait.forLogMessage("Block added to canonical chain", 1))

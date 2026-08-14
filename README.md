@@ -97,12 +97,12 @@ You can now use Arkiv's public client to query data. Paste the following in `rea
 
 ```typescript
 import { createPublicClient } from "@arkiv-network/sdk"
-import { braga } from "@arkiv-network/sdk/chains"
+import { cheesecake } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
 import { http } from "viem"
 
 const publicClient = createPublicClient({
-  chain: braga, // "braga" is Arkiv's testnet
+  chain: cheesecake, // "cheesecake" is Arkiv's testnet
   transport: http(),
 });
 
@@ -124,10 +124,17 @@ const result = await publicClient
 
 console.log('Found entities:', result.entities);
 
-// Pagination - fetch next page
+// Pagination
 if (result.hasNextPage()) {
-  await result.next();
-  console.log('Next page:', result.entities);
+  const nextPage = await result.next();
+  console.log('Next page:', nextPage.entities);
+}
+
+// Or walk every page at once
+for await (const entity of publicClient
+  .select({ key: true })
+  .where(eq('category', 'documentation'))) {
+  console.log(entity.key);
 }
 ```
 
@@ -150,7 +157,9 @@ The result type is inferred from your selection: reading a field you didn't sele
 helpers are available only when you select `payload`.
 
 ```typescript
-const [entity] = (await publicClient.select({ owner: true, payload: true }).fetch()).entities;
+const [entity] = (
+  await publicClient.select({ owner: true, payload: true }).where(eq("category", "docs")).fetch()
+).entities;
 entity.owner;     // ✅ Hex
 entity.toJson();  // ✅ payload was selected
 entity.creator;   // ❌ compile error — not selected
@@ -206,19 +215,20 @@ Create a file named `write_example.ts` with the following content:
 
 ```typescript
 import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
-import { braga } from "@arkiv-network/sdk/chains"
+import { dec, i32 } from "@arkiv-network/sdk/attr"
+import { cheesecake } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import { http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: braga, // braga is the Arkiv testnet
+  chain: cheesecake, // cheesecake is the Arkiv testnet
   transport: http(),
 })
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: braga,
+  chain: cheesecake,
   transport: http(),
   account: privateKeyToAccount('0x...'), // Replace with your private key
 });
@@ -233,11 +243,15 @@ const { entityKey, txHash } = await client.createEntity({
     },
   }),
   contentType: 'application/json',
-  attributes: [
-    { key: 'category', value: 'documentation' },
-    { key: 'version', value: '1.0' },
-  ],
-  expiresIn: ExpirationTime.fromDays(30), // Entity expires in 30 days
+  // Attributes are keyed by name. Values carry their type: use the tagged constructors from
+  // "@arkiv-network/sdk/attr" (i32, u64, u256, dec, str, addr, key, bytes32, bool), or pass a bare
+  // boolean, number, bigint or string where the type is unambiguous.
+  attributes: {
+    category: 'documentation',   // bare string -> str
+    version: i32(1),
+    score: dec('4.5'),
+  },
+  expires: ExpirationTime.fromDays(30), // Entity expires in 30 days
 });
 
 console.log('Created entity:', entityKey);
@@ -267,8 +281,7 @@ Now you can run it in the same way as in the previous example:
 **Note:**  
 You must provide your own private key with a minimum balance on the Arkiv L3 network.  
 You can generate a private key using any tool, for example: https://vanity-eth.tk/  
-Once you have a key, you can paste it into the example above and fund its address using the Arkiv Braga testnet faucet at:  
-https://braga.hoodi.arkiv.network/faucet/
+Once you have a key, you can paste it into the example above and fund its address on the Arkiv Cheesecake testnet.
 
 For quick testing, you may use this example key:
 ```

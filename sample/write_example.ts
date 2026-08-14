@@ -1,18 +1,19 @@
 import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
-import { braga } from "@arkiv-network/sdk/chains"
+import { dec, i32 } from "@arkiv-network/sdk/attr"
+import { cheesecake } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import { http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: braga, // braga is the Arkiv testnet
+  chain: cheesecake, // cheesecake is the Arkiv testnet
   transport: http(),
 })
 
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: braga,
+  chain: cheesecake,
   transport: http(),
   account: privateKeyToAccount("0x..."), // Replace with your private key
 })
@@ -27,11 +28,15 @@ const { entityKey, txHash } = await client.createEntity({
     },
   }),
   contentType: "application/json",
-  attributes: [
-    { key: "category", value: "documentation" },
-    { key: "version", value: "1.0" },
-  ],
-  expiresIn: ExpirationTime.fromDays(30), // Entity expires in 30 days
+  // Attributes are keyed by name, and every value carries its type. Use the tagged constructors
+  // from "@arkiv-network/sdk/attr", or pass a bare boolean, number, bigint or string where the
+  // type is unambiguous.
+  attributes: {
+    category: "documentation", // bare string -> str
+    version: i32(1),
+    score: dec("4.5"),
+  },
+  expires: ExpirationTime.fromDays(30), // Entity expires in 30 days
 })
 
 console.log("Created entity:", entityKey)

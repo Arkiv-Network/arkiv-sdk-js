@@ -24,11 +24,8 @@ import type {
   MutateEntitiesReturnType,
 } from "../../actions/wallet/mutateEntities"
 import { mutateEntities } from "../../actions/wallet/mutateEntities"
-import type {
-  UpdateEntityParameters,
-  UpdateEntityReturnType,
-} from "../../actions/wallet/updateEntity"
-import { updateEntity } from "../../actions/wallet/updateEntity"
+import type { PatchEntityParameters, PatchEntityReturnType } from "../../actions/wallet/patchEntity"
+import { patchEntity } from "../../actions/wallet/patchEntity"
 import type { TxParams } from "../../types"
 
 export type WalletArkivActions<
@@ -60,30 +57,27 @@ export type WalletArkivActions<
      * @param txParams - Optional transaction parameters
      * @returns The created entity with transaction hash
      *
-     * @throws {InvalidExpirationError} If `expiresIn` is not a positive integer
-     * that is a multiple of the block time (2 seconds).
-     * @throws {InvalidAttributeError} If a numeric attribute value is not an
-     * integer.
+     * @throws {InvalidExpiryError} If the expiry exceeds a protocol bound or would leave the
+     * entity dead on arrival.
+     * @throws {InvalidValueError} If an attribute value does not fit the type it names.
+     * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
      *
      * @example
-     * import { createPublicClient, http } from 'arkiv'
-     * import { braga } from 'arkiv/chains'
+     * import { createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk"
+     * import { i32 } from "@arkiv-network/sdk/attr"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
+     * import { http } from "viem"
      *
-     * const client = createPublicClient({
-     *   chain: braga,
+     * const client = createWalletClient({
+     *   chain: cheesecake,
      *   transport: http(),
      * })
-     * const { entityKey, txHash } = await client.createEntity({
-     *   payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-     *   attributes: [{ key: "testKey", value: "testValue" }],
-     *   expiresIn: 1000,
+     * const { entityKey, txHash, expiresAt } = await client.createEntity({
+     *   payload: jsonToPayload({ entityType: "testType", entityId: "testId" }),
+     *   contentType: "application/json",
+     *   attributes: { testKey: "testValue", level: i32(3) },
+     *   expires: ExpirationTime.fromDays(30),
      * })
-     * console.log("entityKey", entityKey)
-     * console.log("txHash", txHash)
-     * // {
-     * //   entityKey: "0x123",
-     * //   txHash: "0x123",
-     * // }
      */
     createEntity: (
       data: CreateEntityParameters,
@@ -91,33 +85,43 @@ export type WalletArkivActions<
     ) => Promise<CreateEntityReturnType>
 
     /**
-     * Updates the entity with the given key.
+     * Applies a patch to the entity with the given key: sets some fields, unsets others, and leaves
+     * everything it does not name alone.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/updateEntity
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/patchEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param data - The entity update parameters
+     * @param data - The entity key and the mutations to apply
      * @param txParams - Optional transaction parameters
-     * @returns The updated entity with transaction hash
+     * @returns The entity key and the transaction hash
      *
-     * @throws {InvalidExpirationError} If `expiresIn` is not a positive integer
-     * that is a multiple of the block time (2 seconds).
-     * @throws {InvalidAttributeError} If a numeric attribute value is not an
-     * integer.
+     * @throws {EmptyPatchError} If the patch has nothing to apply.
+     * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
+     * @throws {InvalidValueError} If an attribute value does not fit the type it names.
+     * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { braga } from 'arkiv/chains'
+     * import { createWalletClient, jsonToPayload } from "@arkiv-network/sdk"
+     * import { i32 } from "@arkiv-network/sdk/attr"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
+     * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
+     * // Publish the entity: one attribute changes, one goes away, the payload is replaced.
+     * const { txHash } = await client.patchEntity({
+     *   entityKey,
+     *   set: { status: "published", revision: i32(2) },
+     *   unset: ["draft"],
+     *   payload: jsonToPayload({ title: "Hello" }),
+     * })
      */
-    updateEntity: (
-      data: UpdateEntityParameters,
+    patchEntity: (
+      data: PatchEntityParameters,
       txParams?: TxParams,
-    ) => Promise<UpdateEntityReturnType>
+    ) => Promise<PatchEntityReturnType>
 
     /**
      * Deletes the entity with the given key.
@@ -130,20 +134,16 @@ export type WalletArkivActions<
      * @returns The deleted entity with transaction hash
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { braga } from 'arkiv/chains'
+     * import { createWalletClient } from "@arkiv-network/sdk"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
+     * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
-     * const { entityKey, txHash } = await client.deleteEntity({ entityKey: "0x123" })
-     * console.log("entityKey", entityKey)
-     * console.log("txHash", txHash)
-     * // {
-     * //   entityKey: "0x123",
-     * //   txHash: "0x123",
-     * // }
+     * // entityKey is the bytes32 key returned by createEntity.
+     * const { txHash } = await client.deleteEntity({ entityKey })
      */
     deleteEntity: (
       data: DeleteEntityParameters,
@@ -151,35 +151,35 @@ export type WalletArkivActions<
     ) => Promise<DeleteEntityReturnType>
 
     /**
-     * Extends the entity with the given key.
+     * Sets a new expiry on the entity with the given key.
+     *
+     * The new lifetime is resolved the same way a create's is: a duration counts from now rather
+     * than adding to what the entity has left, and `atBlock` / `atDate` pin an absolute deadline.
+     * The engine rejects an extension that would not move the expiry later.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/extendEntity
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param data - The entity update parameters
+     * @param data - The entity key and its new lifetime
      * @param txParams - Optional transaction parameters
-     * @returns The updated entity with transaction hash
+     * @returns The entity key, transaction hash, and the block it is now expected to expire at
      *
-     * @throws {InvalidExpirationError} If `expiresIn` is not a positive integer
-     * that is a multiple of the block time (2 seconds).
+     * @throws {InvalidExpiryError} If the expiry is malformed, exceeds a protocol bound, or would
+     * leave the entity dead on arrival.
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { braga } from 'arkiv/chains'
+     * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
+     * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
-     * const { entityKey, txHash } = await client.extendEntity("0x123", {
-     *   expiresIn: 1000,
+     * const { txHash, expiresAt } = await client.extendEntity({
+     *   entityKey,
+     *   expires: ExpirationTime.fromDays(30),
      * })
-     * console.log("entityKey", entityKey)
-     * console.log("txHash", txHash)
-     * // {
-     * //   entityKey: "0x123",
-     * //   txHash: "0x123",
-     * // }
      */
     extendEntity: (
       data: ExtendEntityParameters,
@@ -207,49 +207,41 @@ export type WalletArkivActions<
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/mutateEntities
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
-     * @param data - The mutation parameters (creates, updates, deletes, extensions)
+     * Every operation lands in one transaction, so the whole batch applies or none of it does.
+     * At least one operation is required.
+     *
+     * @param data - The mutation parameters (creates, patches, deletes, extensions, ownershipChanges)
      * @param txParams - Optional transaction parameters
      * @returns The mutation result with transaction hash
      *
-     * @throws {InvalidExpirationError} If any create/update/extension `expiresIn`
-     * is not a positive integer that is a multiple of the block time (2 seconds).
-     * @throws {InvalidAttributeError} If a numeric attribute value is not an
-     * integer.
+     * @throws {InvalidExpiryError} If an expiry exceeds a protocol bound or would leave the entity
+     * dead on arrival.
+     * @throws {InvalidValueError} If an attribute value does not fit the type it names.
      *
      * @example
-     * import { createWalletClient, http } from 'arkiv'
-     * import { braga } from 'arkiv/chains'
+     * import { createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk"
+     * import { cheesecake } from "@arkiv-network/sdk/chains"
+     * import { http } from "viem"
      *
      * const client = createWalletClient({
-     *   chain: braga,
+     *   chain: cheesecake,
      *   transport: http(),
      * })
-     * const { entityKey, txHash } = await client.mutateEntities({
+     * const { txHash, createdEntities } = await client.mutateEntities({
      *   creates: [{
-     *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-     *     attriubutes: [{ key: "testKey", value: "testValue" }],
-     *     expiresIn: 1000,
+     *     payload: jsonToPayload({ entityType: "testType", entityId: "testId" }),
+     *     contentType: "application/json",
+     *     attributes: { testKey: "testValue" },
+     *     expires: ExpirationTime.fromDays(30),
      *   }],
-     *   updates: [{
-     *     entityKey: "0x123",
-     *     payload: toBytes(JSON.stringify({ entity: { entityType: "testType", entityId: "testId" } })),
-     *     attributes: [{ key: "testKey", value: "testValue" }],
-     *     expiresIn: 1000,
-     *   }],
-     *   deletes: [{
-     *     entityKey: "0x321",
-     *   }],
+     *   patches: [{ entityKey: keyToRevise, set: { status: "archived" }, unset: ["draft"] }],
+     *   deletes: [{ entityKey: staleKey }],
      *   extensions: [{
-     *     entityKey: "0x1234",
-     *     expiresIn: 1000,
+     *     entityKey: keyToKeepAlive,
+     *     expires: ExpirationTime.atBlock(1_200_000n),
      *   }],
+     *   ownershipChanges: [{ entityKey: keyToHandOver, newOwner }],
      * })
-     * console.log("entityKey", entityKey)
-     * console.log("txHash", txHash)
-     * // {
-     * //   entityKey: "0x123",
-     * //   txHash: "0x123",
-     * // }
      */
     mutateEntities: (
       data: MutateEntitiesParameters,
@@ -265,8 +257,8 @@ export function walletArkivActions<
   return {
     createEntity: (data: CreateEntityParameters, txParams?: TxParams) =>
       createEntity(client, data, txParams),
-    updateEntity: (data: UpdateEntityParameters, txParams?: TxParams) =>
-      updateEntity(client, data, txParams),
+    patchEntity: (data: PatchEntityParameters, txParams?: TxParams) =>
+      patchEntity(client, data, txParams),
     deleteEntity: (data: DeleteEntityParameters, txParams?: TxParams) =>
       deleteEntity(client, data, txParams),
     extendEntity: (data: ExtendEntityParameters, txParams?: TxParams) =>

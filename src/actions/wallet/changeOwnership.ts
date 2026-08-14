@@ -1,4 +1,4 @@
-import type { Hex } from "viem"
+import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
@@ -23,7 +23,7 @@ export type ChangeOwnershipParameters = {
  */
 export type ChangeOwnershipReturnType = {
   entityKey: Hex
-  txHash: string
+  txHash: Hash
 }
 
 export async function changeOwnership(

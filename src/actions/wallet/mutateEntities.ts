@@ -7,40 +7,42 @@ import type { ChangeOwnershipParameters } from "./changeOwnership"
 import type { CreateEntityParameters } from "./createEntity"
 import type { DeleteEntityParameters } from "./deleteEntity"
 import type { ExtendEntityParameters } from "./extendEntity"
-import type { UpdateEntityParameters } from "./updateEntity"
+import type { PatchEntityParameters } from "./patchEntity"
 
 const logger = getLogger("actions:wallet:mutate-entities")
 
 /**
  * Parameters for the mutateEntities function.
- * - creates: The creates to perform.
- * - updates: The updates to perform.
- * - deletes: The deletes to perform.
- * - extensions: The extensions to perform.
+ *
+ * At least one operation is required; a batch with nothing in it throws rather than spending gas on
+ * an empty transaction.
  */
 export type MutateEntitiesParameters = {
+  /** The entities to create. */
   creates?: CreateEntityParameters[]
-  updates?: UpdateEntityParameters[]
+  /** The patches to apply. */
+  patches?: PatchEntityParameters[]
+  /** The entities to delete. */
   deletes?: DeleteEntityParameters[]
+  /** The expiries to set. */
   extensions?: ExtendEntityParameters[]
+  /** The ownership transfers to perform. */
   ownershipChanges?: ChangeOwnershipParameters[]
 }
 
-/**
- * Return type for the mutateEntities function.
- * - txHash: The transaction hash.
- * - createdEntities: The keys of the created entities.
- * - updatedEntities: The keys of the updated entities.
- * - deletedEntities: The keys of the deleted entities.
- * - extendedEntities: The keys of the extended entities.
- * - ownershipChanges: The keys of the ownership changes.
- */
+/** Return type for the mutateEntities function. */
 export type MutateEntitiesReturnType = {
+  /** The transaction hash. */
   txHash: Hash
+  /** The keys of the created entities, in batch order. */
   createdEntities: Hex[]
-  updatedEntities: Hex[]
+  /** The keys of the patched entities. */
+  patchedEntities: Hex[]
+  /** The keys of the deleted entities. */
   deletedEntities: Hex[]
+  /** The keys of the extended entities. */
   extendedEntities: Hex[]
+  /** The keys of the entities handed to a new owner. */
   ownershipChanges: Hex[]
 }
 
@@ -49,10 +51,6 @@ export async function mutateEntities(
   data: MutateEntitiesParameters,
   txParams?: TxParams,
 ): Promise<MutateEntitiesReturnType> {
-  if (!data.creates && !data.updates && !data.deletes && !data.extensions) {
-    throw new Error("No operations to perform")
-  }
-
   const { receipt, createdEntityKeys } = await sendArkivTransaction(client, data, txParams)
 
   logger("Receipt from mutateEntities %o", receipt)
@@ -60,7 +58,7 @@ export async function mutateEntities(
   return {
     txHash: receipt.transactionHash as Hash,
     createdEntities: createdEntityKeys,
-    updatedEntities: (data.updates ?? []).map((u) => u.entityKey),
+    patchedEntities: (data.patches ?? []).map((p) => p.entityKey),
     deletedEntities: (data.deletes ?? []).map((d) => d.entityKey),
     extendedEntities: (data.extensions ?? []).map((e) => e.entityKey),
     ownershipChanges: (data.ownershipChanges ?? []).map((o) => o.entityKey),

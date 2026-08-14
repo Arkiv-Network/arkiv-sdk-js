@@ -9,13 +9,10 @@ on:
       chain:
         description: "Chain to test"
         required: false
-        default: "braga"
+        default: "cheesecake"
         type: choice
         options:
-          - braga
-          - kaolin
-          - mendoza
-          - rosario
+          - cheesecake
       branch:
         description: "Branch to checkout"
         required: false
@@ -28,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["braga"]') }}
+        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["cheesecake"]') }}
 
     steps:
       - name: Checkout code

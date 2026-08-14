@@ -1,11 +1,11 @@
 import { createPublicClient } from "@arkiv-network/sdk"
-import { braga } from "@arkiv-network/sdk/chains"
+import { cheesecake } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
 import { http } from "viem"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: braga, // braga is the Arkiv testnet
+  chain: cheesecake, // cheesecake is the Arkiv testnet
   transport: http(),
 })
 
@@ -32,8 +32,15 @@ const result = await publicClient
 
 console.log("Found entities:", result.entities)
 
-// Pagination - fetch next page
+// Pagination
 if (result.hasNextPage()) {
-  await result.next()
-  console.log("Next page:", result.entities)
+  const nextPage = await result.next()
+  console.log("Next page:", nextPage.entities)
+}
+
+// Or walk every page, one entity at a time
+for await (const item of publicClient
+  .select({ key: true, attributes: true })
+  .where(eq("category", "documentation"))) {
+  console.log(item.key, item.attributes)
 }

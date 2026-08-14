@@ -1,179 +1,68 @@
-import { describe, expect, test } from "bun:test"
+import { describe, expect, it } from "bun:test"
+import { i32, str } from "../attr"
 import { Entity } from "./entity"
 
-const KEY = "0xabc" as const
+const KEY = `0x${"ab".repeat(32)}` as const
 
-describe("Entity.toText()", () => {
-  test("throws when payload is undefined", () => {
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      [],
-    )
-    expect(() => entity.toText()).toThrow(
-      "Entity has no payload – it was probably queried without withPayload(true) via QueryBuilder",
-    )
+function withPayload(text: string): Entity {
+  return new Entity({ key: KEY, payload: new TextEncoder().encode(text) })
+}
+
+describe("Entity", () => {
+  it("carries only the fields it was built with", () => {
+    const entity = new Entity({
+      key: KEY,
+      expiresAt: 1_297_000n,
+      attributes: { level: i32(10), name: str("Bob") },
+    })
+    expect(entity.key).toBe(KEY)
+    expect(entity.expiresAt).toBe(1_297_000n)
+    expect(entity.attributes?.level.value).toBe(10)
+    // Not selected is not the same as empty: nothing here stands in for data that was not asked for.
+    expect(entity.owner).toBeUndefined()
+    expect(entity.payload).toBeUndefined()
+    expect(entity.attributeSchema).toBeUndefined()
   })
 
-  test("returns string when payload is valid bytes", () => {
-    const payload = new TextEncoder().encode("hello world")
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      payload,
-      [],
-    )
-    expect(entity.toText()).toBe("hello world")
-  })
-
-  test("returns empty string when payload is empty", () => {
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      new Uint8Array([]),
-      [],
-    )
-    expect(entity.toText()).toBe("")
+  it("defaults to carrying nothing at all", () => {
+    expect(new Entity().key).toBeUndefined()
   })
 })
 
-describe("Entity.toJson()", () => {
-  test("throws when payload is undefined", () => {
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      [],
-    )
-    expect(() => entity.toJson()).toThrow(
-      "Entity has no payload – it was probably queried without withPayload(true) via QueryBuilder",
-    )
+describe("toText", () => {
+  it("decodes the payload as UTF-8", () => {
+    expect(withPayload("hello world").toText()).toBe("hello world")
+    expect(withPayload("").toText()).toBe("")
   })
 
-  test("throws when payload is empty", () => {
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      new Uint8Array([]),
-      [],
-    )
-    expect(() => entity.toJson()).toThrow("Entity has empty payload, cannot parse as JSON")
+  it("says how to ask for the payload when it was not selected", () => {
+    expect(() => new Entity({ key: KEY }).toText()).toThrow(/select\(\{ payload: true \}\)/)
+  })
+})
+
+describe("toJson", () => {
+  it("parses objects and arrays", () => {
+    expect(withPayload('{"a":1,"b":[2,3]}').toJson()).toEqual({ a: 1, b: [2, 3] })
+    expect(withPayload("[1,2,3]").toJson()).toEqual([1, 2, 3])
   })
 
-  test("throws when payload is invalid JSON", () => {
-    const payload = new TextEncoder().encode("not valid json {")
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      payload,
-      [],
-    )
-    expect(() => entity.toJson()).toThrow("Failed to parse entity payload as JSON")
+  it("throws on an empty payload rather than returning undefined", () => {
+    expect(() => withPayload("").toJson()).toThrow(/empty payload/)
   })
 
-  test("preserves original error as cause when JSON parsing fails", () => {
-    const payload = new TextEncoder().encode("not valid json {")
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      payload,
-      [],
-    )
+  it("keeps the parse failure as the cause", () => {
     let caught: unknown
     try {
-      entity.toJson()
-    } catch (e) {
-      caught = e
+      withPayload("not json").toJson()
+    } catch (error) {
+      caught = error
     }
     expect(caught).toBeInstanceOf(Error)
+    expect((caught as Error).message).toMatch(/Failed to parse entity payload as JSON/)
     expect((caught as Error).cause).toBeInstanceOf(Error)
   })
 
-  test("returns parsed object for valid JSON payload", () => {
-    const data = { foo: "bar", count: 42 }
-    const payload = new TextEncoder().encode(JSON.stringify(data))
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      payload,
-      [],
-    )
-    expect(entity.toJson()).toEqual(data)
-  })
-
-  test("returns parsed array for valid JSON array payload", () => {
-    const data = [1, 2, 3]
-    const payload = new TextEncoder().encode(JSON.stringify(data))
-    const entity = new Entity(
-      KEY,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      payload,
-      [],
-    )
-    expect(entity.toJson()).toEqual(data)
+  it("reports the missing payload, not a JSON error", () => {
+    expect(() => new Entity({ key: KEY }).toJson()).toThrow(/did not select it/)
   })
 })

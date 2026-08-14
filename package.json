@@ -1,6 +1,6 @@
 {
   "name": "@arkiv-network/sdk",
-  "version": "0.7.0-dev.1",
+  "version": "0.8.0-dev.0",
   "description": "TypeScript client library for Arkiv's blockchains interactions",
   "type": "module",
   "target": "esnext",
@@ -14,6 +14,18 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./attr": {
+      "bun": "./src/attr/index.ts",
+      "import": "./dist/attr/index.js",
+      "require": "./dist/attr/index.cjs",
+      "default": "./dist/attr/index.js"
+    },
+    "./entity": {
+      "bun": "./src/entity/index.ts",
+      "import": "./dist/entity/index.js",
+      "require": "./dist/entity/index.cjs",
+      "default": "./dist/entity/index.js"
     },
     "./chains": {
       "bun": "./src/chains/index.ts",
@@ -43,14 +55,23 @@
   },
   "typesVersions": {
     "*": {
-      "chains": [
-        "./dist/_types/chains/index.d.ts"
+      "attr": [
+        "./dist/attr/index.d.ts"
       ],
-      "utils": [
-        "./dist/_types/utils/index.d.ts"
+      "chains": [
+        "./dist/chains/index.d.ts"
+      ],
+      "entity": [
+        "./dist/entity/index.d.ts"
       ],
       "query": [
-        "./dist/_types/query/index.d.ts"
+        "./dist/query/index.d.ts"
+      ],
+      "types": [
+        "./dist/types/index.d.ts"
+      ],
+      "utils": [
+        "./dist/utils/index.d.ts"
       ]
     }
   },
