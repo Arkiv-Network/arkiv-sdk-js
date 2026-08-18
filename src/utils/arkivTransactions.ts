@@ -19,7 +19,7 @@ import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS } from "../consts"
 import { ENTITY_EVENTS_ABI } from "../entity/events"
-import { resolveExpiry } from "../entity/expiry"
+import { type Expiry, type ExpiryContext, resolveExpiry } from "../entity/expiry"
 import { encodeCreationFlags } from "../entity/flags"
 import { randomSalt, validateSalt } from "../entity/key"
 import {
@@ -81,45 +81,48 @@ export const ENTITY_ERRORS_ABI = parseAbi([
 
 const EXECUTE_ABI = [...EXECUTE_FUNCTION_ABI, ...ENTITY_ERRORS_ABI]
 
-export type SendArkivTransactionResult = {
-  receipt: TransactionReceipt
-  /** The keys the engine minted for the entities this transaction created, in batch order. */
-  createdEntityKeys: Hex[]
-  /** The block each created entity expires at, as the engine recorded it, in the same order. */
-  createdExpiries: bigint[]
-  /** The block each extended entity now expires at, as the engine recorded it, in batch order. */
-  extendedExpiries: bigint[]
+/** The five kinds of entity operation one Arkiv transaction can batch. */
+export type EntityMutationOps = {
+  creates?: CreateEntityParameters[]
+  patches?: PatchEntityParameters[]
+  deletes?: DeleteEntityParameters[]
+  extensions?: ExtendEntityParameters[]
+  ownershipChanges?: ChangeOwnershipParameters[]
 }
 
-export async function sendArkivTransaction(
-  client: ArkivClient,
-  ops: {
-    creates?: CreateEntityParameters[]
-    patches?: PatchEntityParameters[]
-    deletes?: DeleteEntityParameters[]
-    extensions?: ExtendEntityParameters[]
-    ownershipChanges?: ChangeOwnershipParameters[]
-  },
-  txParams?: TxParams,
-): Promise<SendArkivTransactionResult> {
-  if (!client.account) throw new Error("Account required")
-  if (!client.chain) throw new Error("Chain required")
-  const walletClient = client as WalletArkivClient
+/**
+ * Whether encoding the batch actually requires the chain head.
+ *
+ * Only a relative lifetime (`minLifetime > 0`) or a wall-clock deadline (a `Date`) is measured
+ * from the current block. A purely absolute `atBlock(n)` expiry encodes the same bytes whatever
+ * the head is, so a batch of those — or one with no expiries at all — needs no `eth_blockNumber`.
+ */
+export function mutationNeedsBlockNumber(ops: EntityMutationOps): boolean {
+  return [...(ops.creates ?? []), ...(ops.extensions ?? [])].some((item) => {
+    const expires = item.expires as Expiry | undefined
+    // Malformed expiries are rejected by buildEntityOperations without needing the head.
+    if (expires === undefined || typeof expires.minLifetime !== "bigint") return false
+    return expires.minLifetime !== 0n || expires.expiresAt instanceof Date
+  })
+}
 
+/**
+ * Encodes a batch into the `execute` operations, in the order the engine applies them: creates,
+ * patches, deletes, extensions, ownership transfers.
+ *
+ * Pure — every check here is local (content types, salts, expiry bounds, non-empty patches and a
+ * non-empty batch), so the only chain input is `context.currentBlock`. Callers that carry no
+ * relative expiry (see {@link mutationNeedsBlockNumber}) can pass `0n`, which disables the
+ * dead-on-arrival pre-check and leaves that to the engine.
+ */
+export function buildEntityOperations(ops: EntityMutationOps, context: ExpiryContext): Operation[] {
   const { creates, patches, deletes, extensions, ownershipChanges } = ops
-
-  // The block height, to resolve any relative expiry — which both creates and extensions carry.
-  // Skipped entirely for a batch with neither.
-  const currentBlock =
-    creates?.length || extensions?.length ? await walletClient.getBlockNumber() : 0n
-
-  const expiryContext = { currentBlock }
 
   const createOps = (creates ?? []).map((item) => {
     validateContentType(item.contentType)
 
     const salt = item.salt === undefined ? randomSalt() : validateSalt(item.salt)
-    const expiry = resolveExpiry(item.expires, expiryContext)
+    const expiry = resolveExpiry(item.expires, context)
 
     return createOperation({
       salt,
@@ -145,7 +148,7 @@ export async function sendArkivTransaction(
   // `max(expiresAt, currentBlock + minLifetime)` to both — so the same bounds are checked here
   // rather than left to a revert.
   const extendOps = (extensions ?? []).map((item) => {
-    const expiry = resolveExpiry(item.expires, expiryContext)
+    const expiry = resolveExpiry(item.expires, context)
     return extendExpiryOperation({ entityKey: item.entityKey, expiry })
   })
 
@@ -165,6 +168,37 @@ export async function sendArkivTransaction(
   if (operations.length === 0) {
     throw new Error("No operations to perform")
   }
+
+  return operations
+}
+
+export type SendArkivTransactionResult = {
+  receipt: TransactionReceipt
+  /** The keys the engine minted for the entities this transaction created, in batch order. */
+  createdEntityKeys: Hex[]
+  /** The block each created entity expires at, as the engine recorded it, in the same order. */
+  createdExpiries: bigint[]
+  /** The block each extended entity now expires at, as the engine recorded it, in batch order. */
+  extendedExpiries: bigint[]
+}
+
+export async function sendArkivTransaction(
+  client: ArkivClient,
+  ops: EntityMutationOps,
+  txParams?: TxParams,
+): Promise<SendArkivTransactionResult> {
+  if (!client.account) throw new Error("Account required")
+  if (!client.chain) throw new Error("Chain required")
+  const walletClient = client as WalletArkivClient
+
+  const { creates, extensions } = ops
+
+  // The block height, to resolve any relative expiry — which both creates and extensions carry.
+  // Skipped entirely for a batch with neither.
+  const currentBlock =
+    creates?.length || extensions?.length ? await walletClient.getBlockNumber() : 0n
+
+  const operations = buildEntityOperations(ops, { currentBlock })
 
   logger("Sending execute with %d operations %o", operations.length, operations)
 
@@ -211,8 +245,8 @@ export async function sendArkivTransaction(
     return {
       receipt,
       ...readAppliedOperations(receipt, {
-        creates: createOps.length,
-        extensions: extendOps.length,
+        creates: creates?.length ?? 0,
+        extensions: extensions?.length ?? 0,
       }),
     }
   } catch (error) {
@@ -241,6 +275,73 @@ export async function sendArkivTransaction(
   }
 }
 
+/** Everything the batch's events say happened, one entry per applied operation, per kind. */
+export type MutationEvents = {
+  created: { entityKey: Hex; owner: Address; expiresAt: bigint }[]
+  patched: { entityKey: Hex; owner: Address }[]
+  deleted: { entityKey: Hex; owner: Address }[]
+  extended: { entityKey: Hex; owner: Address; expiresAt: bigint }[]
+  ownershipTransferred: { entityKey: Hex; previousOwner: Address; newOwner: Address }[]
+}
+
+/**
+ * Reads the entity events out of a receipt's logs, exactly as they were emitted.
+ *
+ * Lenient by design: it reports what the events say and nothing else — no counting against what
+ * was asked for (the caller may not have the request at hand) and no error for a receipt with no
+ * entity events at all. Logs from other contracts and events this SDK has no name for are skipped.
+ */
+export function collectMutationEvents(logs: TransactionReceipt["logs"]): MutationEvents {
+  const events: MutationEvents = {
+    created: [],
+    patched: [],
+    deleted: [],
+    extended: [],
+    ownershipTransferred: [],
+  }
+
+  // `?? []` so a receipt without logs decodes to "nothing happened" rather than a TypeError.
+  for (const log of logs ?? []) {
+    // Only the operation address emits these, and a batch's transaction can carry logs from
+    // anything else it touched.
+    if (log.address.toLowerCase() !== ARKIV_ADDRESS.toLowerCase()) continue
+    const decoded = decodeEntityLog(log)
+    if (decoded === undefined) continue
+
+    switch (decoded.eventName) {
+      case "EntityCreated":
+        events.created.push({
+          entityKey: decoded.args.entityKey,
+          owner: decoded.args.owner,
+          expiresAt: decoded.args.expiresAt,
+        })
+        break
+      case "EntityPatched":
+        events.patched.push({ entityKey: decoded.args.entityKey, owner: decoded.args.owner })
+        break
+      case "EntityDeleted":
+        events.deleted.push({ entityKey: decoded.args.entityKey, owner: decoded.args.owner })
+        break
+      case "ExpiryExtended":
+        events.extended.push({
+          entityKey: decoded.args.entityKey,
+          owner: decoded.args.owner,
+          expiresAt: decoded.args.expiresAt,
+        })
+        break
+      case "OwnershipTransferred":
+        events.ownershipTransferred.push({
+          entityKey: decoded.args.entityKey,
+          previousOwner: decoded.args.previousOwner,
+          newOwner: decoded.args.newOwner,
+        })
+        break
+    }
+  }
+
+  return events
+}
+
 /**
  * The keys and expiries the engine recorded, read back from the events the batch emitted.
  */
@@ -248,26 +349,11 @@ function readAppliedOperations(
   receipt: TransactionReceipt,
   expected: { creates: number; extensions: number },
 ): Omit<SendArkivTransactionResult, "receipt"> {
-  const createdEntityKeys: Hex[] = []
-  const createdExpiries: bigint[] = []
-  const extendedExpiries: bigint[] = []
+  const events = collectMutationEvents(receipt.logs)
 
-  // `?? []` so a receipt without logs is reported by the count check below, which explains what is
-  // missing and that the write succeeded, rather than as a TypeError from this loop.
-  for (const log of receipt.logs ?? []) {
-    // Only the operation address emits these, and a batch's transaction can carry logs from
-    // anything else it touched.
-    if (log.address.toLowerCase() !== ARKIV_ADDRESS.toLowerCase()) continue
-    const decoded = decodeEntityLog(log)
-    if (decoded === undefined) continue
-
-    if (decoded.eventName === "EntityCreated") {
-      createdEntityKeys.push(decoded.args.entityKey)
-      createdExpiries.push(decoded.args.expiresAt)
-    } else if (decoded.eventName === "ExpiryExtended") {
-      extendedExpiries.push(decoded.args.expiresAt)
-    }
-  }
+  const createdEntityKeys = events.created.map((e) => e.entityKey)
+  const createdExpiries = events.created.map((e) => e.expiresAt)
+  const extendedExpiries = events.extended.map((e) => e.expiresAt)
 
   // Operations apply in batch order and emit one event each, and creates lead the batch — so these
   // arrive already aligned with the parameters they came from. A count that disagrees means that

@@ -27,6 +27,7 @@ import { mutateEntities } from "../../actions/wallet/mutateEntities"
 import type { PatchEntityParameters, PatchEntityReturnType } from "../../actions/wallet/patchEntity"
 import { patchEntity } from "../../actions/wallet/patchEntity"
 import type { TxParams } from "../../types"
+import { type WalletAdvancedActions, walletAdvancedActions } from "./arkivAdvanced"
 
 export type WalletArkivActions<
   transport extends Transport = Transport,
@@ -247,6 +248,19 @@ export type WalletArkivActions<
       data: MutateEntitiesParameters,
       txParams?: TxParams,
     ) => Promise<MutateEntitiesReturnType>
+
+    /**
+     * The advanced path: build, send, ping and read mutation results as separate steps, each
+     * costing the minimum number of RPC calls. Use it when you are optimising your RPC budget;
+     * the everyday actions above remain the right default. {@link WalletAdvancedActions}
+     *
+     * @example
+     * const { txHash } = await client.advanced.sendMutation({ creates: [entity] }) // no waiting
+     * // ... later, one eth_getTransactionReceipt on your own schedule:
+     * const result = await client.advanced.getMutationResult(txHash)
+     * if (result.status === "success") console.log(result.createdEntities)
+     */
+    advanced: WalletAdvancedActions
   }
 
 export function walletArkivActions<
@@ -267,5 +281,6 @@ export function walletArkivActions<
       changeOwnership(client, data, txParams),
     mutateEntities: (data: MutateEntitiesParameters, txParams?: TxParams) =>
       mutateEntities(client, data, txParams),
+    advanced: walletAdvancedActions(client),
   }
 }

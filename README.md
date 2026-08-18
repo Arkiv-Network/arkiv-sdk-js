@@ -291,6 +291,44 @@ However, funds may not always be available for this key.
 
 Sample code can also be found in the [`sample`](./sample) directory of this repository.
 
+### Advanced Path (Minimal RPC Calls)
+
+The everyday actions (`createEntity`, `mutateEntities`, ...) bundle send + wait + decode into one
+call, which is convenient but spends several RPC requests per mutation. The `client.advanced`
+namespace unbundles them so you control every call yourself:
+
+```typescript
+// 1. Send — submits the transaction and returns the hash immediately. No waiting, no polling,
+//    no revert diagnosis. Supply `currentBlock` and full `txParams` (nonce, gas, fees) and this
+//    is exactly one RPC call: eth_sendRawTransaction.
+const { txHash } = await client.advanced.sendMutation(
+  { creates: [{ payload, contentType: "application/json", expires: ExpirationTime.fromDays(30) }] },
+  {
+    currentBlock,                                              // skip eth_blockNumber
+    txParams: { nonce, gas, maxFeePerGas, maxPriorityFeePerGas }, // skip fee/nonce/gas lookups
+  },
+)
+
+// 2. Ping — one eth_getTransactionReceipt, on your own schedule. Never polls.
+const ping = await client.advanced.pingTransaction(txHash)
+// { status: "pending" } | { status: "success" | "reverted", blockNumber }
+
+// 3. Result — the same single call, decoded into entity keys and expiries.
+const result = await client.advanced.getMutationResult(txHash)
+if (result.status === "success") console.log(result.createdEntities, result.createdExpiries)
+
+// Or, with a receipt you already hold (your own watcher, webhook...): zero RPC calls.
+const decoded = client.advanced.decodeMutationResult(receipt)
+```
+
+For full offline control, `client.advanced.buildMutation(data, { currentBlock })` encodes the
+batch with **zero** RPC calls and returns the `execute` calldata (`{ to, data }`) — sign it
+yourself and the whole mutation costs a single `eth_sendRawTransaction`. Pair it with
+`predictEntityKeys` to know the created keys before the transaction is even mined.
+
+The checking half (`pingTransaction`, `getMutationResult`, `decodeMutationResult`) is also
+available on the public client, so a keyless process can follow a transaction by hash alone.
+
 ## Package Distribution
 
 This package supports multiple module formats for maximum compatibility:
