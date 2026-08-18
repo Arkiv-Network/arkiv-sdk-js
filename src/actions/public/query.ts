@@ -11,7 +11,11 @@ export type QueryOptions = {
   atBlock?: bigint | undefined
   /** Page size, up to the node maximum of 200. */
   limit?: number | undefined
-  /** Cursor from a previous page. */
+  /**
+   * Cursor from a previous page. Pass that page's `blockNumber` as {@link atBlock} alongside it —
+   * the cursor is bound to the block it was issued at, and a block mined in between would
+   * otherwise move the head on and invalidate it.
+   */
   cursor?: string | undefined
 }
 

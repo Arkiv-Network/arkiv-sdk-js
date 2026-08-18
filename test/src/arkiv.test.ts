@@ -698,6 +698,9 @@ describe("Arkiv Integration Tests for public client", () => {
         select: { key: true },
         limit: 6,
         cursor: raw1.cursor,
+        // The raw form takes the block by hand too: the cursor is bound to the block page 1 was
+        // read at, and without it page 2 reads at a head that may have moved on since.
+        atBlock: raw1.blockNumber,
       })
       expect(raw2.entities).toHaveLength(4)
       expect(raw2.cursor).toBeUndefined()

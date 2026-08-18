@@ -110,7 +110,8 @@ export class SelectQueryBuilder<TEntity = Entity> {
    *
    * Pagination normally goes through {@link QueryResult.next}, which carries the cursor for you;
    * this is for resuming a walk in a later process. A cursor is bound to the query, block and
-   * selection it came from, so it must be used with an identically-built query.
+   * selection it came from, so it must be used with an identically-built query — including
+   * {@link atBlock} set to the `blockNumber` of the page the cursor came from.
    */
   cursor(cursor: string): this {
     this._cursor = cursor
@@ -203,12 +204,17 @@ async function fetchPage<TEntity>(
 ): Promise<QueryResult<TEntity>> {
   const response = await runQuery(client, { ...request, cursor })
 
+  // Pin the rest of the walk to the block this page was read at. Without a block the node reads
+  // at the head, and a block mined between two pages would leave the cursor bound to the previous
+  // one — a `kind: "cursor"` rejection mid-walk on an otherwise valid page-through.
+  const pinned = Object.freeze({ ...request, atBlock: response.blockNumber })
+
   return new QueryResult<TEntity>(
     // Every row decodes to a full Entity; the static narrowing to the selected fields comes from
     // `client.select()`'s inference and nothing at runtime depends on it.
     response.entities as unknown as TEntity[],
     response.blockNumber,
     response.cursor,
-    (next) => fetchPage<TEntity>(client, request, next),
+    (next) => fetchPage<TEntity>(client, pinned, next),
   )
 }
