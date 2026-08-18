@@ -329,6 +329,10 @@ yourself and the whole mutation costs a single `eth_sendRawTransaction`. Pair it
 The checking half (`pingTransaction`, `getMutationResult`, `decodeMutationResult`) is also
 available on the public client, so a keyless process can follow a transaction by hash alone.
 
+A complete runnable walkthrough — manual nonce, gas and fee setup, the single-call send, and the
+hand-rolled receipt check — is in
+[`sample/write_example_advanced.ts`](./sample/write_example_advanced.ts).
+
 ## Package Distribution
 
 This package supports multiple module formats for maximum compatibility:
