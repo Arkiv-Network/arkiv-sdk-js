@@ -1,5 +1,6 @@
 import { type Hash, type Hex, type TransactionReceipt, TransactionReceiptNotFoundError } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
+import type { PublicArkivClient } from "../../clients/createPublicClient"
 import { collectMutationEvents } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
@@ -97,9 +98,10 @@ export async function fetchReceipt(
   client: ArkivClient,
   txHash: Hash,
 ): Promise<TransactionReceipt | undefined> {
-  const reader = client as unknown as {
-    getTransactionReceipt: (args: { hash: Hash }) => Promise<TransactionReceipt>
-  }
+  // The one action this needs is on every SDK-built client — both factories extend viem's
+  // `publicActions` — and `PublicArkivClient` is the type that says so, the same way
+  // `sendArkivTransaction` narrows to `WalletArkivClient`.
+  const reader = client as PublicArkivClient
   try {
     return await reader.getTransactionReceipt({ hash: txHash })
   } catch (error) {

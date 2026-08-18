@@ -12,9 +12,9 @@ export type QueryOptions = {
   /** Page size, up to the node maximum of 200. */
   limit?: number | undefined
   /**
-   * Cursor from a previous page. Pass that page's `blockNumber` as {@link atBlock} alongside it —
-   * the cursor is bound to the block it was issued at, and a block mined in between would
-   * otherwise move the head on and invalidate it.
+   * Cursor from a previous page. Requires that page's `blockNumber` as {@link atBlock} alongside
+   * it — the cursor is bound to the block it was issued at, so persist the two together. A cursor
+   * without a block is rejected locally rather than left to fail whenever a block lands mid-walk.
    */
   cursor?: string | undefined
 }

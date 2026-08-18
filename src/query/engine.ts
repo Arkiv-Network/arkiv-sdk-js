@@ -41,6 +41,17 @@ export type QueryResponse = {
 export async function runQuery(client: ArkivClient, request: QueryRequest): Promise<QueryResponse> {
   const { query, select, limit, cursor, atBlock } = request
 
+  // A cursor is bound to the block it was issued at; without a block the node reads at the head,
+  // and the resume breaks whenever a block has landed in between — an intermittent failure this
+  // turns into a deterministic one. (Pages chained through `QueryResult.next` inherit the block
+  // automatically; this catches a cursor resumed by hand.)
+  if (cursor !== undefined && atBlock === undefined) {
+    throw new Error(
+      "a cursor must be resumed with `atBlock` set to the `blockNumber` of the page it came " +
+        "from — persist the two together.",
+    )
+  }
+
   if (limit !== undefined) {
     if (!Number.isInteger(limit) || limit < 1) {
       throw new Error(`limit must be a positive integer, got ${limit}.`)

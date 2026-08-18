@@ -110,8 +110,9 @@ export class SelectQueryBuilder<TEntity = Entity> {
    *
    * Pagination normally goes through {@link QueryResult.next}, which carries the cursor for you;
    * this is for resuming a walk in a later process. A cursor is bound to the query, block and
-   * selection it came from, so it must be used with an identically-built query — including
-   * {@link atBlock} set to the `blockNumber` of the page the cursor came from.
+   * selection it came from, so it must be used with an identically-built query — {@link atBlock}
+   * set to the `blockNumber` of the page the cursor came from is required (persist the two
+   * together), and a fetch with a cursor but no block rejects locally.
    */
   cursor(cursor: string): this {
     this._cursor = cursor

@@ -1,5 +1,6 @@
 import { type Address, encodeFunctionData, type Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
+import type { PublicArkivClient } from "../../clients/createPublicClient"
 import { ARKIV_ADDRESS } from "../../consts"
 import { EXECUTE_ABI, type Operation } from "../../entity/operations"
 import {
@@ -20,6 +21,11 @@ export type BuildMutationOptions = {
    * tracking — and the build spends no RPC call at all. Without it, one `eth_blockNumber` is made,
    * and only when the batch actually needs the head (a relative lifetime or a `Date` deadline);
    * purely absolute `atBlock(n)` expiries never trigger it.
+   *
+   * Supplying it also buys back a check: absolute expiries are validated against it, so an
+   * `atBlock(n)` already in the past throws {@link InvalidExpiryError} locally instead of
+   * reverting on-chain. When the head is neither supplied nor fetched, that dead-on-arrival
+   * check is skipped — the one local validation of the everyday path this path trades away.
    */
   currentBlock?: bigint
 }
@@ -56,6 +62,11 @@ export type BuildMutationReturnType = {
  * and at most one `eth_blockNumber` otherwise. Send the result however you like: pass `operations`
  * to `writeContract`, or sign `{ to, data }` offline and push it with `eth_sendRawTransaction`.
  *
+ * One check rides on knowing the head: an absolute `atBlock(n)` already in the past is rejected
+ * locally only when the head is supplied or was fetched anyway. With neither, a dead-on-arrival
+ * expiry encodes cleanly and the engine reverts it on-chain — see
+ * {@link BuildMutationOptions.currentBlock}.
+ *
  * @throws {InvalidExpiryError} If an expiry exceeds a protocol bound.
  * @throws {InvalidValueError} If an attribute value does not fit the type it names.
  * @throws {EmptyPatchError} If a patch has nothing to apply.
@@ -70,7 +81,9 @@ export async function buildMutation(
   const currentBlock =
     options.currentBlock ??
     (mutationNeedsBlockNumber(data)
-      ? await (client as unknown as { getBlockNumber: () => Promise<bigint> }).getBlockNumber()
+      ? // Every SDK-built client carries viem's `publicActions`; `PublicArkivClient` is the type
+        // that says so, the same narrowing `sendArkivTransaction` does to `WalletArkivClient`.
+        await (client as PublicArkivClient).getBlockNumber()
       : 0n)
 
   const operations = buildEntityOperations(data, { currentBlock })

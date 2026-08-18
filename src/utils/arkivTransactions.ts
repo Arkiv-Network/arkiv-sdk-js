@@ -3,6 +3,7 @@ import {
   ContractFunctionExecutionError,
   ContractFunctionRevertedError,
   decodeEventLog,
+  type Hash,
   type Hex,
   parseAbi,
   TransactionExecutionError,
@@ -103,7 +104,10 @@ export async function sendArkivTransaction(
   const { creates, extensions } = ops
 
   // The block height, to resolve any relative expiry — which both creates and extensions carry.
-  // Skipped entirely for a batch with neither.
+  // Skipped entirely for a batch with neither. Deliberately fetched even when every expiry is
+  // absolute (where `mutationNeedsBlockNumber` would say no): the head is what makes the local
+  // dead-on-arrival check in `resolveExpiry` work, and the everyday path buys that check — the
+  // advanced path is where both are traded away for the saved call.
   const currentBlock =
     creates?.length || extensions?.length ? await walletClient.getBlockNumber() : 0n
 
@@ -111,17 +115,9 @@ export async function sendArkivTransaction(
 
   logger("Sending execute with %d operations %o", operations.length, operations)
 
-  try {
-    const txHash = await walletClient.writeContract({
-      address: ARKIV_ADDRESS,
-      abi: EXECUTE_ABI,
-      functionName: "execute",
-      args: [operations],
-      account: client.account,
-      chain: client.chain,
-      ...txParams,
-    })
+  const txHash = await submitMutation(client, operations, txParams)
 
+  try {
     const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash })
     logger("Tx receipt %o", receipt)
 
@@ -159,29 +155,38 @@ export async function sendArkivTransaction(
       }),
     }
   } catch (error) {
-    const described = error instanceof EntityMutationError ? undefined : describeEntityRevert(error)
-    if (described !== undefined) {
-      throw new EntityMutationError(`Transaction failed: ${described}`, { cause: error })
-    }
-
-    let message = "Transaction failed"
-    if (error instanceof TransactionExecutionError) {
-      message += `: ${error.details}`
-    } else if (error instanceof ContractFunctionExecutionError) {
-      logger("Contract function execution error data:", error.shortMessage)
-      if (error.cause instanceof ContractFunctionRevertedError) {
-        message += `: ${error.cause.message}`
-      } else {
-        message += ": Execution error without revert data"
-      }
-    } else if (error instanceof EntityMutationError) {
-      throw error
-    } else if (error instanceof Error) {
-      message += `: ${error.message}`
-    }
-
-    throw new EntityMutationError(message, { cause: error })
+    throw asEntityMutationError(error)
   }
+}
+
+/**
+ * Wraps whatever a write step threw into an {@link EntityMutationError} — engine terms when the
+ * revert data decodes, the node's own message otherwise. An {@link EntityMutationError} passes
+ * through unchanged, so wrapped steps compose without double-wrapping.
+ */
+function asEntityMutationError(error: unknown): EntityMutationError {
+  if (error instanceof EntityMutationError) return error
+
+  const described = describeEntityRevert(error)
+  if (described !== undefined) {
+    return new EntityMutationError(`Transaction failed: ${described}`, { cause: error })
+  }
+
+  let message = "Transaction failed"
+  if (error instanceof TransactionExecutionError) {
+    message += `: ${error.details}`
+  } else if (error instanceof ContractFunctionExecutionError) {
+    logger("Contract function execution error data:", error.shortMessage)
+    if (error.cause instanceof ContractFunctionRevertedError) {
+      message += `: ${error.cause.message}`
+    } else {
+      message += ": Execution error without revert data"
+    }
+  } else if (error instanceof Error) {
+    message += `: ${error.message}`
+  }
+
+  return new EntityMutationError(message, { cause: error })
 }
 
 /**
@@ -237,10 +242,15 @@ function assertCount(receipt: TransactionReceipt, what: string, got: number, wan
 
 /** The five kinds of entity operation one Arkiv transaction can batch. */
 export type EntityMutationOps = {
+  /** The entities to create. */
   creates?: CreateEntityParameters[]
+  /** The patches to apply. */
   patches?: PatchEntityParameters[]
+  /** The entities to delete. */
   deletes?: DeleteEntityParameters[]
+  /** The expiries to set. */
   extensions?: ExtendEntityParameters[]
+  /** The ownership transfers to perform. */
   ownershipChanges?: ChangeOwnershipParameters[]
 }
 
@@ -326,6 +336,42 @@ export function buildEntityOperations(ops: EntityMutationOps, context: ExpiryCon
   return operations
 }
 
+/**
+ * Signs and sends an encoded batch, wrapping any node rejection in {@link EntityMutationError}.
+ *
+ * The submission half both write paths share: one `writeContract` — an `eth_sendRawTransaction`,
+ * plus only the lookups viem needs for whatever `txParams` leaves out — with no waiting and no
+ * polling. A rejection is reported in engine terms when the node returned decodable revert data,
+ * and with the node's own message otherwise; either way the caller sees an
+ * {@link EntityMutationError}.
+ *
+ * Internal seam shared with `actions/advanced/sendMutation`; not part of the package's public
+ * surface.
+ */
+export async function submitMutation(
+  client: ArkivClient,
+  operations: Operation[],
+  txParams?: TxParams,
+): Promise<Hash> {
+  if (!client.account) throw new Error("Account required")
+  if (!client.chain) throw new Error("Chain required")
+  const walletClient = client as WalletArkivClient
+
+  try {
+    return await walletClient.writeContract({
+      address: ARKIV_ADDRESS,
+      abi: EXECUTE_ABI,
+      functionName: "execute",
+      args: [operations],
+      account: client.account,
+      chain: client.chain,
+      ...txParams,
+    })
+  } catch (error) {
+    throw asEntityMutationError(error)
+  }
+}
+
 /** Everything the batch's events say happened, one entry per applied operation, per kind. */
 export type MutationEvents = {
   created: { entityKey: Hex; owner: Address; expiresAt: bigint }[]
@@ -392,7 +438,3 @@ export function collectMutationEvents(logs: TransactionReceipt["logs"]): Mutatio
 
   return events
 }
-
-/**
- * The keys and expiries the engine recorded, read back from the events the batch emitted.
- */

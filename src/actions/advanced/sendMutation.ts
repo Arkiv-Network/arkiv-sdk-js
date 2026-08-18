@@ -1,13 +1,8 @@
 import type { Hash } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
-import type { WalletArkivClient } from "../../clients/createWalletClient"
-import { ARKIV_ADDRESS } from "../../consts"
-import { EXECUTE_ABI } from "../../entity/operations"
-import { EntityMutationError } from "../../errors"
 import type { TxParams } from "../../types"
-import { ENTITY_ERRORS_ABI, type EntityMutationOps } from "../../utils/arkivTransactions"
+import { type EntityMutationOps, submitMutation } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
-import { describeEntityRevert } from "../../utils/revert"
 import {
   type BuildMutationOptions,
   type BuildMutationReturnType,
@@ -46,40 +41,19 @@ export type SendMutationReturnType = {
  * - `getMutationResult(txHash)` — the same single call, plus the decoded entity keys and expiries.
  *
  * @throws {EntityMutationError} If the node rejects the submission (the batch never made it into
- * the mempool). Anything after that — inclusion, success — is yours to check.
+ * the mempool) — in engine terms when the rejection decodes, with the node's message otherwise.
+ * Anything after that — inclusion, success — is yours to check.
  */
 export async function sendMutation(
   client: ArkivClient,
   data: EntityMutationOps,
   options: SendMutationOptions = {},
 ): Promise<SendMutationReturnType> {
-  if (!client.account) throw new Error("Account required")
-  if (!client.chain) throw new Error("Chain required")
-  const walletClient = client as WalletArkivClient
-
   const { operations, expected } = await buildMutation(client, data, options)
 
   logger("Sending execute with %d operations (no wait)", operations.length)
 
-  try {
-    const txHash = await walletClient.writeContract({
-      address: ARKIV_ADDRESS,
-      abi: [...EXECUTE_ABI, ...ENTITY_ERRORS_ABI],
-      functionName: "execute",
-      args: [operations],
-      account: client.account,
-      chain: client.chain,
-      ...options.txParams,
-    })
+  const txHash = await submitMutation(client, operations, options.txParams)
 
-    return { txHash, expected }
-  } catch (error) {
-    // Decoding the node's rejection is free — no extra RPC — so the one failure this call can see
-    // is still reported in engine terms.
-    const described = describeEntityRevert(error)
-    if (described !== undefined) {
-      throw new EntityMutationError(`Transaction failed: ${described}`, { cause: error })
-    }
-    throw error
-  }
+  return { txHash, expected }
 }
