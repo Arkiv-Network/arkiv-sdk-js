@@ -5,13 +5,11 @@ on:
     branches: [main, master, develop]
     paths-ignore:
       - "*.md"
-      - "docs/**"
       - ".github/**"
   pull_request:
     branches: [main, master, develop]
     paths-ignore:
       - "*.md"
-      - "docs/**"
       - ".github/**"
 
 jobs:
@@ -32,10 +30,6 @@ jobs:
 
       - name: Run lint
         run: bun run lint
-
-      - name: Verify docs generation if preparing for release
-        if: github.ref == 'refs/heads/main'
-        run: bun run docs:verify
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -216,17 +210,6 @@ jobs:
             echo "=== Full output (stdout + stderr) ==="
             exit 1
           fi
-
-      - name: Generate documentation
-        if: github.ref == 'refs/heads/main'
-        continue-on-error: true
-        run: |
-          echo "=== Generating documentation ==="
-          bun run docs
-          git add docs/
-            if ! git diff --cached --quiet; then
-              git commit -m "docs: update generated docs [skip ci]"
-            fi
 
       - name: Push changes
         uses: ad-m/github-push-action@master
