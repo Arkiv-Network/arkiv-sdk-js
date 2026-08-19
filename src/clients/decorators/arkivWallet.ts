@@ -50,8 +50,7 @@ export type WalletArkivActions<
     /**
      * Creates a new entity.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/createEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
+     * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
      * @param data - The entity creation parameters
      * @param txParams - Optional transaction parameters
@@ -91,8 +90,7 @@ export type WalletArkivActions<
      * Applies a patch to the entity with the given key: sets some fields, unsets others, and leaves
      * everything it does not name alone.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/patchEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
+     * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
      * @param data - The entity key and the mutations to apply
      * @param txParams - Optional transaction parameters
@@ -131,8 +129,7 @@ export type WalletArkivActions<
     /**
      * Deletes the entity with the given key.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/deleteEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
+     * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
      * @param data - The entity deletion parameters
      * @param txParams - Optional transaction parameters
@@ -164,8 +161,7 @@ export type WalletArkivActions<
      * than adding to what the entity has left, and `atBlock` / `atDate` pin an absolute deadline.
      * The engine rejects an extension that would not move the expiry later.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/extendEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
+     * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
      * @param data - The entity key and its new lifetime
      * @param txParams - Optional transaction parameters
@@ -199,8 +195,7 @@ export type WalletArkivActions<
     /**
      * Hands the entity with the given key to a new owner.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/changeOwnership
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
+     * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
      * @param data - The ownership change parameters
      * @param txParams - Optional transaction parameters
@@ -215,8 +210,7 @@ export type WalletArkivActions<
      * Applies a batch of entity operations — creates, patches, deletes, extensions and ownership
      * transfers — in one transaction.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/executeBatch
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
+     * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
      * Every operation lands in one transaction, so the whole batch applies or none of it does.
      * At least one operation is required.

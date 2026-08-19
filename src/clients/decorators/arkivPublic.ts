@@ -39,7 +39,7 @@ export type PublicArkivActions<
   /**
    * Returns the entity with the given key.
    *
-   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
+   * - JSON-RPC Methods: `arkiv_query`
    *
    * @param key - The entity key (hex string)
    * @returns The entity with the given key, with every field populated. {@link FullEntity}
@@ -74,7 +74,7 @@ export type PublicArkivActions<
    * read entities. You declare up front which parts of an entity you want returned, so results
    * always contain exactly the data you asked for.
    *
-   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/query
+   * - JSON-RPC Methods: `arkiv_query`
    *
    * @param selection - What to include in the results. Omit it (or pass `"*"`) to select everything,
    *   or pass an object to select specific parts (at least one field is required). Every part is
