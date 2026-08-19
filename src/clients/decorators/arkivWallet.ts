@@ -55,7 +55,8 @@ export type WalletArkivActions<
      *
      * @param data - The entity creation parameters
      * @param txParams - Optional transaction parameters
-     * @returns The created entity with transaction hash
+     * @returns The new entity's key, the transaction hash, and the block it is expected to
+     * expire at. {@link CreateEntityReturnType}
      *
      * @throws {InvalidExpiryError} If the expiry exceeds a protocol bound or would leave the
      * entity dead on arrival.
@@ -67,8 +68,10 @@ export type WalletArkivActions<
      * import { i32 } from "@arkiv-network/sdk/attr"
      * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
+     * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
+     *   account: privateKeyToAccount("0x..."),
      *   chain: cheesecake,
      *   transport: http(),
      * })
@@ -93,7 +96,7 @@ export type WalletArkivActions<
      *
      * @param data - The entity key and the mutations to apply
      * @param txParams - Optional transaction parameters
-     * @returns The entity key and the transaction hash
+     * @returns The patched entity's key and the transaction hash. {@link PatchEntityReturnType}
      *
      * @throws {EmptyPatchError} If the patch has nothing to apply.
      * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
@@ -105,8 +108,10 @@ export type WalletArkivActions<
      * import { i32 } from "@arkiv-network/sdk/attr"
      * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
+     * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
+     *   account: privateKeyToAccount("0x..."),
      *   chain: cheesecake,
      *   transport: http(),
      * })
@@ -131,14 +136,16 @@ export type WalletArkivActions<
      *
      * @param data - The entity deletion parameters
      * @param txParams - Optional transaction parameters
-     * @returns The deleted entity with transaction hash
+     * @returns The deleted entity's key and the transaction hash. {@link DeleteEntityReturnType}
      *
      * @example
      * import { createWalletClient } from "@arkiv-network/sdk"
      * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
+     * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
+     *   account: privateKeyToAccount("0x..."),
      *   chain: cheesecake,
      *   transport: http(),
      * })
@@ -162,7 +169,8 @@ export type WalletArkivActions<
      *
      * @param data - The entity key and its new lifetime
      * @param txParams - Optional transaction parameters
-     * @returns The entity key, transaction hash, and the block it is now expected to expire at
+     * @returns The entity's key, the transaction hash, and the block it is now expected to expire
+     * at. {@link ExtendEntityReturnType}
      *
      * @throws {InvalidExpiryError} If the expiry is malformed, exceeds a protocol bound, or would
      * leave the entity dead on arrival.
@@ -171,8 +179,10 @@ export type WalletArkivActions<
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
      * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
+     * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
+     *   account: privateKeyToAccount("0x..."),
      *   chain: cheesecake,
      *   transport: http(),
      * })
@@ -187,14 +197,14 @@ export type WalletArkivActions<
     ) => Promise<ExtendEntityReturnType>
 
     /**
-     * Changes the ownership of the entity with the given address.
+     * Hands the entity with the given key to a new owner.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/changeOwnership
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
      *
      * @param data - The ownership change parameters
      * @param txParams - Optional transaction parameters
-     * @returns The entity with updated ownership and transaction hash
+     * @returns The entity's key and the transaction hash. {@link ChangeOwnershipReturnType}
      */
     changeOwnership: (
       data: ChangeOwnershipParameters,
@@ -202,7 +212,8 @@ export type WalletArkivActions<
     ) => Promise<ChangeOwnershipReturnType>
 
     /**
-     * Mutates the entities with the given keys.
+     * Applies a batch of entity operations — creates, patches, deletes, extensions and ownership
+     * transfers — in one transaction.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/mutateEntities
      * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
@@ -212,7 +223,8 @@ export type WalletArkivActions<
      *
      * @param data - The mutation parameters (creates, patches, deletes, extensions, ownershipChanges)
      * @param txParams - Optional transaction parameters
-     * @returns The mutation result with transaction hash
+     * @returns The transaction hash, plus the keys touched by each kind of operation.
+     * {@link MutateEntitiesReturnType}
      *
      * @throws {InvalidExpiryError} If an expiry exceeds a protocol bound or would leave the entity
      * dead on arrival.
@@ -222,8 +234,10 @@ export type WalletArkivActions<
      * import { createWalletClient, ExpirationTime, jsonToPayload } from "@arkiv-network/sdk"
      * import { cheesecake } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
+     * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
+     *   account: privateKeyToAccount("0x..."),
      *   chain: cheesecake,
      *   transport: http(),
      * })

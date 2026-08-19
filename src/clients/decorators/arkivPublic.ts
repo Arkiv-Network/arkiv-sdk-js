@@ -1,5 +1,5 @@
 import type { Account, Address, Chain, Client, Hex, PublicActions, Transport } from "viem"
-import { getBlockTiming } from "../../actions/public/getBlockTiming"
+import { type GetBlockTimingReturnType, getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
 import { getEntityNonce } from "../../actions/public/getEntityNonce"
@@ -42,6 +42,10 @@ export type PublicArkivActions<
    *
    * @param key - The entity key (hex string)
    * @returns The entity with the given key, with every field populated. {@link FullEntity}
+   *
+   * @throws {InvalidValueError} If the key is not 32 bytes.
+   * @throws {NoEntityFoundError} If no live entity has that key — it never existed, or it was
+   * deleted or has expired.
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
@@ -130,7 +134,7 @@ export type PublicArkivActions<
   /**
    * Runs one query and returns one page, with no builder in between.
    *
-   * Use {@link select} for anything typed — this returns full {@link Entity} objects whatever the
+   * Use {@link PublicArkivActions.select} for anything typed — this returns full {@link Entity} objects whatever the
    * selection, and takes a raw string as an escape hatch for a query built elsewhere. A raw string
    * goes to the node exactly as written, with none of the name, type or operator checks the
    * expression combinators apply.
@@ -264,11 +268,7 @@ export type PublicArkivActions<
    * //   blockDuration: 2, // in seconds
    * // }
    */
-  getBlockTiming: () => Promise<{
-    currentBlock: bigint
-    currentBlockTime: number
-    blockDuration: number
-  }>
+  getBlockTiming: () => Promise<GetBlockTimingReturnType>
 
   /**
    * Watches entity events, calling the handlers you pass as they arrive.

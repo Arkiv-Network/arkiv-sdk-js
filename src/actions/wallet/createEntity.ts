@@ -5,6 +5,7 @@ import type { CreationFlags, Expiry } from "../../entity"
 import { EntityMutationError } from "../../errors"
 import type { MimeType, TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
+import type { ExpirationTime } from "../../utils/expirationTime"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:wallet:create-entity")
@@ -66,8 +67,8 @@ export type CreateEntityParameters = {
   contentType: MimeType | (string & {})
   /**
    * The entity's queryable attributes, keyed by name. Values are the tagged constructors from
-   * `@arkiv-network/sdk/attr` — `i32`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32`, `bool` — or
-   * a bare `boolean`, `number`, `bigint` or `string` where the type is unambiguous.
+   * `@arkiv-network/sdk/attr` — `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32`,
+   * `bool` — or a bare `boolean`, `number`, `bigint` or `string` where the type is unambiguous.
    *
    * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
    * @throws {InvalidValueError} If a value does not fit the type it names or defaults to.

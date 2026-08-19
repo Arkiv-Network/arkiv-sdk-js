@@ -17,7 +17,7 @@ export type PredictedEntityKey = {
   salt: bigint
 }
 
-/** Parameters for {@link predictEntityKeys}. */
+/** Parameters for `client.predictEntityKeys`. */
 export type PredictEntityKeysParameters<
   TCount extends number = number,
   TSalts extends readonly bigint[] | undefined = readonly bigint[] | undefined,
@@ -89,7 +89,7 @@ type Repeat<T, TLength extends number, TAcc extends T[] = []> = number extends T
  * import { key } from "@arkiv-network/sdk/attr"
  *
  * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
- * await wallet.mutateEntities({
+ * await client.mutateEntities({
  *   creates: [
  *     { payload, contentType, expires, salt: parent.salt },
  *     {

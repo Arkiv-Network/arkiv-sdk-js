@@ -1,4 +1,5 @@
 import { BLOCK_TIME } from "../consts"
+import type { ExpirationTime } from "../utils/expirationTime"
 import { InvalidExpiryError } from "./errors"
 import { MAX_EXPIRES_AT } from "./params"
 

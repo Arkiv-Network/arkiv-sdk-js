@@ -33,7 +33,7 @@ export type WalletArkivClient<
  * `changeOwnership` and `mutateEntities` — on top of the read actions a Public Client has.
  *
  * @param parameters - Configuration object for the wallet client (chain, transport, account, etc.)
- * @returns A Arkiv Wallet Client. {@link WalletArkivClient}
+ * @returns An Arkiv Wallet Client. {@link WalletArkivClient}
  *
  * @example
  * import { createWalletClient } from "@arkiv-network/sdk"

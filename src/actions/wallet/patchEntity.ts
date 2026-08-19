@@ -38,9 +38,9 @@ export type PatchEntityParameters = {
    * Attributes to write, keyed by name. An existing attribute is overwritten — including with a
    * different type — and a name the entity does not carry yet is added.
    *
-   * Values are the tagged constructors from `@arkiv-network/sdk/attr` — `i32`, `u256`, `dec`, `str`,
-   * `addr`, `key`, `bytes32`, `bool` — or a bare `boolean`, `number`, `bigint` or `string` where the
-   * type is unambiguous.
+   * Values are the tagged constructors from `@arkiv-network/sdk/attr` — `i32`, `u64`, `u256`,
+   * `dec`, `str`, `addr`, `key`, `bytes32`, `bool` — or a bare `boolean`, `number`, `bigint` or
+   * `string` where the type is unambiguous.
    *
    * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
    * @throws {InvalidValueError} If a value does not fit the type it names or defaults to.

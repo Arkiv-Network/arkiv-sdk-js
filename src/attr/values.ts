@@ -271,7 +271,11 @@ export function decFromUnits(units: bigint): DecValue {
  *
  * The limit is on **bytes**, not characters: a string of 128 emoji does not fit.
  *
- * @throws {InvalidValueError} If the string exceeds 128 UTF-8 bytes.
+ * C0 control characters and DEL are rejected: the query language writes a `str` as `str('...')`,
+ * whose only escape is a doubled quote, so a control character could be stored but never queried.
+ *
+ * @throws {InvalidValueError} If the value is not a string, holds a control character, or exceeds
+ * 128 UTF-8 bytes.
  *
  * @example
  * str("Bob")

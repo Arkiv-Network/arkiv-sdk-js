@@ -10,6 +10,10 @@ import { str, toValue, type ValueInput } from "./values"
  */
 export const MAX_ATTRIBUTES = 32
 
+/**
+ * The largest payload an entity may carry, in bytes. The payload travels as the `$payload` system
+ * cell, so this is a bound on that one attribute rather than on the operation as a whole.
+ */
 export const MAX_PAYLOAD_BYTES = 128 * 1024
 
 /** The system attribute holding an entity's opaque payload. */
@@ -20,7 +24,7 @@ const CONTENT_TYPE_CELL = "$contentType"
 /**
  * The attributes written on an entity, as a plain object keyed by attribute name.
  *
- * Values may be tagged ({@link ValueInput}) or bare where the type is unambiguous — see
+ * Values may be tagged ({@link ArkivValue}) or bare where the type is unambiguous — see
  * {@link toValue} for the bare-form defaults.
  *
  * @example
@@ -141,8 +145,10 @@ export type MutationInputs = SystemCells & {
  *
  * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
  * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
+ * @throws {MissingValueError} If a value is `undefined` or `null`.
  * @throws {InvalidValueError} If a value does not fit its type.
- * @throws {TooManyAttributesError} If `set` names more than {@link MAX_ATTRIBUTES} attributes.
+ * @throws {TooManyAttributesError} If the mutations exceed {@link MAX_ATTRIBUTES}.
+ * @throws {TypeError} If `unset` is not an array.
  */
 export function encodeMutations({
   set,

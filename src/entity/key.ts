@@ -1,4 +1,5 @@
 import { type Address, encodePacked, type Hex, keccak256 } from "viem"
+import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import { ARKIV_ADDRESS } from "../consts"
 import { InvalidSaltError, NoRandomSourceError } from "./errors"
 

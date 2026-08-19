@@ -5,6 +5,7 @@ import { NoEntityFoundError } from "../../errors"
 import { runQuery } from "../../query/engine"
 import { eq } from "../../query/expression"
 import { type FullEntity, toRpcSelect } from "../../query/selection"
+import type { Entity } from "../../types/entity"
 
 /**
  * Reads one entity by key, with every field selected.
