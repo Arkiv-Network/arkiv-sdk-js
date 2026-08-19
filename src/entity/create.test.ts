@@ -4,7 +4,7 @@ import { encodeAttributes } from "../attr/attributes"
 import { dec, i32, str, u256 } from "../attr/values"
 import { InvalidCreationFlagsError } from "./errors"
 import { decodeCreationFlags, encodeCreationFlags } from "./flags"
-import { MAX_SALT, predictEntityKey, randomSalt, validateSalt } from "./key"
+import { MAX_SALT, NO_SALT, predictEntityKey, randomSalt, resolveSalt, validateSalt } from "./key"
 import { createOperation } from "./operations"
 import { OperationType } from "./params"
 
@@ -73,6 +73,18 @@ describe("salt", () => {
     expect(() => validateSalt(MAX_SALT + 1n)).toThrow(/uint128/)
     expect(() => validateSalt(-1n)).toThrow(/uint128/)
   })
+
+  it("resolves NO_SALT to the zero, and passes anything else through", () => {
+    expect(resolveSalt(NO_SALT)).toBe(0n)
+    expect(resolveSalt(0n)).toBe(0n)
+    expect(resolveSalt(42n)).toBe(42n)
+    expect(() => resolveSalt(MAX_SALT + 1n)).toThrow(/uint128/)
+  })
+
+  it("reports a salt it cannot use without choking on a symbol", () => {
+    // @ts-expect-error
+    expect(() => validateSalt(Symbol("nope"))).toThrow(/Invalid salt/)
+  })
 })
 
 describe("predictEntityKey", () => {
@@ -84,6 +96,13 @@ describe("predictEntityKey", () => {
     expect(
       predictEntityKey({ ...base, owner: "0x1111111111111111111111111111111111111111" }),
     ).not.toBe(predictEntityKey(base))
+  })
+
+  it("derives the same key from NO_SALT as from an explicit zero", () => {
+    const base = { owner: OWNER, nonce: 3n, chainId: 1 } as const
+    expect(predictEntityKey({ ...base, salt: NO_SALT })).toBe(
+      predictEntityKey({ ...base, salt: 0n }),
+    )
   })
 
   it("separates chains through the domain", () => {

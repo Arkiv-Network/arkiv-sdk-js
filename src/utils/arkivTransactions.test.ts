@@ -23,7 +23,7 @@ import {
 } from "../attr"
 import type { ArkivClient } from "../clients/baseClient"
 import { ARKIV_ADDRESS } from "../consts"
-import { InvalidExpiryError } from "../entity"
+import { InvalidExpiryError, NO_SALT } from "../entity"
 import { ENTITY_EVENTS_ABI, type EntityEventName } from "../entity/events"
 import { MAX_EXPIRES_AT, OperationType } from "../entity/params"
 import { EmptyPatchError, EntityMutationError } from "../errors"
@@ -302,6 +302,12 @@ describe("creation flags and salt", () => {
     const { client: c2, writeContract: w2 } = makeClient()
     await sendArkivTransaction(c2, { creates: [{ ...validCreate, salt: 0n }] })
     expect(sentCreate(w2).salt).toBe(0n)
+  })
+
+  it("sends a zero salt for a create that opts out with NO_SALT", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, { creates: [{ ...validCreate, salt: NO_SALT }] })
+    expect(sentCreate(writeContract).salt).toBe(0n)
   })
 
   it("rejects a salt wider than the uint128 field", async () => {

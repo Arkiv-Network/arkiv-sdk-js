@@ -1,7 +1,7 @@
 import type { Hash, Hex } from "viem"
 import type { AttributeInputs } from "../../attr"
 import type { ArkivClient } from "../../clients/baseClient"
-import type { CreationFlags, Expiry } from "../../entity"
+import type { CreationFlags, Expiry, NO_SALT, SaltInput } from "../../entity"
 import { EntityMutationError } from "../../errors"
 import type { MimeType, TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
@@ -83,10 +83,10 @@ export type CreateEntityParameters = {
    * The salt mixed into the entity key. Defaults to 128 random bits, which makes the key
    * unpredictable to everyone but the creator.
    *
-   * Pass `0n` for a key derived from the owner and nonce alone — predictable by anyone, which is
-   * what you want only when a third party must be able to compute the key in advance.
+   * Pass {@link NO_SALT} for a key derived from the owner and nonce alone — predictable by anyone,
+   * which is what you want only when a third party must be able to compute the key in advance.
    */
-  salt?: bigint | undefined
+  salt?: SaltInput | undefined
 }
 
 /**

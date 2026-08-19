@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "bun:test"
 import { encodeFunctionResult, type Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import { ARKIV_ADDRESS } from "../../consts"
-import { predictEntityKey } from "../../entity/key"
+import { NO_SALT, predictEntityKey } from "../../entity/key"
 import { ENTITY_NONCE_ABI } from "../../entity/operations"
 import { getEntityNonce } from "./getEntityNonce"
 import { predictEntityKeys } from "./predictEntityKeys"
@@ -103,6 +103,22 @@ describe("predictEntityKeys", () => {
         }),
       ),
     )
+  })
+
+  it("takes NO_SALT in a slot, and pairs the key with the zero it resolves to", async () => {
+    const { client } = makeClient(4n)
+    const [first, second] = await predictEntityKeys(client, {
+      owner: OWNER,
+      salts: [NO_SALT, 5n],
+    })
+    expect(first).toEqual({
+      salt: 0n,
+      key: predictEntityKey({ owner: OWNER, nonce: 4n, salt: 0n, chainId: CHAIN_ID }),
+    })
+    expect(second).toEqual({
+      salt: 5n,
+      key: predictEntityKey({ owner: OWNER, nonce: 5n, salt: 5n, chainId: CHAIN_ID }),
+    })
   })
 
   it("prefers the salts it was given over the count", async () => {

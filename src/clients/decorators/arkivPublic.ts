@@ -13,6 +13,7 @@ import {
   type WatchEntityEventsParameters,
   watchEntityEvents,
 } from "../../actions/public/watchEntityEvents"
+import type { SaltInput } from "../../entity/key"
 import type { Expression } from "../../query/expression"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type { EntitySelection, FullEntity, ProjectedEntity, SelectArg } from "../../query/selection"
@@ -243,7 +244,7 @@ export type PublicArkivActions<
    */
   predictEntityKeys: <
     const TCount extends number = number,
-    const TSalts extends readonly bigint[] | undefined = undefined,
+    const TSalts extends readonly SaltInput[] | undefined = undefined,
   >(
     parameters: PredictEntityKeysParameters<TCount, TSalts>,
   ) => Promise<PredictEntityKeysReturnType<TCount, TSalts>>
@@ -314,7 +315,7 @@ export function publicArkivActions<
     getEntityNonce: (owner: Address) => getEntityNonce(client, owner),
     predictEntityKeys: <
       const TCount extends number = number,
-      const TSalts extends readonly bigint[] | undefined = undefined,
+      const TSalts extends readonly SaltInput[] | undefined = undefined,
     >(
       parameters: PredictEntityKeysParameters<TCount, TSalts>,
     ) => predictEntityKeys(client, parameters),

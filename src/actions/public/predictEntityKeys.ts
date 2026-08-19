@@ -1,7 +1,13 @@
 import type { Address, Hex } from "viem"
 import { getChainId } from "viem/actions"
 import type { ArkivClient } from "../../clients/baseClient"
-import { predictEntityKey, randomSalt, validateSalt } from "../../entity/key"
+import {
+  NO_SALT,
+  predictEntityKey,
+  randomSalt,
+  resolveSalt,
+  type SaltInput,
+} from "../../entity/key"
 import { getEntityNonce } from "./getEntityNonce"
 
 /**
@@ -13,14 +19,18 @@ import { getEntityNonce } from "./getEntityNonce"
 export type PredictedEntityKey = {
   /** The key the create will be given. */
   key: Hex
-  /** The salt the create must carry for its key to come out as {@link PredictedEntityKey.key}. */
+  /**
+   * The salt the create must carry for its key to come out as {@link PredictedEntityKey.key}.
+   * Always a plain `uint128` — a requested {@link NO_SALT} comes back as the `0n` it resolves to,
+   * which a create accepts just the same.
+   */
   salt: bigint
 }
 
 /** Parameters for `client.predictEntityKeys`. */
 export type PredictEntityKeysParameters<
   TCount extends number = number,
-  TSalts extends readonly bigint[] | undefined = readonly bigint[] | undefined,
+  TSalts extends readonly SaltInput[] | undefined = readonly SaltInput[] | undefined,
 > = {
   /** The account that will sign the creates. Its nonce is what the keys are derived from. */
   owner: Address
@@ -34,7 +44,8 @@ export type PredictEntityKeysParameters<
   count?: TCount | undefined
   /**
    * The salt each create will carry, in batch order. Defaults to `count` fresh random salts —
-   * either way each key comes back paired with the salt that mints it.
+   * either way each key comes back paired with the salt that mints it. Pass {@link NO_SALT} in a
+   * slot whose create opts out of salting.
    */
   salts?: TSalts
 }
@@ -46,13 +57,13 @@ export type PredictEntityKeysParameters<
  * tuple, gives a fixed-length tuple; a count computed at runtime gives a plain array.
  *
  * `TSalts` is wrapped in a tuple to stop the conditional distributing over it. Left naked, the
- * `readonly bigint[] | undefined` default would take both branches and union a tuple with an array,
- * which widens the length straight back to `number`.
+ * `readonly SaltInput[] | undefined` default would take both branches and union a tuple with an
+ * array, which widens the length straight back to `number`.
  */
 export type PredictEntityKeysReturnType<
   TCount extends number = number,
-  TSalts extends readonly bigint[] | undefined = readonly bigint[] | undefined,
-> = [TSalts] extends [readonly bigint[]]
+  TSalts extends readonly SaltInput[] | undefined = readonly SaltInput[] | undefined,
+> = [TSalts] extends [readonly SaltInput[]]
   ? { -readonly [Index in keyof TSalts]: PredictedEntityKey }
   : Repeat<PredictedEntityKey, TCount>
 
@@ -104,7 +115,7 @@ type Repeat<T, TLength extends number, TAcc extends T[] = []> = number extends T
  */
 export async function predictEntityKeys<
   const TCount extends number = number,
-  const TSalts extends readonly bigint[] | undefined = undefined,
+  const TSalts extends readonly SaltInput[] | undefined = undefined,
 >(
   client: ArkivClient,
   { owner, count, salts }: PredictEntityKeysParameters<TCount, TSalts>,
@@ -121,12 +132,15 @@ export async function predictEntityKeys<
 }
 
 /** The salts to derive from: the ones given, or `count` fresh random ones. */
-function resolveSalts(count: number | undefined, salts: readonly bigint[] | undefined): bigint[] {
+function resolveSalts(
+  count: number | undefined,
+  salts: readonly SaltInput[] | undefined,
+): bigint[] {
   if (salts !== undefined) {
     if (salts.length === 0) {
       throw new Error("predictEntityKeys: `salts` is empty — there is nothing to predict")
     }
-    return salts.map(validateSalt)
+    return salts.map(resolveSalt)
   }
   if (count === undefined) {
     throw new Error("predictEntityKeys: pass either `count` or `salts`")
