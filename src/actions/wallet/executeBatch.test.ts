@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "bun:test"
 import type { ArkivClient } from "../../clients/baseClient"
-import { mutateEntities } from "./mutateEntities"
+import { executeBatch } from "./executeBatch"
 
 const ENTITY_KEY = `0x${"ab".repeat(32)}` as const
 const NEW_OWNER = "0x2222222222222222222222222222222222222222"
@@ -29,7 +29,7 @@ describe("the empty-batch guard", () => {
     // An ownership-only batch is a batch: it used to be rejected because the guard listed
     // creates/updates/deletes/extensions and forgot ownershipChanges.
     const { client, writeContract } = makeClient()
-    const result = await mutateEntities(client, {
+    const result = await executeBatch(client, {
       ownershipChanges: [{ entityKey: ENTITY_KEY, newOwner: NEW_OWNER }],
     })
     expect(writeContract).toHaveBeenCalledTimes(1)
@@ -38,9 +38,9 @@ describe("the empty-batch guard", () => {
 
   it("rejects a batch with nothing in it", async () => {
     const { client, writeContract } = makeClient()
-    await expect(mutateEntities(client, {})).rejects.toThrow(/No operations/)
+    await expect(executeBatch(client, {})).rejects.toThrow(/No operations/)
     // Present but empty is just as empty — the engine would revert with EmptyBatch().
-    await expect(mutateEntities(client, { deletes: [], ownershipChanges: [] })).rejects.toThrow(
+    await expect(executeBatch(client, { deletes: [], ownershipChanges: [] })).rejects.toThrow(
       /No operations/,
     )
     expect(writeContract).not.toHaveBeenCalled()
@@ -52,10 +52,10 @@ describe("the empty-batch guard", () => {
     // keys would score this batch as non-empty and then drop it on the way to the wire, sending
     // execute([]) — so the guard counts the five kinds that actually reach the transaction.
     const stale = { updates: [{ entityKey: ENTITY_KEY, set: { level: 1 } }] } as never
-    await expect(mutateEntities(client, stale)).rejects.toThrow(/No operations/)
+    await expect(executeBatch(client, stale)).rejects.toThrow(/No operations/)
     // A typo is the same mistake with a different name.
     await expect(
-      mutateEntities(client, { delete: [{ entityKey: ENTITY_KEY }] } as never),
+      executeBatch(client, { delete: [{ entityKey: ENTITY_KEY }] } as never),
     ).rejects.toThrow(/No operations/)
     expect(writeContract).not.toHaveBeenCalled()
   })
@@ -65,7 +65,7 @@ describe("the empty-batch guard", () => {
     // The dangerous shape: the creates apply and the transaction succeeds, so nothing surfaces the
     // fact that the `updates` never happened. The guard cannot catch this one — only the caller's
     // types can — but the result must at least not claim they did.
-    const result = await mutateEntities(client, {
+    const result = await executeBatch(client, {
       deletes: [{ entityKey: ENTITY_KEY }],
       updates: [{ entityKey: ENTITY_KEY, set: { level: 1 } }],
     } as never)

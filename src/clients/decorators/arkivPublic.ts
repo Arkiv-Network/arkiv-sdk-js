@@ -229,7 +229,7 @@ export type PublicArkivActions<
    * import { key } from "@arkiv-network/sdk/attr"
    *
    * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
-   * await wallet.mutateEntities({
+   * await wallet.executeBatch({
    *   creates: [
    *     { payload, contentType, expires, salt: parent.salt },
    *     {

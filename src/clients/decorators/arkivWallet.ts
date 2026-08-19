@@ -15,15 +15,15 @@ import type {
 } from "../../actions/wallet/deleteEntity"
 import { deleteEntity } from "../../actions/wallet/deleteEntity"
 import type {
+  ExecuteBatchParameters,
+  ExecuteBatchReturnType,
+} from "../../actions/wallet/executeBatch"
+import { executeBatch } from "../../actions/wallet/executeBatch"
+import type {
   ExtendEntityParameters,
   ExtendEntityReturnType,
 } from "../../actions/wallet/extendEntity"
 import { extendEntity } from "../../actions/wallet/extendEntity"
-import type {
-  MutateEntitiesParameters,
-  MutateEntitiesReturnType,
-} from "../../actions/wallet/mutateEntities"
-import { mutateEntities } from "../../actions/wallet/mutateEntities"
 import type { PatchEntityParameters, PatchEntityReturnType } from "../../actions/wallet/patchEntity"
 import { patchEntity } from "../../actions/wallet/patchEntity"
 import type { TxParams } from "../../types"
@@ -51,7 +51,7 @@ export type WalletArkivActions<
      * Creates a new entity.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/createEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
      *
      * @param data - The entity creation parameters
      * @param txParams - Optional transaction parameters
@@ -92,7 +92,7 @@ export type WalletArkivActions<
      * everything it does not name alone.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/patchEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
      *
      * @param data - The entity key and the mutations to apply
      * @param txParams - Optional transaction parameters
@@ -132,7 +132,7 @@ export type WalletArkivActions<
      * Deletes the entity with the given key.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/deleteEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
      *
      * @param data - The entity deletion parameters
      * @param txParams - Optional transaction parameters
@@ -165,7 +165,7 @@ export type WalletArkivActions<
      * The engine rejects an extension that would not move the expiry later.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/extendEntity
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
      *
      * @param data - The entity key and its new lifetime
      * @param txParams - Optional transaction parameters
@@ -200,7 +200,7 @@ export type WalletArkivActions<
      * Hands the entity with the given key to a new owner.
      *
      * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/changeOwnership
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
      *
      * @param data - The ownership change parameters
      * @param txParams - Optional transaction parameters
@@ -215,16 +215,16 @@ export type WalletArkivActions<
      * Applies a batch of entity operations — creates, patches, deletes, extensions and ownership
      * transfers — in one transaction.
      *
-     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/mutateEntities
-     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#mutateEntities)
+     * - Docs: https://docs.arkiv.network/ts-sdk/actions/wallet/executeBatch
+     * - JSON-RPC Methods: [`eth_sendRawTransaction`](https://docs.arkiv.network/dev/json-rpc-api/#executeBatch)
      *
      * Every operation lands in one transaction, so the whole batch applies or none of it does.
      * At least one operation is required.
      *
-     * @param data - The mutation parameters (creates, patches, deletes, extensions, ownershipChanges)
+     * @param data - The batch parameters (creates, patches, deletes, extensions, ownershipChanges)
      * @param txParams - Optional transaction parameters
      * @returns The transaction hash, plus the keys touched by each kind of operation.
-     * {@link MutateEntitiesReturnType}
+     * {@link ExecuteBatchReturnType}
      *
      * @throws {InvalidExpiryError} If an expiry exceeds a protocol bound or would leave the entity
      * dead on arrival.
@@ -241,7 +241,7 @@ export type WalletArkivActions<
      *   chain: cheesecake,
      *   transport: http(),
      * })
-     * const { txHash, createdEntities } = await client.mutateEntities({
+     * const { txHash, createdEntities } = await client.executeBatch({
      *   creates: [{
      *     payload: jsonToPayload({ entityType: "testType", entityId: "testId" }),
      *     contentType: "application/json",
@@ -257,10 +257,10 @@ export type WalletArkivActions<
      *   ownershipChanges: [{ entityKey: keyToHandOver, newOwner }],
      * })
      */
-    mutateEntities: (
-      data: MutateEntitiesParameters,
+    executeBatch: (
+      data: ExecuteBatchParameters,
       txParams?: TxParams,
-    ) => Promise<MutateEntitiesReturnType>
+    ) => Promise<ExecuteBatchReturnType>
   }
 
 export function walletArkivActions<
@@ -279,7 +279,7 @@ export function walletArkivActions<
       extendEntity(client, data, txParams),
     changeOwnership: (data: ChangeOwnershipParameters, txParams?: TxParams) =>
       changeOwnership(client, data, txParams),
-    mutateEntities: (data: MutateEntitiesParameters, txParams?: TxParams) =>
-      mutateEntities(client, data, txParams),
+    executeBatch: (data: ExecuteBatchParameters, txParams?: TxParams) =>
+      executeBatch(client, data, txParams),
   }
 }

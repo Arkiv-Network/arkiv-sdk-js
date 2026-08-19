@@ -90,7 +90,7 @@ type Repeat<T, TLength extends number, TAcc extends T[] = []> = number extends T
  *
  * The prediction is valid only while nothing else from this owner is in flight. Every create that
  * lands first takes the nonce with it and moves these keys. For a key you can rely on
- * unconditionally, read it back from the create instead — `createEntity` and `mutateEntities`
+ * unconditionally, read it back from the create instead — `createEntity` and `executeBatch`
  * report the keys the engine actually minted.
  *
  * @param parameters - Owner, and either a count or the salts. {@link PredictEntityKeysParameters}
@@ -100,7 +100,7 @@ type Repeat<T, TLength extends number, TAcc extends T[] = []> = number extends T
  * import { key } from "@arkiv-network/sdk/attr"
  *
  * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
- * await client.mutateEntities({
+ * await client.executeBatch({
  *   creates: [
  *     { payload, contentType, expires, salt: parent.salt },
  *     {
