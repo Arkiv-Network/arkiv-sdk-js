@@ -9,13 +9,11 @@ on:
     tags: ["v*"]
     paths-ignore:
       - "*.md"
-      - "docs/**"
       - ".github/**"
   pull_request:
     branches: [main, master, develop]
     paths-ignore:
       - "*.md"
-      - "docs/**"
       - ".github/**"
 
 jobs:
@@ -36,10 +34,6 @@ jobs:
 
       - name: Run lint
         run: bun run lint
-
-      - name: Verify docs generation if preparing for release
-        if: github.ref == 'refs/heads/main'
-        run: bun run docs:verify
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -240,17 +234,6 @@ jobs:
           fi
           echo "=== Publishing $version under dist-tag '$dist_tag' ==="
           npm publish ./arkiv-network-sdk-latest.tgz --access public --tag "$dist_tag"
-
-      - name: Generate documentation
-        if: github.ref == 'refs/heads/main'
-        continue-on-error: true
-        run: |
-          echo "=== Generating documentation ==="
-          bun run docs
-          git add docs/
-            if ! git diff --cached --quiet; then
-              git commit -m "docs: update generated docs [skip ci]"
-            fi
 
       - name: Push changes
         # Branch runs push their version-bump commit and the tag it created; a tag run has
