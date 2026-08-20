@@ -10,7 +10,7 @@ import type { TypeTag } from "../attr"
  * | | `=` `!=` | `<` `<=` `>` `>=` | `STARTSWITH` |
  * | --- | --- | --- | --- |
  * | `bool` | yes | no | no |
- * | `i32` `u256` `dec` | yes | yes | no |
+ * | `i32` `u64` `u256` `dec` | yes | yes | no |
  * | `str` | yes | no | yes |
  * | `addr` `key` `bytes32` | yes | no | no |
  */

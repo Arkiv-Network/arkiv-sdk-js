@@ -29,6 +29,6 @@ test("creates", () => {
   expect(typeof client.extendEntity).toBe("function")
   expect(client.changeOwnership).toBeDefined()
   expect(typeof client.changeOwnership).toBe("function")
-  expect(client.mutateEntities).toBeDefined()
-  expect(typeof client.mutateEntities).toBe("function")
+  expect(client.executeBatch).toBeDefined()
+  expect(typeof client.executeBatch).toBe("function")
 })

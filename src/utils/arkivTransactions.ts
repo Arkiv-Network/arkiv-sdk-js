@@ -22,7 +22,7 @@ import { ARKIV_ADDRESS } from "../consts"
 import { ENTITY_EVENTS_ABI } from "../entity/events"
 import { type Expiry, type ExpiryContext, resolveExpiry } from "../entity/expiry"
 import { encodeCreationFlags } from "../entity/flags"
-import { randomSalt, validateSalt } from "../entity/key"
+import { randomSalt, resolveSalt } from "../entity/key"
 import {
   createOperation,
   deleteOperation,
@@ -285,7 +285,7 @@ export function buildEntityOperations(ops: EntityMutationOps, context: ExpiryCon
   const createOps = (creates ?? []).map((item) => {
     validateContentType(item.contentType)
 
-    const salt = item.salt === undefined ? randomSalt() : validateSalt(item.salt)
+    const salt = item.salt === undefined ? randomSalt() : resolveSalt(item.salt)
     const expiry = resolveExpiry(item.expires, context)
 
     return createOperation({

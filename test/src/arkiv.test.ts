@@ -367,7 +367,7 @@ describe("Arkiv Integration Tests for public client", () => {
     "a batch applies every one of its operations in one transaction",
     async () => {
       // Five entities to operate on, created in one batch rather than five transactions.
-      const seed = await walletClient.mutateEntities({
+      const seed = await walletClient.executeBatch({
         creates: Array.from({ length: 5 }, () => ({
           payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
           contentType: "application/json" as const,
@@ -382,7 +382,7 @@ describe("Arkiv Integration Tests for public client", () => {
         throw new Error(`expected 5 seeded keys, got ${seed.createdEntities.length}`)
       }
 
-      const result = await walletClient.mutateEntities({
+      const result = await walletClient.executeBatch({
         creates: [
           {
             payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
@@ -430,7 +430,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // One good create, one impossible delete. The create must not survive the batch.
       await expect(
-        walletClient.mutateEntities({
+        walletClient.executeBatch({
           creates: [
             {
               payload: stringToPayload("should never exist"),
@@ -610,7 +610,7 @@ describe("Arkiv Integration Tests for public client", () => {
     "the operators the engine supports filter as written",
     async () => {
       const group = `operators-${crypto.randomUUID()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: [100, 200, 300, 400, 500].map((score) => ({
           payload: jsonToPayload({ entity: { entityType: "rangetest", entityId: `s-${score}` } }),
           contentType: "application/json" as const,
@@ -652,7 +652,7 @@ describe("Arkiv Integration Tests for public client", () => {
     "a large result set pages without losing or repeating anything",
     async () => {
       const value = `paging-${crypto.randomUUID()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: Array.from({ length: 10 }, () => ({
           payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
           contentType: "application/json" as const,
@@ -857,7 +857,7 @@ describe("Arkiv Integration Tests for public client", () => {
     async () => {
       const before = await publicClient.getEntityCount()
 
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: Array.from({ length: 3 }, () => ({
           payload: stringToPayload("counted"),
           contentType: "text/plain" as const,
@@ -880,7 +880,7 @@ describe("Arkiv Integration Tests for public client", () => {
     async (transport) => {
       const { read, write } = clients(transport)
 
-      const seed = await write.mutateEntities({
+      const seed = await write.executeBatch({
         creates: Array.from({ length: 3 }, () => ({
           payload: stringToPayload("seed"),
           contentType: "text/plain" as const,
@@ -904,7 +904,7 @@ describe("Arkiv Integration Tests for public client", () => {
       })
 
       try {
-        const batch = await write.mutateEntities({
+        const batch = await write.executeBatch({
           creates: [
             {
               payload: stringToPayload("created under watch"),
@@ -1029,7 +1029,7 @@ describe("Arkiv Integration Tests for public client", () => {
       })
       expect(parent.key).not.toBe(child.key)
 
-      const batch = await walletClient.mutateEntities({
+      const batch = await walletClient.executeBatch({
         creates: [
           {
             payload: stringToPayload("parent"),

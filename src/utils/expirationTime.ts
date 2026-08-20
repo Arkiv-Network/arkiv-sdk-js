@@ -51,11 +51,50 @@ export const ExpirationTime = {
    * @throws {InvalidExpiryError} If the duration is not a positive multiple of the block time.
    */
   fromSeconds: (seconds: number): Lifetime => lifetimeOf(seconds),
+  /**
+   * A number of minutes.
+   *
+   * @throws {InvalidExpiryError} If the duration is not a positive multiple of the block time.
+   */
   fromMinutes: (minutes: number): Lifetime => lifetimeOf(minutes * 60),
+
+  /**
+   * A number of hours.
+   *
+   * @throws {InvalidExpiryError} If the duration is not a positive multiple of the block time.
+   */
   fromHours: (hours: number): Lifetime => lifetimeOf(hours * 60 * 60),
+
+  /**
+   * A number of days. The everyday form — `fromDays(30)` is what most creates want.
+   *
+   * @throws {InvalidExpiryError} If the duration is not a positive multiple of the block time.
+   */
   fromDays: (days: number): Lifetime => lifetimeOf(days * 24 * 60 * 60),
+
+  /**
+   * A number of weeks, each of 7 days.
+   *
+   * @throws {InvalidExpiryError} If the duration is not a positive multiple of the block time.
+   */
   fromWeeks: (weeks: number): Lifetime => lifetimeOf(weeks * 7 * 24 * 60 * 60),
+
+  /**
+   * A number of months, each of exactly **30 days** — calendar months are not all the same length,
+   * and a lifetime is a duration rather than a date. Use {@link ExpirationTime.atDate} when the
+   * expiry has to land on a particular calendar day.
+   *
+   * @throws {InvalidExpiryError} If the duration is not a positive multiple of the block time.
+   */
   fromMonths: (months: number): Lifetime => lifetimeOf(months * 30 * 24 * 60 * 60),
+
+  /**
+   * A number of years, each of exactly **365 days** — leap days are not counted, so `fromYears(4)`
+   * is a day short of four calendar years. Use {@link ExpirationTime.atDate} for a calendar
+   * deadline.
+   *
+   * @throws {InvalidExpiryError} If the duration is not a positive multiple of the block time.
+   */
   fromYears: (years: number): Lifetime => lifetimeOf(years * 365 * 24 * 60 * 60),
 
   /**

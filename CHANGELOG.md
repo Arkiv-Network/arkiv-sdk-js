@@ -24,7 +24,7 @@ This release tracks the arkiv-reth engine and rewrites most of the SDK surface. 
 - **Breaking:** entity metadata fields were renamed: `createdAtBlock` is `createdAt`, `lastModifiedAtBlock` is `updatedAt` and `expiresAtBlock` is `expiresAt`. `transactionIndexInBlock` and `operationIndexInTransaction` are gone
 - **Breaking:** `getEntity()` returns a `FullEntity` with every field populated
 - **Breaking:** `QueryOptions` now takes `select` (a selection) and `limit`, replacing `includeData` and `resultsPerPage`. Page size is capped at 200
-- **Breaking:** `mutateEntities()` takes `patches` where it took `updates`, and gained `ownershipChanges`.
+- **Breaking:** `mutateEntities()` is now `executeBatch()`. It takes `patches` where it took `updates`, and gained `ownershipChanges`. `MutateEntitiesParameters` and `MutateEntitiesReturnType` are `ExecuteBatchParameters` and `ExecuteBatchReturnType`
 - **Breaking:** `QueryResult.next()` returns the next page as a new `QueryResult` instead of mutating the current one
 - `owner` and `creator` are returned as checksummed addresses
 - Error types match the new operations: `InvalidExpiryError`, `InvalidValueError`, `InvalidAttributeNameError`, `ConflictingMutationError`, `EmptyPatchError`, `TooManyAttributesError`, `InvalidCreationFlagsError`, `InvalidSaltError`, `QueryError`

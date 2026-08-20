@@ -70,7 +70,7 @@ export type PublicAdvancedActions = {
  * costing the minimum number of RPC calls — down to one per transaction when you supply what the
  * SDK would otherwise look up.
  *
- * The everyday actions (`createEntity`, `mutateEntities`, …) bundle send + wait + decode and are
+ * The everyday actions (`createEntity`, `executeBatch`, …) bundle send + wait + decode and are
  * the right default. This namespace unbundles them for callers optimising their RPC budget.
  *
  * @example Minimal-call flow: one send, one ping, done.

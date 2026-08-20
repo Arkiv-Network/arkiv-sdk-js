@@ -16,10 +16,11 @@ export class InvalidCreationFlagsError extends Error {
 
 /** A key salt was outside the `uint128` the wire carries. */
 export class InvalidSaltError extends Error {
-  constructor(salt: bigint) {
+  constructor(salt: unknown) {
     super(
-      `Invalid salt ${salt}. A salt is a uint128, so it must be between 0 and ` +
-        `${2n ** 128n - 1n}. Omit it to get 128 random bits, or pass 0 for a predictable key.`,
+      `Invalid salt ${String(salt)}. A salt is a uint128, so it must be between 0 and ` +
+        `${2n ** 128n - 1n}. Omit it to get 128 random bits, or pass NO_SALT for a key derived ` +
+        `from the owner and nonce alone.`,
     )
     this.name = "InvalidSaltError"
   }

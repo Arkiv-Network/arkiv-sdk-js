@@ -1,10 +1,11 @@
 import type { Hash, Hex } from "viem"
 import type { AttributeInputs } from "../../attr"
 import type { ArkivClient } from "../../clients/baseClient"
-import type { CreationFlags, Expiry } from "../../entity"
+import type { CreationFlags, Expiry, NO_SALT, SaltInput } from "../../entity"
 import { EntityMutationError } from "../../errors"
 import type { MimeType, TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
+import type { ExpirationTime } from "../../utils/expirationTime"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:wallet:create-entity")
@@ -66,8 +67,8 @@ export type CreateEntityParameters = {
   contentType: MimeType | (string & {})
   /**
    * The entity's queryable attributes, keyed by name. Values are the tagged constructors from
-   * `@arkiv-network/sdk/attr` — `i32`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32`, `bool` — or
-   * a bare `boolean`, `number`, `bigint` or `string` where the type is unambiguous.
+   * `@arkiv-network/sdk/attr` — `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32`,
+   * `bool` — or a bare `boolean`, `number`, `bigint` or `string` where the type is unambiguous.
    *
    * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
    * @throws {InvalidValueError} If a value does not fit the type it names or defaults to.
@@ -82,10 +83,10 @@ export type CreateEntityParameters = {
    * The salt mixed into the entity key. Defaults to 128 random bits, which makes the key
    * unpredictable to everyone but the creator.
    *
-   * Pass `0n` for a key derived from the owner and nonce alone — predictable by anyone, which is
-   * what you want only when a third party must be able to compute the key in advance.
+   * Pass {@link NO_SALT} for a key derived from the owner and nonce alone — predictable by anyone,
+   * which is what you want only when a third party must be able to compute the key in advance.
    */
-  salt?: bigint | undefined
+  salt?: SaltInput | undefined
 }
 
 /**

@@ -1,7 +1,7 @@
 /**
  * The advanced path: send, ping and read results as separate, single-RPC-call steps.
  *
- * The everyday actions (`createEntity`, `mutateEntities`, …) bundle send + wait + decode into one
+ * The everyday actions (`createEntity`, `executeBatch`, …) bundle send + wait + decode into one
  * call, which is convenient and spends several RPC requests. These actions unbundle that so a
  * caller can hit the theoretical minimum:
  *

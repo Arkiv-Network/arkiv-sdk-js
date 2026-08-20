@@ -12,11 +12,11 @@ export type {
 } from "../actions/wallet/changeOwnership"
 export type { CreateEntityParameters, CreateEntityReturnType } from "../actions/wallet/createEntity"
 export type { DeleteEntityParameters, DeleteEntityReturnType } from "../actions/wallet/deleteEntity"
-export type { ExtendEntityParameters, ExtendEntityReturnType } from "../actions/wallet/extendEntity"
 export type {
-  MutateEntitiesParameters,
-  MutateEntitiesReturnType,
-} from "../actions/wallet/mutateEntities"
+  ExecuteBatchParameters,
+  ExecuteBatchReturnType,
+} from "../actions/wallet/executeBatch"
+export type { ExtendEntityParameters, ExtendEntityReturnType } from "../actions/wallet/extendEntity"
 export type { PatchEntityParameters, PatchEntityReturnType } from "../actions/wallet/patchEntity"
 export type { EntityFields } from "./entity"
 export { Entity } from "./entity"

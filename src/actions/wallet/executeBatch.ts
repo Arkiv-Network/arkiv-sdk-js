@@ -4,19 +4,19 @@ import type { TxParams } from "../../types"
 import { type EntityMutationOps, sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
 
-const logger = getLogger("actions:wallet:mutate-entities")
+const logger = getLogger("actions:wallet:execute-batch")
 
 /**
- * Parameters for the mutateEntities function — the same batch shape the advanced path takes
+ * Parameters for the executeBatch function — the same batch shape the advanced path takes
  * ({@link EntityMutationOps}), so the two surfaces cannot drift apart.
  *
  * At least one operation is required; a batch with nothing in it throws rather than spending gas on
  * an empty transaction.
  */
-export type MutateEntitiesParameters = EntityMutationOps
+export type ExecuteBatchParameters = EntityMutationOps
 
-/** Return type for the mutateEntities function. */
-export type MutateEntitiesReturnType = {
+/** Return type for the executeBatch function. */
+export type ExecuteBatchReturnType = {
   /** The transaction hash. */
   txHash: Hash
   /** The keys of the created entities, in batch order. */
@@ -31,14 +31,14 @@ export type MutateEntitiesReturnType = {
   ownershipChanges: Hex[]
 }
 
-export async function mutateEntities(
+export async function executeBatch(
   client: ArkivClient,
-  data: MutateEntitiesParameters,
+  data: ExecuteBatchParameters,
   txParams?: TxParams,
-): Promise<MutateEntitiesReturnType> {
+): Promise<ExecuteBatchReturnType> {
   const { receipt, createdEntityKeys } = await sendArkivTransaction(client, data, txParams)
 
-  logger("Receipt from mutateEntities %o", receipt)
+  logger("Receipt from executeBatch %o", receipt)
 
   return {
     txHash: receipt.transactionHash as Hash,

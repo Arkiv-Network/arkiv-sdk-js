@@ -12,6 +12,10 @@ import {
 import { TYPE_IDS } from "../attr/types"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 
+/**
+ * The comparison operators the query language defines. `<` `<=` `>` `>=` need an ordered type —
+ * `i32`, `u64`, `u256` or `dec`; every type accepts `=` and `!=`.
+ */
 export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
 
 /** A comparison between an attribute and a typed literal. */
@@ -216,7 +220,7 @@ export function ne(name: string, value: ValueInput): ComparisonNode {
 }
 
 /**
- * Attribute is greater than value. Ordered types only (`i32`, `u256`, `dec`).
+ * Attribute is greater than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
@@ -229,7 +233,7 @@ export function gt(name: string, value: ValueInput): ComparisonNode {
 }
 
 /**
- * Attribute is greater than or equal to value. Ordered types only (`i32`, `u256`, `dec`).
+ * Attribute is greater than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
@@ -241,7 +245,7 @@ export function gte(name: string, value: ValueInput): ComparisonNode {
 }
 
 /**
- * Attribute is less than value. Ordered types only (`i32`, `u256`, `dec`).
+ * Attribute is less than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
@@ -253,7 +257,7 @@ export function lt(name: string, value: ValueInput): ComparisonNode {
 }
 
 /**
- * Attribute is less than or equal to value. Ordered types only (`i32`, `u256`, `dec`).
+ * Attribute is less than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
@@ -271,7 +275,9 @@ export function lte(name: string, value: ValueInput): ComparisonNode {
  * `startsWith("name", "é")` matches only the same byte sequence, not another normal form of it.
  *
  * @param prefix - The prefix, as a bare string or a `str` value.
- * @throws {UnsupportedOperatorError} If given a value that is not a `str`.
+ * @throws {InvalidPredicateError} If the name is not a queryable attribute.
+ * @throws {UnsupportedOperatorError} If given a value that is not a `str`, or a system attribute
+ * (none of which is a `str`).
  *
  * @example
  * startsWith("desc", "ab") // desc STARTSWITH str('ab')
@@ -325,7 +331,8 @@ export function exists(name: string): ExistsNode {
  * Useful when the same name is written with different types across entities — a comparison already
  * asserts the type, so this is for asking about the type alone.
  *
- * @param tag - The type tag: `bool`, `i32`, `u256`, `dec`, `bytes32`, `str`, `addr` or `key`.
+ * @param tag - The type tag: `bool`, `i32`, `u64`, `u256`, `dec`, `bytes32`, `str`, `addr` or
+ * `key`.
  * @throws {InvalidPredicateError} If the tag is not a settable type, or the name is a system
  * attribute (whose type is fixed).
  *
@@ -344,7 +351,7 @@ export function hasType(name: string, tag: UserTypeTag): TypeOfNode {
   if (!isUserTypeTag(tag)) {
     throw new InvalidPredicateError(
       `"${tag}" is not a settable attribute type. Use one of ` +
-        "bool, i32, u256, dec, bytes32, str, addr, key.",
+        "bool, i32, u64, u256, dec, bytes32, str, addr, key.",
       name,
     )
   }

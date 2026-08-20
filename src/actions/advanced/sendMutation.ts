@@ -31,7 +31,7 @@ export type SendMutationReturnType = {
 /**
  * Signs and sends a mutation batch, returning as soon as the transaction is submitted.
  *
- * The fire-and-forget half of the advanced path. Unlike `mutateEntities`, this does **not** wait
+ * The fire-and-forget half of the advanced path. Unlike `executeBatch`, this does **not** wait
  * for a receipt, does not poll, and runs no revert diagnosis — it spends only what submitting
  * costs. With `options.currentBlock` and full `txParams` (nonce, gas, fees) that is exactly one
  * RPC call; each omitted piece adds only the lookup viem needs to fill it.

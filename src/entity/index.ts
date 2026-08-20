@@ -10,6 +10,7 @@ export type { EncodedExpiry, Expiry, ExpiryContext, Lifetime, ResolvedExpiry } f
 export { resolveExpiry, toBlocks } from "./expiry"
 export type { CreationFlags, ResolvedCreationFlags } from "./flags"
 export { decodeCreationFlags, encodeCreationFlags } from "./flags"
-export { MAX_SALT, predictEntityKey, randomSalt } from "./key"
+export type { SaltInput } from "./key"
+export { MAX_SALT, NO_SALT, predictEntityKey, randomSalt } from "./key"
 export type { Operation } from "./operations"
 export { MAX_EXPIRES_AT, OperationType } from "./params"

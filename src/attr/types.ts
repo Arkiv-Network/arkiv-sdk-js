@@ -1,4 +1,5 @@
 import type { Address, Hex } from "viem"
+import type { decUnits } from "./values"
 
 /**
  * The protocol's attribute type vocabulary, mapping each short **tag** (the name used by the
@@ -54,8 +55,7 @@ export function isUserSettable(tag: TypeTag): tag is UserTypeTag {
 /**
  * Marks a value as having passed its constructor's validation. The symbol is module-private, so a
  * hand-written object literal is not assignable to {@link ArkivValue} — every value crossing the
- * wire has been range-, length- and format-checked by {@link i32}, {@link u256}, {@link dec}, and
- * friends.
+ * wire has been range-, length- and format-checked by `i32`, `u256`, `dec`, and friends.
  */
 declare const validated: unique symbol
 
@@ -89,7 +89,7 @@ export type U256Value = Value<"u256", bigint>
 export type DecValue = Value<"dec", string>
 /** 32 opaque bytes, as lowercase `0x` hex. */
 export type Bytes32Value = Value<"bytes32", Hex>
-/** A UTF-8 string of at most 128 bytes. */
+/** A UTF-8 string of at most 128 bytes, free of C0 control characters and DEL. */
 export type StrValue = Value<"str", string>
 /** A 20-byte Ethereum address, as EIP-55 checksummed hex. */
 export type AddrValue = Value<"addr", Address>

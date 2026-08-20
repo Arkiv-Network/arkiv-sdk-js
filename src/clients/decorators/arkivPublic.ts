@@ -1,5 +1,5 @@
 import type { Account, Address, Chain, Client, Hex, PublicActions, Transport } from "viem"
-import { getBlockTiming } from "../../actions/public/getBlockTiming"
+import { type GetBlockTimingReturnType, getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
 import { getEntityCount } from "../../actions/public/getEntityCount"
 import { getEntityNonce } from "../../actions/public/getEntityNonce"
@@ -13,6 +13,7 @@ import {
   type WatchEntityEventsParameters,
   watchEntityEvents,
 } from "../../actions/public/watchEntityEvents"
+import type { SaltInput } from "../../entity/key"
 import type { Expression } from "../../query/expression"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type { EntitySelection, FullEntity, ProjectedEntity, SelectArg } from "../../query/selection"
@@ -39,10 +40,14 @@ export type PublicArkivActions<
   /**
    * Returns the entity with the given key.
    *
-   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/getEntity
+   * - JSON-RPC Methods: `arkiv_query`
    *
    * @param key - The entity key (hex string)
    * @returns The entity with the given key, with every field populated. {@link FullEntity}
+   *
+   * @throws {InvalidValueError} If the key is not 32 bytes.
+   * @throws {NoEntityFoundError} If no live entity has that key — it never existed, or it was
+   * deleted or has expired.
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
@@ -70,7 +75,7 @@ export type PublicArkivActions<
    * read entities. You declare up front which parts of an entity you want returned, so results
    * always contain exactly the data you asked for.
    *
-   * - Docs: https://docs.arkiv.network/ts-sdk/actions/public/query
+   * - JSON-RPC Methods: `arkiv_query`
    *
    * @param selection - What to include in the results. Omit it (or pass `"*"`) to select everything,
    *   or pass an object to select specific parts (at least one field is required). Every part is
@@ -131,7 +136,7 @@ export type PublicArkivActions<
   /**
    * Runs one query and returns one page, with no builder in between.
    *
-   * Use {@link select} for anything typed — this returns full {@link Entity} objects whatever the
+   * Use {@link PublicArkivActions.select} for anything typed — this returns full {@link Entity} objects whatever the
    * selection, and takes a raw string as an escape hatch for a query built elsewhere. A raw string
    * goes to the node exactly as written, with none of the name, type or operator checks the
    * expression combinators apply.
@@ -225,7 +230,7 @@ export type PublicArkivActions<
    * import { key } from "@arkiv-network/sdk/attr"
    *
    * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
-   * await wallet.mutateEntities({
+   * await wallet.executeBatch({
    *   creates: [
    *     { payload, contentType, expires, salt: parent.salt },
    *     {
@@ -240,7 +245,7 @@ export type PublicArkivActions<
    */
   predictEntityKeys: <
     const TCount extends number = number,
-    const TSalts extends readonly bigint[] | undefined = undefined,
+    const TSalts extends readonly SaltInput[] | undefined = undefined,
   >(
     parameters: PredictEntityKeysParameters<TCount, TSalts>,
   ) => Promise<PredictEntityKeysReturnType<TCount, TSalts>>
@@ -265,11 +270,7 @@ export type PublicArkivActions<
    * //   blockDuration: 2, // in seconds
    * // }
    */
-  getBlockTiming: () => Promise<{
-    currentBlock: bigint
-    currentBlockTime: number
-    blockDuration: number
-  }>
+  getBlockTiming: () => Promise<GetBlockTimingReturnType>
 
   /**
    * Watches entity events, calling the handlers you pass as they arrive.
@@ -325,7 +326,7 @@ export function publicArkivActions<
     getEntityNonce: (owner: Address) => getEntityNonce(client, owner),
     predictEntityKeys: <
       const TCount extends number = number,
-      const TSalts extends readonly bigint[] | undefined = undefined,
+      const TSalts extends readonly SaltInput[] | undefined = undefined,
     >(
       parameters: PredictEntityKeysParameters<TCount, TSalts>,
     ) => predictEntityKeys(client, parameters),

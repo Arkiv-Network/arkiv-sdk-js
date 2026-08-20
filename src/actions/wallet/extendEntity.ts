@@ -4,6 +4,7 @@ import type { Expiry } from "../../entity"
 import { EntityMutationError } from "../../errors"
 import type { TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
+import type { ExpirationTime } from "../../utils/expirationTime"
 import { getLogger } from "../../utils/logger"
 
 const logger = getLogger("actions:wallet:extend-entity")
