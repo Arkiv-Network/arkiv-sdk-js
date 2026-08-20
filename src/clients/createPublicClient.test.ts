@@ -35,5 +35,5 @@ test("creates", () => {
   expect(client.deleteEntity).not.toBeDefined()
   expect(client.extendEntity).not.toBeDefined()
   expect(client.changeOwnership).not.toBeDefined()
-  expect(client.mutateEntities).not.toBeDefined()
+  expect(client.executeBatch).not.toBeDefined()
 })

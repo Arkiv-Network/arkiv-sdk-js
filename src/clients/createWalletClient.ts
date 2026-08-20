@@ -24,16 +24,14 @@ export type WalletArkivClient<
 
 /**
  * Creates a Wallet Client with a given [Transport](https://viem.sh/docs/clients/intro) configured
- * for a [Chain](https://viem.sh/docs/clients/chains) and an account.
- *
- * - Docs: https://docs.arkiv.network/ts-sdk/clients/wallet
+ * for a [Chain](https://viem.sh/docs/chains/introduction) and an account.
  *
  * A Wallet Client signs and sends transactions, so it carries an `account` and exposes everything
  * that mutates state — `createEntity`, `patchEntity`, `deleteEntity`, `extendEntity`,
- * `changeOwnership` and `mutateEntities` — on top of the read actions a Public Client has.
+ * `changeOwnership` and `executeBatch` — on top of the read actions a Public Client has.
  *
  * @param parameters - Configuration object for the wallet client (chain, transport, account, etc.)
- * @returns A Arkiv Wallet Client. {@link WalletArkivClient}
+ * @returns An Arkiv Wallet Client. {@link WalletArkivClient}
  *
  * @example
  * import { createWalletClient } from "@arkiv-network/sdk"

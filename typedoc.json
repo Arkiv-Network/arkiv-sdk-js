@@ -15,7 +15,15 @@
   "excludeProtected": true,
   "excludeInternal": true,
   "excludeExternals": true,
-  "intentionallyNotExported": ["AtLeastOne", "AllSelected", "Selected", "FetchPage"],
+  "intentionallyNotExported": [
+    "AtLeastOne",
+    "AllSelected",
+    "Selected",
+    "FetchPage",
+    "Value",
+    "Repeat",
+    "TYPE_IDS"
+  ],
   "theme": "default",
   "outputs": [
     {

@@ -23,14 +23,14 @@ export type PublicArkivClient<
 >
 
 /**
- * Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/clients/chains).
+ * Creates a Public Client with a given [Transport](https://viem.sh/docs/clients/intro) configured for a [Chain](https://viem.sh/docs/chains/introduction).
  *
- * - Docs: https://docs.arkiv.network/ts-sdk/clients/public
- *
- * A Public Client is an interface to "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/), [Arkiv JSON-RPC API](https://docs.arkiv.network/json-rpc/), and [Cheesecake JSON-RPC API](https://rpc.cheesecake.db-chain.devnet.gobas.me) methods such as retrieving block numbers, transactions, reading from smart contracts, etc through [Public Actions](/docs/actions/public/introduction).
+ * A Public Client is an interface to the "public" [Ethereum JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/)
+ * and the Arkiv JSON-RPC API — retrieving block numbers and transactions, reading from
+ * contracts, and querying entities — through {@link PublicArkivActions}.
  *
  * @param parameters - Configuration object for the public client (chain, transport, etc.)
- * @returns A Arkiv Public Client. {@link PublicArkivClient}
+ * @returns An Arkiv Public Client. {@link PublicArkivClient}
  *
  * @example
  * import { createPublicClient } from "@arkiv-network/sdk"

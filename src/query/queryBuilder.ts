@@ -5,7 +5,7 @@ import type { Entity } from "../types/entity"
 import type { RpcSelect } from "../types/rpcSchema"
 import { type QueryRequest, runQuery } from "./engine"
 import { InvalidPredicateError } from "./errors"
-import { and, type Expression, eq } from "./expression"
+import { and, type Expression, eq, type or } from "./expression"
 import { QueryResult } from "./queryResult"
 import { type SelectArg, toRpcSelect } from "./selection"
 

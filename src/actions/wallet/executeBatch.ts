@@ -9,15 +9,15 @@ import type { DeleteEntityParameters } from "./deleteEntity"
 import type { ExtendEntityParameters } from "./extendEntity"
 import type { PatchEntityParameters } from "./patchEntity"
 
-const logger = getLogger("actions:wallet:mutate-entities")
+const logger = getLogger("actions:wallet:execute-batch")
 
 /**
- * Parameters for the mutateEntities function.
+ * Parameters for the executeBatch function.
  *
  * At least one operation is required; a batch with nothing in it throws rather than spending gas on
  * an empty transaction.
  */
-export type MutateEntitiesParameters = {
+export type ExecuteBatchParameters = {
   /** The entities to create. */
   creates?: CreateEntityParameters[]
   /** The patches to apply. */
@@ -30,8 +30,8 @@ export type MutateEntitiesParameters = {
   ownershipChanges?: ChangeOwnershipParameters[]
 }
 
-/** Return type for the mutateEntities function. */
-export type MutateEntitiesReturnType = {
+/** Return type for the executeBatch function. */
+export type ExecuteBatchReturnType = {
   /** The transaction hash. */
   txHash: Hash
   /** The keys of the created entities, in batch order. */
@@ -46,14 +46,14 @@ export type MutateEntitiesReturnType = {
   ownershipChanges: Hex[]
 }
 
-export async function mutateEntities(
+export async function executeBatch(
   client: ArkivClient,
-  data: MutateEntitiesParameters,
+  data: ExecuteBatchParameters,
   txParams?: TxParams,
-): Promise<MutateEntitiesReturnType> {
+): Promise<ExecuteBatchReturnType> {
   const { receipt, createdEntityKeys } = await sendArkivTransaction(client, data, txParams)
 
-  logger("Receipt from mutateEntities %o", receipt)
+  logger("Receipt from executeBatch %o", receipt)
 
   return {
     txHash: receipt.transactionHash as Hash,

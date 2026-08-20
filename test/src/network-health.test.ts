@@ -389,7 +389,7 @@ describe(`Network health check (${chain.name})`, () => {
     "a batch applies every one of its operations, or none",
     async () => {
       const tag = `batch-${Date.now()}`
-      const pre = await walletClient.mutateEntities({
+      const pre = await walletClient.executeBatch({
         creates: (["patch", "delete", "extend", "transfer"] as const).map((purpose) => ({
           payload: jsonToPayload({ batch: purpose }),
           contentType: "application/json" as const,
@@ -406,7 +406,7 @@ describe(`Network health check (${chain.name})`, () => {
       const expiryBefore = (await publicClient.getEntity(toExtend)).expiresAt ?? 0n
 
       const newOwner = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Hex
-      const result = await walletClient.mutateEntities({
+      const result = await walletClient.executeBatch({
         creates: [
           {
             payload: jsonToPayload({ batch: "created" }),
@@ -453,7 +453,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       // The second entity points at the first, whose key does not exist yet — which is the whole
       // reason to predict one.
-      const batch = await walletClient.mutateEntities({
+      const batch = await walletClient.executeBatch({
         creates: [
           {
             payload: jsonToPayload({ role: "parent" }),
@@ -496,7 +496,7 @@ describe(`Network health check (${chain.name})`, () => {
     async () => {
       const group = `filter-${Date.now()}`
 
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: [10, 20, 30, 40, 50].map((score) => ({
           payload: jsonToPayload({ group, score }),
           contentType: "application/json" as const,
@@ -600,7 +600,7 @@ describe(`Network health check (${chain.name})`, () => {
     "a large result set pages without losing or repeating anything",
     async () => {
       const group = `page-${Date.now()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: Array.from({ length: 8 }, (_, index) => ({
           payload: jsonToPayload({ group, index }),
           contentType: "application/json" as const,
@@ -814,7 +814,7 @@ describe(`Network health check (${chain.name})`, () => {
     "STARTSWITH matches a string prefix",
     async () => {
       const group = `prefix-${Date.now()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: ["alpha-one", "alpha-two", "beta-one"].map((label) => ({
           payload: jsonToPayload({ group, label }),
           contentType: "application/json" as const,
@@ -843,7 +843,7 @@ describe(`Network health check (${chain.name})`, () => {
     "EXISTS finds attributes by presence, whatever they hold",
     async () => {
       const group = `exists-${Date.now()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: [
           {
             payload: jsonToPayload({ group, has: true }),
@@ -877,7 +877,7 @@ describe(`Network health check (${chain.name})`, () => {
     "TYPEOF tells apart one name written with two types",
     async () => {
       const group = `typeof-${Date.now()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: [
           {
             payload: jsonToPayload({ group, kind: "number" }),
@@ -971,7 +971,7 @@ describe(`Network health check (${chain.name})`, () => {
     "a rejected query says which kind of rejection it was",
     async () => {
       const group = `errors-${Date.now()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: [1, 2].map((index) => ({
           payload: jsonToPayload({ group, index }),
           contentType: "application/json" as const,
@@ -1127,7 +1127,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       // One good operation and one impossible one
       await expect(
-        walletClient.mutateEntities({
+        walletClient.executeBatch({
           patches: [{ entityKey, set: { purpose: "atomic_changed" } }],
           deletes: [{ entityKey: `0x${"88".repeat(32)}` as Hex }],
         }),
@@ -1168,7 +1168,7 @@ describe(`Network health check (${chain.name})`, () => {
           attributes: { purpose: "handler_test" },
           expires: SHORT,
         }
-        const created = await walletClient.mutateEntities({
+        const created = await walletClient.executeBatch({
           creates: [
             { ...base, payload: jsonToPayload({ role: "mutated" }) },
             { ...base, payload: jsonToPayload({ role: "transferred" }) },
@@ -1293,7 +1293,7 @@ describe(`Network health check (${chain.name})`, () => {
       ] as const
 
       const group = `nested-query-${Date.now()}`
-      const created = await walletClient.mutateEntities({
+      const created = await walletClient.executeBatch({
         creates: rows.map((row) => ({
           payload: jsonToPayload({ id: row.id }),
           contentType: "application/json" as const,

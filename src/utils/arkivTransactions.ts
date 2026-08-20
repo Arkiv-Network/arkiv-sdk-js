@@ -21,7 +21,7 @@ import { ARKIV_ADDRESS } from "../consts"
 import { ENTITY_EVENTS_ABI } from "../entity/events"
 import { resolveExpiry } from "../entity/expiry"
 import { encodeCreationFlags } from "../entity/flags"
-import { randomSalt, validateSalt } from "../entity/key"
+import { randomSalt, resolveSalt } from "../entity/key"
 import {
   createOperation,
   deleteOperation,
@@ -118,7 +118,7 @@ export async function sendArkivTransaction(
   const createOps = (creates ?? []).map((item) => {
     validateContentType(item.contentType)
 
-    const salt = item.salt === undefined ? randomSalt() : validateSalt(item.salt)
+    const salt = item.salt === undefined ? randomSalt() : resolveSalt(item.salt)
     const expiry = resolveExpiry(item.expires, expiryContext)
 
     return createOperation({
