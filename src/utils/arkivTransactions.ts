@@ -39,10 +39,18 @@ import { describeEntityRevert } from "./revert"
 
 const logger = getLogger("utils:arkiv-transactions")
 
-// RFC 2045 token chars, lowercase only. Rejects uppercase to prevent text/plain vs Text/Plain ambiguity.
-const MIME_REGEX = /^[a-z][a-z0-9!#$&\-^_]*\/[a-z0-9][a-z0-9!#$&\-^_.+]*$/
-
+/**
+ * Ensure the `content-type` string provided adheres with RFC 2045 (MIME Part One: Format of Internet Message Bodies)
+ * 
+ * RFC 2045 defines the token chars for the `content-type` must be as follow:
+ * - MUST be only lowercase. Rejects uppercase to prevent text/plain vs Text/Plain ambiguity.
+ * - MUST be of format `type/subtype; parameter` (parameter being optional)
+ * 
+ * @param contentType e.g: `application/json`, `text/plain`
+*/
 function validateContentType(contentType: string): void {
+  const MIME_REGEX = /^[a-z][a-z0-9!#$&\-^_]*\/[a-z0-9][a-z0-9!#$&\-^_.+]*$/
+
   if (!MIME_REGEX.test(contentType)) {
     throw new InvalidContentTypeError(contentType)
   }
