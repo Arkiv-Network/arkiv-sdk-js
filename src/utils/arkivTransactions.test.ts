@@ -488,6 +488,37 @@ describe("attribute typing through the write path", () => {
     ).rejects.toThrow(/Invalid content type/)
   })
 
+  it("accepts MIME parameters with token and quoted-string values", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [
+        { ...validCreate, contentType: "text/plain; charset=utf-8" },
+        {
+          ...validCreate,
+          contentType: "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxk",
+        },
+        { ...validCreate, contentType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"' },
+        { ...validCreate, contentType: 'form-data; name="myFile"; filename="foo.txt"' },
+      ],
+    })
+    expect(writeContract).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects malformed MIME parameters", async () => {
+    const { client, writeContract } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        creates: [{ ...validCreate, contentType: "text/plain; charset" }],
+      }),
+    ).rejects.toThrow(/Invalid content type/)
+    await expect(
+      sendArkivTransaction(client, {
+        creates: [{ ...validCreate, contentType: 'text/plain; charset="utf-8' }],
+      }),
+    ).rejects.toThrow(/Invalid content type/)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
   it("sorts attributes ascending by their bytes32 name", async () => {
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {

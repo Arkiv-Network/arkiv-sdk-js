@@ -40,20 +40,27 @@ import { describeEntityRevert } from "./revert"
 const logger = getLogger("utils:arkiv-transactions")
 
 /**
- * Ensure the `content-type` string provided adheres with RFC 2045 (MIME Part One: Format of Internet Message Bodies)
+ * Ensure the `content-type` string provided adheres to RFC 2045
+ * (MIME Part One: Format of Internet Message Bodies).
  *
- * RFC 2045 defines the token chars for the `content-type` must be as follow:
- * - MUST be only lowercase. Rejects uppercase to prevent text/plain vs Text/Plain ambiguity.
- * - MUST be of format `type/subtype; parameter` (parameter being optional)
+ * The media type and subtype must be lowercase to prevent `text/plain` vs
+ * `Text/Plain` ambiguity. Optional parameters may use token or quoted-string
+ * values and preserve their casing.
  *
- * @param contentType e.g: `application/json`, `text/plain`
+ * @param contentType e.g. `application/json`, `text/plain; charset=utf-8`
  */
 function validateContentType(contentType: string): void {
-  const MIME_REGEX = /^[a-z][a-z0-9!#$&\-^_]*\/[a-z0-9][a-z0-9!#$&\-^_.+]*$/
+  const token = String.raw`[!#$%&'*+\-.^_\x60|~0-9A-Za-z]+`
+  const lowercaseToken = String.raw`[!#$%&'*+\-.^_\x60|~0-9a-z]+`
+  const quotedString = String.raw`"(?:[\t !#-\[\]-~]|\\[\t -~])*"`
 
-  if (!MIME_REGEX.test(contentType)) {
+  // parameter part MUST be with an `=` sign
+  const parameter = String.raw`;[ \t]*${token}[ \t]*=[ \t]*(?:${token}|${quotedString})`
+  const mimePattern = new RegExp(`^${lowercaseToken}/${lowercaseToken}(?:${parameter})*$`)
+
+  if (!mimePattern.test(contentType)) {
     throw new InvalidContentTypeError(contentType)
-  }
+  } 
 }
 
 export const ENTITY_ERRORS_ABI = parseAbi([
