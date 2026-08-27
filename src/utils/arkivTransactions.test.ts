@@ -499,6 +499,7 @@ describe("attribute typing through the write path", () => {
         },
         { ...validCreate, contentType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"' },
         { ...validCreate, contentType: 'multipart/form-data; name="myFile"; filename="foo.txt"' },
+        { ...validCreate, contentType: "text/plain; x={foo}" },
       ],
     })
     expect(writeContract).toHaveBeenCalledTimes(1)
@@ -521,6 +522,7 @@ describe("attribute typing through the write path", () => {
           { ...validCreate, contentType: "text; charset=" },
           // do not allow spaces
           { ...validCreate, contentType: "text/plain; charset=utf-8     " },
+          // HERE
         ],
       }),
     ).rejects.toThrow(/Invalid content type/)

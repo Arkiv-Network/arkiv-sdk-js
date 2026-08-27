@@ -41,8 +41,8 @@ const logger = getLogger("utils:arkiv-transactions")
 
 // Define token strings and regex at module level to compile once,
 // and avoid recompiling the regex on every call to the function
-const token = String.raw`[!#$%&'*+\-.^_\x60|~0-9A-Za-z]+`
-const lowercaseToken = String.raw`[!#$%&'*+\-.^_\x60|~0-9a-z]+`
+const token = String.raw`[!#$%&'*+\-.^_\x60{|}~0-9A-Za-z]+`
+const lowercaseToken = String.raw`[!#$%&'*+\-.^_\x60{|}~0-9a-z]+`
 const quotedString = String.raw`"(?:[\t !#-\[\]-~]|\\[\t -~])*"`
 // parameter part MUST be with an `=` sign
 const parameter = String.raw`;[ \t]*${token}[ \t]*=[ \t]*(?:${token}|${quotedString})`
