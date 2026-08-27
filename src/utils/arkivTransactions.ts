@@ -168,8 +168,10 @@ export async function sendArkivTransaction(
 
   logger("Sending execute with %d operations %o", operations.length, operations)
 
+  let txHash: Hex | undefined
+
   try {
-    const txHash = await walletClient.writeContract({
+    txHash = await walletClient.writeContract({
       address: ARKIV_ADDRESS,
       abi: EXECUTE_ABI,
       functionName: "execute",
@@ -201,10 +203,12 @@ export async function sendArkivTransaction(
           "No reason provided by backend."
         throw new EntityMutationError(
           `Transaction ${receipt.transactionHash} reverted. Reason: ${reason}`,
+          { cause: err, txHash: receipt.transactionHash },
         )
       }
       throw new EntityMutationError(
         `Transaction ${receipt.transactionHash} reverted. No reason provided by backend.`,
+        { txHash: receipt.transactionHash },
       )
     }
 
@@ -218,7 +222,7 @@ export async function sendArkivTransaction(
   } catch (error) {
     const described = error instanceof EntityMutationError ? undefined : describeEntityRevert(error)
     if (described !== undefined) {
-      throw new EntityMutationError(`Transaction failed: ${described}`, { cause: error })
+      throw new EntityMutationError(`Transaction failed: ${described}`, { cause: error, txHash })
     }
 
     let message = "Transaction failed"
@@ -237,7 +241,7 @@ export async function sendArkivTransaction(
       message += `: ${error.message}`
     }
 
-    throw new EntityMutationError(message, { cause: error })
+    throw new EntityMutationError(message, { cause: error, txHash })
   }
 }
 
@@ -296,5 +300,6 @@ function assertCount(receipt: TransactionReceipt, what: string, got: number, wan
     `Transaction ${receipt.transactionHash} succeeded — do not retry it — but emitted ${got} ` +
       `${what} event(s) for ${want} ${what} operation(s). The batch was applied; the SDK cannot ` +
       `say which entity each operation produced, so read them back to find them.`,
+    { txHash: receipt.transactionHash },
   )
 }
