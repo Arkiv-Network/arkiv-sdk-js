@@ -62,6 +62,7 @@ export async function extendEntity(
   if (expiresAt === undefined) {
     throw new EntityMutationError(
       `Transaction ${receipt.transactionHash} succeeded, but the receipt did not carry the expected entity expiry.`,
+      { txHash: receipt.transactionHash },
     )
   }
 

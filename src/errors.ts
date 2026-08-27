@@ -1,7 +1,12 @@
+import type { Hex } from "viem"
+
 export class EntityMutationError extends Error {
-  constructor(message: string, options?: { cause?: unknown }) {
-    super(message, options)
+  readonly txHash: Hex | undefined
+
+  constructor(message: string, options?: { cause?: unknown; txHash?: Hex | undefined }) {
+    super(message, { cause: options?.cause })
     this.name = "EntityMutationError"
+    this.txHash = options?.txHash
   }
 }
 export class NoMoreResultsError extends Error {
