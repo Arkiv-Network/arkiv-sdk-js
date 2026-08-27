@@ -39,6 +39,16 @@ import { describeEntityRevert } from "./revert"
 
 const logger = getLogger("utils:arkiv-transactions")
 
+// Define token strings and regex at module level to compile once,
+// and avoid recompiling the regex on every call to the function
+const token = String.raw`[!#$%&'*+\-.^_\x60|~0-9A-Za-z]+`
+const lowercaseToken = String.raw`[!#$%&'*+\-.^_\x60|~0-9a-z]+`
+const quotedString = String.raw`"(?:[\t !#-\[\]-~]|\\[\t -~])*"`
+// parameter part MUST be with an `=` sign
+const parameter = String.raw`;[ \t]*${token}[ \t]*=[ \t]*(?:${token}|${quotedString})`
+
+const CONTENT_TYPE_MIME_REGEX = new RegExp(`^${lowercaseToken}/${lowercaseToken}(?:${parameter})*$`)
+
 /**
  * Ensure the `content-type` string provided adheres to RFC 2045
  * (MIME Part One: Format of Internet Message Bodies).
@@ -50,17 +60,9 @@ const logger = getLogger("utils:arkiv-transactions")
  * @param contentType e.g. `application/json`, `text/plain; charset=utf-8`
  */
 function validateContentType(contentType: string): void {
-  const token = String.raw`[!#$%&'*+\-.^_\x60|~0-9A-Za-z]+`
-  const lowercaseToken = String.raw`[!#$%&'*+\-.^_\x60|~0-9a-z]+`
-  const quotedString = String.raw`"(?:[\t !#-\[\]-~]|\\[\t -~])*"`
-
-  // parameter part MUST be with an `=` sign
-  const parameter = String.raw`;[ \t]*${token}[ \t]*=[ \t]*(?:${token}|${quotedString})`
-  const mimePattern = new RegExp(`^${lowercaseToken}/${lowercaseToken}(?:${parameter})*$`)
-
-  if (!mimePattern.test(contentType)) {
+  if (!CONTENT_TYPE_MIME_REGEX.test(contentType)) {
     throw new InvalidContentTypeError(contentType)
-  } 
+  }
 }
 
 export const ENTITY_ERRORS_ABI = parseAbi([

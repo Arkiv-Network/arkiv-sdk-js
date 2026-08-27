@@ -498,7 +498,7 @@ describe("attribute typing through the write path", () => {
           contentType: "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxk",
         },
         { ...validCreate, contentType: 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"' },
-        { ...validCreate, contentType: 'form-data; name="myFile"; filename="foo.txt"' },
+        { ...validCreate, contentType: 'multipart/form-data; name="myFile"; filename="foo.txt"' },
       ],
     })
     expect(writeContract).toHaveBeenCalledTimes(1)
@@ -508,7 +508,20 @@ describe("attribute typing through the write path", () => {
     const { client, writeContract } = makeClient()
     await expect(
       sendArkivTransaction(client, {
-        creates: [{ ...validCreate, contentType: "text/plain; charset" }],
+        creates: [
+          // invalid optional parameter (no `=`, and no `value`)
+          { ...validCreate, contentType: "text/plain; charset" },
+          //  invalid optional parameter (no `value` after `=`)
+          { ...validCreate, contentType: "text/plain; charset=" },
+          // missing `type/`
+          { ...validCreate, contentType: 'form-data; name="myFile"; filename="foo.txt"' },
+          // missing `type` before `/`
+          { ...validCreate, contentType: '/form-data; name="myFile"; filename="foo.txt"' },
+          // missing subtype
+          { ...validCreate, contentType: "text; charset=" },
+          // do not allow spaces
+          { ...validCreate, contentType: "text/plain; charset=utf-8     " },
+        ],
       }),
     ).rejects.toThrow(/Invalid content type/)
     await expect(
