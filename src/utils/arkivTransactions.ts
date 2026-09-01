@@ -140,10 +140,12 @@ export async function sendArkivTransaction(
           "No reason provided by backend."
         throw new EntityMutationError(
           `Transaction ${receipt.transactionHash} reverted. Reason: ${reason}`,
+          { cause: err, txHash: receipt.transactionHash },
         )
       }
       throw new EntityMutationError(
         `Transaction ${receipt.transactionHash} reverted. No reason provided by backend.`,
+        { txHash: receipt.transactionHash },
       )
     }
 
@@ -155,7 +157,7 @@ export async function sendArkivTransaction(
       }),
     }
   } catch (error) {
-    throw asEntityMutationError(error)
+    throw asEntityMutationError(error, txHash)
   }
 }
 
@@ -163,13 +165,16 @@ export async function sendArkivTransaction(
  * Wraps whatever a write step threw into an {@link EntityMutationError} — engine terms when the
  * revert data decodes, the node's own message otherwise. An {@link EntityMutationError} passes
  * through unchanged, so wrapped steps compose without double-wrapping.
+ *
+ * `txHash` is the transaction the failure belongs to, when the step got far enough to have one —
+ * a send that never returned a hash has none to report.
  */
-function asEntityMutationError(error: unknown): EntityMutationError {
+function asEntityMutationError(error: unknown, txHash?: Hash): EntityMutationError {
   if (error instanceof EntityMutationError) return error
 
   const described = describeEntityRevert(error)
   if (described !== undefined) {
-    return new EntityMutationError(`Transaction failed: ${described}`, { cause: error })
+    return new EntityMutationError(`Transaction failed: ${described}`, { cause: error, txHash })
   }
 
   let message = "Transaction failed"
@@ -186,7 +191,7 @@ function asEntityMutationError(error: unknown): EntityMutationError {
     message += `: ${error.message}`
   }
 
-  return new EntityMutationError(message, { cause: error })
+  return new EntityMutationError(message, { cause: error, txHash })
 }
 
 /**
@@ -229,6 +234,7 @@ function assertCount(receipt: TransactionReceipt, what: string, got: number, wan
     `Transaction ${receipt.transactionHash} succeeded — do not retry it — but emitted ${got} ` +
       `${what} event(s) for ${want} ${what} operation(s). The batch was applied; the SDK cannot ` +
       `say which entity each operation produced, so read them back to find them.`,
+    { txHash: receipt.transactionHash },
   )
 }
 

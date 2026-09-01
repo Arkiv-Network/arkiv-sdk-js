@@ -126,6 +126,7 @@ export async function createEntity(
   if (entityKey === undefined || expiresAt === undefined) {
     throw new EntityMutationError(
       `Transaction ${receipt.transactionHash} succeeded, but the receipt did not carry the expected entity key or expiry.`,
+      { txHash: receipt.transactionHash },
     )
   }
 
