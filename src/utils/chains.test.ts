@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test"
-import { cheesecake, localhost } from "../chains"
+import { localhost, tiramisu } from "../chains"
 import { chainFromName } from "./chains"
 
 describe("chainFromName", () => {
   describe("valid chain names", () => {
-    test("returns cheesecake chain for 'cheesecake'", () => {
-      const chain = chainFromName("cheesecake")
-      expect(chain).toBe(cheesecake)
-      expect(chain.id).toBe(7733102)
-      expect(chain.name).toBe("Cheesecake")
+    test("returns tiramisu chain for 'tiramisu'", () => {
+      const chain = chainFromName("tiramisu")
+      expect(chain).toBe(tiramisu)
+      expect(chain.id).toBe(7738577)
+      expect(chain.name).toBe("Tiramisu")
     })
 
     test("returns localhost chain for 'localhost'", () => {
@@ -21,14 +21,14 @@ describe("chainFromName", () => {
 
   describe("case insensitivity", () => {
     test("handles uppercase chain names", () => {
-      expect(chainFromName("CHEESECAKE")).toBe(cheesecake)
+      expect(chainFromName("TIRAMISU")).toBe(tiramisu)
       expect(chainFromName("LOCALHOST")).toBe(localhost)
     })
 
     test("handles mixed case chain names", () => {
-      expect(chainFromName("Cheesecake")).toBe(cheesecake)
+      expect(chainFromName("Tiramisu")).toBe(tiramisu)
       expect(chainFromName("Localhost")).toBe(localhost)
-      expect(chainFromName("cHeEsEcAkE")).toBe(cheesecake)
+      expect(chainFromName("tIrAmIsU")).toBe(tiramisu)
     })
   })
 
@@ -42,12 +42,12 @@ describe("chainFromName", () => {
     })
 
     test("throws error for chain name with whitespace", () => {
-      expect(() => chainFromName("cheesecake ")).toThrow("Unknown chain: cheesecake ")
-      expect(() => chainFromName(" cheesecake")).toThrow("Unknown chain:  cheesecake")
+      expect(() => chainFromName("tiramisu ")).toThrow("Unknown chain: tiramisu ")
+      expect(() => chainFromName(" tiramisu")).toThrow("Unknown chain:  tiramisu")
     })
 
     test("throws error for similar but incorrect chain names", () => {
-      expect(() => chainFromName("cheesecakee")).toThrow("Unknown chain: cheesecakee")
+      expect(() => chainFromName("tiramisue")).toThrow("Unknown chain: tiramisue")
       expect(() => chainFromName("cheesecak")).toThrow("Unknown chain: cheesecak")
       expect(() => chainFromName("mendoza")).toThrow("Unknown chain: mendoza")
       expect(() => chainFromName("marketplace")).toThrow("Unknown chain: marketplace")
@@ -63,7 +63,7 @@ describe("chainFromName", () => {
 
   describe("chain properties", () => {
     test("returned chain has required viem Chain properties", () => {
-      const chain = chainFromName("cheesecake")
+      const chain = chainFromName("tiramisu")
 
       expect(chain).toHaveProperty("id")
       expect(chain).toHaveProperty("name")
@@ -75,7 +75,7 @@ describe("chainFromName", () => {
     })
 
     test("returned chain has rpcUrls configured", () => {
-      const chain = chainFromName("cheesecake")
+      const chain = chainFromName("tiramisu")
 
       expect(chain.rpcUrls).toBeDefined()
       expect(chain.rpcUrls.default).toBeDefined()

@@ -1,19 +1,19 @@
 import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
 import { dec, i32 } from "@arkiv-network/sdk/attr"
-import { cheesecake } from "@arkiv-network/sdk/chains"
+import { tiramisu } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import { http } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: cheesecake, // cheesecake is the Arkiv testnet
+  chain: tiramisu, // tiramisu is the Arkiv testnet
   transport: http(),
 })
 
 // Create a wallet client with an account
 const client = createWalletClient({
-  chain: cheesecake,
+  chain: tiramisu,
   transport: http(),
   account: privateKeyToAccount("0x..."), // Replace with your private key
 })
