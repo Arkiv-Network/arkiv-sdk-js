@@ -34,11 +34,11 @@ export type PublicArkivClient<
  *
  * @example
  * import { createPublicClient } from "@arkiv-network/sdk"
- * import { cheesecake } from "@arkiv-network/sdk/chains"
+ * import { tiramisu } from "@arkiv-network/sdk/chains"
  * import { http } from "viem"
  *
  * const client = createPublicClient({
- *   chain: cheesecake,
+ *   chain: tiramisu,
  *   transport: http(),
  * })
  */

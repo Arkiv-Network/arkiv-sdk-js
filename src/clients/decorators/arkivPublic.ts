@@ -50,11 +50,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { cheesecake } from "@arkiv-network/sdk/chains"
+   * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: cheesecake,
+   *   chain: tiramisu,
    *   transport: http(),
    * })
    * const entity = await client.getEntity(entityKey)
@@ -84,12 +84,12 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { cheesecake } from "@arkiv-network/sdk/chains"
+   * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { eq } from "@arkiv-network/sdk/query"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: cheesecake,
+   *   chain: tiramisu,
    *   transport: http(),
    * })
    * // select everything
@@ -146,13 +146,13 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { cheesecake } from "@arkiv-network/sdk/chains"
+   * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { and, eq, gte } from "@arkiv-network/sdk/query"
    * import { i32 } from "@arkiv-network/sdk/attr"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: cheesecake,
+   *   chain: tiramisu,
    *   transport: http(),
    * })
    * const page = await client.query(and(eq("category", "docs"), gte("level", i32(10))), {
@@ -172,11 +172,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { cheesecake } from "@arkiv-network/sdk/chains"
+   * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: cheesecake,
+   *   chain: tiramisu,
    *   transport: http(),
    * })
    * const entityCount = await client.getEntityCount()
@@ -195,11 +195,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { cheesecake } from "@arkiv-network/sdk/chains"
+   * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: cheesecake,
+   *   chain: tiramisu,
    *   transport: http(),
    * })
    * const nonce = await client.getEntityNonce("0xabc…")
@@ -255,11 +255,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { cheesecake } from "@arkiv-network/sdk/chains"
+   * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: cheesecake,
+   *   chain: tiramisu,
    *   transport: http(),
    * })
    * const blockTiming = await client.getBlockTiming()
@@ -284,11 +284,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { cheesecake } from "@arkiv-network/sdk/chains"
+   * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: cheesecake,
+   *   chain: tiramisu,
    *   transport: http(),
    * })
    * const unwatch = client.watchEntityEvents({

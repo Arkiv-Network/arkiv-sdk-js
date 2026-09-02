@@ -1,11 +1,11 @@
 import { createPublicClient } from "@arkiv-network/sdk"
-import { cheesecake } from "@arkiv-network/sdk/chains"
+import { tiramisu } from "@arkiv-network/sdk/chains"
 import { eq } from "@arkiv-network/sdk/query"
 import { http } from "viem"
 
 // Create a public client
 const publicClient = createPublicClient({
-  chain: cheesecake, // cheesecake is the Arkiv testnet
+  chain: tiramisu, // tiramisu is the Arkiv testnet
   transport: http(),
 })
 

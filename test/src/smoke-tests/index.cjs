@@ -1,9 +1,9 @@
 const { createPublicClient } = require("@arkiv-network/sdk")
-const { cheesecake } = require("@arkiv-network/sdk/chains")
+const { tiramisu } = require("@arkiv-network/sdk/chains")
 const { http } = require("viem")
 
 const client = createPublicClient({
-  chain: cheesecake,
+  chain: tiramisu,
   transport: http(),
 })
 
