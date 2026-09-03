@@ -39,11 +39,28 @@ import { describeEntityRevert } from "./revert"
 
 const logger = getLogger("utils:arkiv-transactions")
 
-// RFC 2045 token chars, lowercase only. Rejects uppercase to prevent text/plain vs Text/Plain ambiguity.
-const MIME_REGEX = /^[a-z][a-z0-9!#$&\-^_]*\/[a-z0-9][a-z0-9!#$&\-^_.+]*$/
+// Define token strings and regex at module level to compile once,
+// and avoid recompiling the regex on every call to the function
+const token = String.raw`[!#$%&'*+\-.^_\x60{|}~0-9A-Za-z]+`
+const lowercaseToken = String.raw`[!#$%&'*+\-.^_\x60{|}~0-9a-z]+`
+const quotedString = String.raw`"(?:[\t !#-\[\]-~]|\\[\t -~])*"`
+// parameter part MUST be with an `=` sign
+const parameter = String.raw`;[ \t]*${token}[ \t]*=[ \t]*(?:${token}|${quotedString})`
 
+const CONTENT_TYPE_MIME_REGEX = new RegExp(`^${lowercaseToken}/${lowercaseToken}(?:${parameter})*$`)
+
+/**
+ * Ensure the `content-type` string provided adheres to RFC 2045
+ * (MIME Part One: Format of Internet Message Bodies).
+ *
+ * The media type and subtype must be lowercase to prevent `text/plain` vs
+ * `Text/Plain` ambiguity. Optional parameters may use token or quoted-string
+ * values and preserve their casing.
+ *
+ * @param contentType e.g. `application/json`, `text/plain; charset=utf-8`
+ */
 function validateContentType(contentType: string): void {
-  if (!MIME_REGEX.test(contentType)) {
+  if (!CONTENT_TYPE_MIME_REGEX.test(contentType)) {
     throw new InvalidContentTypeError(contentType)
   }
 }

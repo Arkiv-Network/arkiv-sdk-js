@@ -138,7 +138,7 @@ export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedE
 }
 
 /**
- * A duration in seconds as a whole number of blocks.
+ * Convert a duration from seconds to a whole number of blocks.
  *
  * Arkiv counts lifetimes in blocks, so a duration that is not a whole number of them does not
  * describe anything the chain can store. Rather than silently round a caller's `3` up to two blocks
