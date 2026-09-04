@@ -18,6 +18,7 @@ import type { Expression } from "../../query/expression"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type { EntitySelection, FullEntity, ProjectedEntity, SelectArg } from "../../query/selection"
 import type { Entity } from "../../types/entity"
+import { type PublicAdvancedActions, publicAdvancedActions } from "./arkivAdvanced"
 
 export type PublicArkivActions<
   transport extends Transport = Transport,
@@ -298,6 +299,16 @@ export type PublicArkivActions<
    * unwatch() // stop watching
    */
   watchEntityEvents: (parameters: WatchEntityEventsParameters) => () => void
+
+  /**
+   * The read-only half of the advanced path: check on a transaction and decode its result with at
+   * most one RPC call per action — so a process that holds nothing but a transaction hash can
+   * follow it without a wallet. {@link PublicAdvancedActions}
+   *
+   * @example
+   * const { status } = await client.advanced.pingTransaction(txHash) // 1 eth_getTransactionReceipt
+   */
+  advanced: PublicAdvancedActions
 }
 
 export function publicArkivActions<
@@ -321,5 +332,6 @@ export function publicArkivActions<
     ) => predictEntityKeys(client, parameters),
     watchEntityEvents: (parameters: WatchEntityEventsParameters) =>
       watchEntityEvents(client, parameters),
+    advanced: publicAdvancedActions(client),
   }
 }

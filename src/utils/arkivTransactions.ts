@@ -3,6 +3,7 @@ import {
   ContractFunctionExecutionError,
   ContractFunctionRevertedError,
   decodeEventLog,
+  type Hash,
   type Hex,
   parseAbi,
   TransactionExecutionError,
@@ -19,7 +20,7 @@ import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS } from "../consts"
 import { ENTITY_EVENTS_ABI } from "../entity/events"
-import { resolveExpiry } from "../entity/expiry"
+import { type Expiry, type ExpiryContext, resolveExpiry } from "../entity/expiry"
 import { encodeCreationFlags } from "../entity/flags"
 import { randomSalt, resolveSalt } from "../entity/key"
 import {
@@ -93,94 +94,30 @@ export type SendArkivTransactionResult = {
 
 export async function sendArkivTransaction(
   client: ArkivClient,
-  ops: {
-    creates?: CreateEntityParameters[]
-    patches?: PatchEntityParameters[]
-    deletes?: DeleteEntityParameters[]
-    extensions?: ExtendEntityParameters[]
-    ownershipChanges?: ChangeOwnershipParameters[]
-  },
+  ops: EntityMutationOps,
   txParams?: TxParams,
 ): Promise<SendArkivTransactionResult> {
   if (!client.account) throw new Error("Account required")
   if (!client.chain) throw new Error("Chain required")
   const walletClient = client as WalletArkivClient
 
-  const { creates, patches, deletes, extensions, ownershipChanges } = ops
+  const { creates, extensions } = ops
 
   // The block height, to resolve any relative expiry — which both creates and extensions carry.
-  // Skipped entirely for a batch with neither.
+  // Skipped entirely for a batch with neither. Deliberately fetched even when every expiry is
+  // absolute (where `mutationNeedsBlockNumber` would say no): the head is what makes the local
+  // dead-on-arrival check in `resolveExpiry` work, and the everyday path buys that check — the
+  // advanced path is where both are traded away for the saved call.
   const currentBlock =
     creates?.length || extensions?.length ? await walletClient.getBlockNumber() : 0n
 
-  const expiryContext = { currentBlock }
-
-  const createOps = (creates ?? []).map((item) => {
-    validateContentType(item.contentType)
-
-    const salt = item.salt === undefined ? randomSalt() : resolveSalt(item.salt)
-    const expiry = resolveExpiry(item.expires, expiryContext)
-
-    return createOperation({
-      salt,
-      expiry,
-      creationFlags: encodeCreationFlags(item.flags),
-      attributes: encodeAttributes(item.attributes, {
-        payload: item.payload,
-        contentType: item.contentType,
-      }),
-    })
-  })
-
-  const patchOps = (patches ?? []).map((item) => {
-    if (item.contentType !== undefined) validateContentType(item.contentType)
-    const mutations = encodeMutations(item)
-    if (mutations.length === 0) {
-      throw new EmptyPatchError(item.entityKey)
-    }
-    return patchOperation({ entityKey: item.entityKey, mutations })
-  })
-
-  // An extension resolves its expiry exactly as a create does — the engine applies the same
-  // `max(expiresAt, currentBlock + minLifetime)` to both — so the same bounds are checked here
-  // rather than left to a revert.
-  const extendOps = (extensions ?? []).map((item) => {
-    const expiry = resolveExpiry(item.expires, expiryContext)
-    return extendExpiryOperation({ entityKey: item.entityKey, expiry })
-  })
-
-  const operations: Operation[] = [
-    ...createOps,
-    ...patchOps,
-    ...(deletes ?? []).map((item) => deleteOperation({ entityKey: item.entityKey })),
-    ...extendOps,
-    ...(ownershipChanges ?? []).map((item) =>
-      transferOwnershipOperation({
-        entityKey: item.entityKey,
-        newOwner: item.newOwner as Address,
-      }),
-    ),
-  ]
-
-  if (operations.length === 0) {
-    throw new Error("No operations to perform")
-  }
+  const operations = buildEntityOperations(ops, { currentBlock })
 
   logger("Sending execute with %d operations %o", operations.length, operations)
 
-  let txHash: Hex | undefined
+  const txHash = await submitMutation(client, operations, txParams)
 
   try {
-    txHash = await walletClient.writeContract({
-      address: ARKIV_ADDRESS,
-      abi: EXECUTE_ABI,
-      functionName: "execute",
-      args: [operations],
-      account: client.account,
-      chain: client.chain,
-      ...txParams,
-    })
-
     const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash })
     logger("Tx receipt %o", receipt)
 
@@ -215,34 +152,46 @@ export async function sendArkivTransaction(
     return {
       receipt,
       ...readAppliedOperations(receipt, {
-        creates: createOps.length,
-        extensions: extendOps.length,
+        creates: creates?.length ?? 0,
+        extensions: extensions?.length ?? 0,
       }),
     }
   } catch (error) {
-    const described = error instanceof EntityMutationError ? undefined : describeEntityRevert(error)
-    if (described !== undefined) {
-      throw new EntityMutationError(`Transaction failed: ${described}`, { cause: error, txHash })
-    }
-
-    let message = "Transaction failed"
-    if (error instanceof TransactionExecutionError) {
-      message += `: ${error.details}`
-    } else if (error instanceof ContractFunctionExecutionError) {
-      logger("Contract function execution error data:", error.shortMessage)
-      if (error.cause instanceof ContractFunctionRevertedError) {
-        message += `: ${error.cause.message}`
-      } else {
-        message += ": Execution error without revert data"
-      }
-    } else if (error instanceof EntityMutationError) {
-      throw error
-    } else if (error instanceof Error) {
-      message += `: ${error.message}`
-    }
-
-    throw new EntityMutationError(message, { cause: error, txHash })
+    throw asEntityMutationError(error, txHash)
   }
+}
+
+/**
+ * Wraps whatever a write step threw into an {@link EntityMutationError} — engine terms when the
+ * revert data decodes, the node's own message otherwise. An {@link EntityMutationError} passes
+ * through unchanged, so wrapped steps compose without double-wrapping.
+ *
+ * `txHash` is the transaction the failure belongs to, when the step got far enough to have one —
+ * a send that never returned a hash has none to report.
+ */
+function asEntityMutationError(error: unknown, txHash?: Hash): EntityMutationError {
+  if (error instanceof EntityMutationError) return error
+
+  const described = describeEntityRevert(error)
+  if (described !== undefined) {
+    return new EntityMutationError(`Transaction failed: ${described}`, { cause: error, txHash })
+  }
+
+  let message = "Transaction failed"
+  if (error instanceof TransactionExecutionError) {
+    message += `: ${error.details}`
+  } else if (error instanceof ContractFunctionExecutionError) {
+    logger("Contract function execution error data:", error.shortMessage)
+    if (error.cause instanceof ContractFunctionRevertedError) {
+      message += `: ${error.cause.message}`
+    } else {
+      message += ": Execution error without revert data"
+    }
+  } else if (error instanceof Error) {
+    message += `: ${error.message}`
+  }
+
+  return new EntityMutationError(message, { cause: error, txHash })
 }
 
 /**
@@ -252,26 +201,11 @@ function readAppliedOperations(
   receipt: TransactionReceipt,
   expected: { creates: number; extensions: number },
 ): Omit<SendArkivTransactionResult, "receipt"> {
-  const createdEntityKeys: Hex[] = []
-  const createdExpiries: bigint[] = []
-  const extendedExpiries: bigint[] = []
+  const events = collectMutationEvents(receipt.logs)
 
-  // `?? []` so a receipt without logs is reported by the count check below, which explains what is
-  // missing and that the write succeeded, rather than as a TypeError from this loop.
-  for (const log of receipt.logs ?? []) {
-    // Only the operation address emits these, and a batch's transaction can carry logs from
-    // anything else it touched.
-    if (log.address.toLowerCase() !== ARKIV_ADDRESS.toLowerCase()) continue
-    const decoded = decodeEntityLog(log)
-    if (decoded === undefined) continue
-
-    if (decoded.eventName === "EntityCreated") {
-      createdEntityKeys.push(decoded.args.entityKey)
-      createdExpiries.push(decoded.args.expiresAt)
-    } else if (decoded.eventName === "ExpiryExtended") {
-      extendedExpiries.push(decoded.args.expiresAt)
-    }
-  }
+  const createdEntityKeys = events.created.map((e) => e.entityKey)
+  const createdExpiries = events.created.map((e) => e.expiresAt)
+  const extendedExpiries = events.extended.map((e) => e.expiresAt)
 
   // Operations apply in batch order and emit one event each, and creates lead the batch — so these
   // arrive already aligned with the parameters they came from. A count that disagrees means that
@@ -302,4 +236,211 @@ function assertCount(receipt: TransactionReceipt, what: string, got: number, wan
       `say which entity each operation produced, so read them back to find them.`,
     { txHash: receipt.transactionHash },
   )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+// The seams the advanced path is built on.
+//
+// `sendArkivTransaction` above is the everyday path: encode, send, wait, decode, diagnose. These
+// are the same steps as separate pieces, so `actions/advanced` can spend exactly the RPC calls a
+// caller asks for and no more — without a second copy of the encoding or the event decoding.
+// ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The five kinds of entity operation one Arkiv transaction can batch. */
+export type EntityMutationOps = {
+  /** The entities to create. */
+  creates?: CreateEntityParameters[]
+  /** The patches to apply. */
+  patches?: PatchEntityParameters[]
+  /** The entities to delete. */
+  deletes?: DeleteEntityParameters[]
+  /** The expiries to set. */
+  extensions?: ExtendEntityParameters[]
+  /** The ownership transfers to perform. */
+  ownershipChanges?: ChangeOwnershipParameters[]
+}
+
+/**
+ * Whether encoding the batch actually requires the chain head.
+ *
+ * Only a relative lifetime (`minLifetime > 0`) or a wall-clock deadline (a `Date`) is measured
+ * from the current block. A purely absolute `atBlock(n)` expiry encodes the same bytes whatever
+ * the head is, so a batch of those — or one with no expiries at all — needs no `eth_blockNumber`.
+ */
+export function mutationNeedsBlockNumber(ops: EntityMutationOps): boolean {
+  return [...(ops.creates ?? []), ...(ops.extensions ?? [])].some((item) => {
+    const expires = item.expires as Expiry | undefined
+    // Malformed expiries are rejected by buildEntityOperations without needing the head.
+    if (expires === undefined || typeof expires.minLifetime !== "bigint") return false
+    return expires.minLifetime !== 0n || expires.expiresAt instanceof Date
+  })
+}
+
+/**
+ * Encodes a batch into the `execute` operations, in the order the engine applies them: creates,
+ * patches, deletes, extensions, ownership transfers.
+ *
+ * Pure — every check here is local (content types, salts, expiry bounds, non-empty patches and a
+ * non-empty batch), so the only chain input is `context.currentBlock`. Callers that carry no
+ * relative expiry (see {@link mutationNeedsBlockNumber}) can pass `0n`, which disables the
+ * dead-on-arrival pre-check and leaves that to the engine.
+ */
+export function buildEntityOperations(ops: EntityMutationOps, context: ExpiryContext): Operation[] {
+  const { creates, patches, deletes, extensions, ownershipChanges } = ops
+
+  const createOps = (creates ?? []).map((item) => {
+    validateContentType(item.contentType)
+
+    const salt = item.salt === undefined ? randomSalt() : resolveSalt(item.salt)
+    const expiry = resolveExpiry(item.expires, context)
+
+    return createOperation({
+      salt,
+      expiry,
+      creationFlags: encodeCreationFlags(item.flags),
+      attributes: encodeAttributes(item.attributes, {
+        payload: item.payload,
+        contentType: item.contentType,
+      }),
+    })
+  })
+
+  const patchOps = (patches ?? []).map((item) => {
+    if (item.contentType !== undefined) validateContentType(item.contentType)
+    const mutations = encodeMutations(item)
+    if (mutations.length === 0) {
+      throw new EmptyPatchError(item.entityKey)
+    }
+    return patchOperation({ entityKey: item.entityKey, mutations })
+  })
+
+  // An extension resolves its expiry exactly as a create does — the engine applies the same
+  // `max(expiresAt, currentBlock + minLifetime)` to both — so the same bounds are checked here
+  // rather than left to a revert.
+  const extendOps = (extensions ?? []).map((item) => {
+    const expiry = resolveExpiry(item.expires, context)
+    return extendExpiryOperation({ entityKey: item.entityKey, expiry })
+  })
+
+  const operations: Operation[] = [
+    ...createOps,
+    ...patchOps,
+    ...(deletes ?? []).map((item) => deleteOperation({ entityKey: item.entityKey })),
+    ...extendOps,
+    ...(ownershipChanges ?? []).map((item) =>
+      transferOwnershipOperation({
+        entityKey: item.entityKey,
+        newOwner: item.newOwner as Address,
+      }),
+    ),
+  ]
+
+  if (operations.length === 0) {
+    throw new Error("No operations to perform")
+  }
+
+  return operations
+}
+
+/**
+ * Signs and sends an encoded batch, wrapping any node rejection in {@link EntityMutationError}.
+ *
+ * The submission half both write paths share: one `writeContract` — an `eth_sendRawTransaction`,
+ * plus only the lookups viem needs for whatever `txParams` leaves out — with no waiting and no
+ * polling. A rejection is reported in engine terms when the node returned decodable revert data,
+ * and with the node's own message otherwise; either way the caller sees an
+ * {@link EntityMutationError}.
+ *
+ * Internal seam shared with `actions/advanced/sendMutation`; not part of the package's public
+ * surface.
+ */
+export async function submitMutation(
+  client: ArkivClient,
+  operations: Operation[],
+  txParams?: TxParams,
+): Promise<Hash> {
+  if (!client.account) throw new Error("Account required")
+  if (!client.chain) throw new Error("Chain required")
+  const walletClient = client as WalletArkivClient
+
+  try {
+    return await walletClient.writeContract({
+      address: ARKIV_ADDRESS,
+      abi: EXECUTE_ABI,
+      functionName: "execute",
+      args: [operations],
+      account: client.account,
+      chain: client.chain,
+      ...txParams,
+    })
+  } catch (error) {
+    throw asEntityMutationError(error)
+  }
+}
+
+/** Everything the batch's events say happened, one entry per applied operation, per kind. */
+export type MutationEvents = {
+  created: { entityKey: Hex; owner: Address; expiresAt: bigint }[]
+  patched: { entityKey: Hex; owner: Address }[]
+  deleted: { entityKey: Hex; owner: Address }[]
+  extended: { entityKey: Hex; owner: Address; expiresAt: bigint }[]
+  ownershipTransferred: { entityKey: Hex; previousOwner: Address; newOwner: Address }[]
+}
+
+/**
+ * Reads the entity events out of a receipt's logs, exactly as they were emitted.
+ *
+ * Lenient by design: it reports what the events say and nothing else — no counting against what
+ * was asked for (the caller may not have the request at hand) and no error for a receipt with no
+ * entity events at all. Logs from other contracts and events this SDK has no name for are skipped.
+ */
+export function collectMutationEvents(logs: TransactionReceipt["logs"]): MutationEvents {
+  const events: MutationEvents = {
+    created: [],
+    patched: [],
+    deleted: [],
+    extended: [],
+    ownershipTransferred: [],
+  }
+
+  // `?? []` so a receipt without logs decodes to "nothing happened" rather than a TypeError.
+  for (const log of logs ?? []) {
+    // Only the operation address emits these, and a batch's transaction can carry logs from
+    // anything else it touched.
+    if (log.address.toLowerCase() !== ARKIV_ADDRESS.toLowerCase()) continue
+    const decoded = decodeEntityLog(log)
+    if (decoded === undefined) continue
+
+    switch (decoded.eventName) {
+      case "EntityCreated":
+        events.created.push({
+          entityKey: decoded.args.entityKey,
+          owner: decoded.args.owner,
+          expiresAt: decoded.args.expiresAt,
+        })
+        break
+      case "EntityPatched":
+        events.patched.push({ entityKey: decoded.args.entityKey, owner: decoded.args.owner })
+        break
+      case "EntityDeleted":
+        events.deleted.push({ entityKey: decoded.args.entityKey, owner: decoded.args.owner })
+        break
+      case "ExpiryExtended":
+        events.extended.push({
+          entityKey: decoded.args.entityKey,
+          owner: decoded.args.owner,
+          expiresAt: decoded.args.expiresAt,
+        })
+        break
+      case "OwnershipTransferred":
+        events.ownershipTransferred.push({
+          entityKey: decoded.args.entityKey,
+          previousOwner: decoded.args.previousOwner,
+          newOwner: decoded.args.newOwner,
+        })
+        break
+    }
+  }
+
+  return events
 }
