@@ -293,7 +293,7 @@ Sample code can also be found in the [`sample`](./sample) directory of this repo
 
 ### Advanced Path (Minimal RPC Calls)
 
-The everyday actions (`createEntity`, `mutateEntities`, ...) bundle send + wait + decode into one
+The everyday actions (`createEntity`, `executeBatch`, ...) bundle send + wait + decode into one
 call, which is convenient but spends several RPC requests per mutation. The `client.advanced`
 namespace unbundles them so you control every call yourself:
 

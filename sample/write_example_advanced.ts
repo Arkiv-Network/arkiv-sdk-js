@@ -2,7 +2,7 @@
 // fees, sending, waiting, decoding — done by hand, so the whole write costs the minimum number of
 // RPC calls and every one of them is visible in this file.
 import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
-import { cheesecake } from "@arkiv-network/sdk/chains"
+import { tiramisu } from "@arkiv-network/sdk/chains"
 import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
 import { http, parseGwei } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
@@ -11,12 +11,12 @@ const account = privateKeyToAccount("0x...") // Replace with your private key
 
 // The reads come from a public client, the send from a wallet client.
 const publicClient = createPublicClient({
-  chain: cheesecake, // cheesecake is the Arkiv testnet
+  chain: tiramisu, // tiramisu is the Arkiv testnet
   transport: http(),
 })
 
 const client = createWalletClient({
-  chain: cheesecake,
+  chain: tiramisu,
   transport: http(),
   account,
 })
