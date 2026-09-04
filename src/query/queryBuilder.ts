@@ -24,11 +24,11 @@ import { type SelectArg, toRpcSelect } from "./selection"
  * @example
  * import { createPublicClient } from "@arkiv-network/sdk"
  * import { i32 } from "@arkiv-network/sdk/attr"
- * import { cheesecake } from "@arkiv-network/sdk/chains"
+ * import { tiramisu } from "@arkiv-network/sdk/chains"
  * import { eq, gte, or } from "@arkiv-network/sdk/query"
  * import { http } from "viem"
  *
- * const client = createPublicClient({ chain: cheesecake, transport: http() })
+ * const client = createPublicClient({ chain: tiramisu, transport: http() })
  *
  * const page = await client
  *   .select({ key: true, attributes: true })

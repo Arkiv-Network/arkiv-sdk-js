@@ -8,7 +8,7 @@ import {
   NoEntityFoundError,
 } from "@arkiv-network/sdk"
 import { addr, bool, bytes32, dec, i32, key, str, u64, u256 } from "@arkiv-network/sdk/attr"
-import { cheesecake, localhost } from "@arkiv-network/sdk/chains"
+import { tiramisu, localhost } from "@arkiv-network/sdk/chains"
 import {
   and,
   type Expression,
@@ -56,7 +56,7 @@ if (RPC_URL_FROM_ENV) {
 }
 
 if (CHAIN_FROM_ENV) {
-  const chains = { cheesecake, localhost } as const
+  const chains = { tiramisu, localhost } as const
   const found = chains[CHAIN_FROM_ENV as keyof typeof chains]
   if (!found) {
     throw new Error(
@@ -68,7 +68,7 @@ if (CHAIN_FROM_ENV) {
 
 if (!chain) {
   throw new Error(
-    "No chain configured. Set RPC_URL to a node, or set CHAIN to one of cheesecake, localhost.",
+    "No chain configured. Set RPC_URL to a node, or set CHAIN to one of tiramisu, localhost.",
   )
 }
 
