@@ -1,4 +1,4 @@
-## [0.8.0] - 2026-08-14
+## [0.8.0] - 2026-09-07
 
 This release tracks the arkiv-reth engine and rewrites most of the SDK surface. Every entity write, every attribute and every event changed shape - expect to touch code that used 0.7.x.
 
