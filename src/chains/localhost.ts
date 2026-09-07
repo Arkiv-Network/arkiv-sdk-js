@@ -1,5 +1,8 @@
 import { defineChain } from "viem"
 
+/**
+ * A node running on the local machine
+ */
 export const localhost = defineChain({
   id: 1337,
   name: "Localhost",

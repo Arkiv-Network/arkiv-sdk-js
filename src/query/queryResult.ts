@@ -1,70 +1,73 @@
-import { NoCursorOrLimitError, NoMoreResultsError } from "../errors"
+import { NoMoreResultsError } from "../errors"
 import type { Entity } from "../types/entity"
-import { getLogger } from "../utils/logger"
-import type { BaseQueryBuilder } from "./queryBuilder"
 
-const logger = getLogger("query:result")
+/** Fetches the page a cursor points at. */
+type FetchPage<TEntity> = (cursor: string) => Promise<QueryResult<TEntity>>
 
 /**
- * The result of a query. Holds the fetched entities and supports cursor-based pagination.
+ * One page of query results.
  *
- * @typeParam TEntity - The shape of each entity, inferred from the query builder
- *   (a full {@link Entity}, or a projected object inferred from a `select()` selection).
+ * A page is immutable: {@link next} returns the following page rather than mutating this one, so a
+ * page that has been read stays readable.
+ *
+ * @typeParam TEntity - The shape of each entity, inferred from the selection by `client.select()`.
+ *
+ * @example
+ * let page = await client.select({ key: true }).where(eq("category", "docs")).limit(100).fetch()
+ * while (page.hasNextPage()) {
+ *   page = await page.next()
+ * }
  */
 export class QueryResult<TEntity = Entity> {
-  entities: TEntity[]
-  private _endOfIteration: boolean
-  private _cursor: string | undefined
-  private _limit: number | undefined
-  private _validAtBlock: bigint | undefined
-  private _queryBuilder: BaseQueryBuilder<TEntity>
+  /** The entities on this page. */
+  readonly entities: readonly TEntity[]
+  /**
+   * The block this page was read at.
+   *
+   * Every page of one walk reads the same block — the cursor is bound to it — so results cannot
+   * shift under a paginating reader.
+   */
+  readonly blockNumber: bigint
+  /** The cursor for the next page, or `undefined` when this was the last one. */
+  readonly cursor: string | undefined
 
-  // Public getters for internal state
-  get queryBuilder(): BaseQueryBuilder<TEntity> {
-    return this._queryBuilder
-  }
-
-  get cursor(): string | undefined {
-    return this._cursor
-  }
+  private readonly fetchPage: FetchPage<TEntity>
 
   constructor(
-    entities: TEntity[],
-    queryBuilder: BaseQueryBuilder<TEntity>,
+    entities: readonly TEntity[],
+    blockNumber: bigint,
     cursor: string | undefined,
-    limit: number | undefined,
-    validAtBlock: bigint | undefined,
+    fetchPage: FetchPage<TEntity>,
   ) {
     this.entities = entities
-    this._queryBuilder = queryBuilder
-    this._endOfIteration = !limit || entities.length < limit
-    this._cursor = cursor
-    this._limit = limit
-    this._validAtBlock = validAtBlock
+    this.blockNumber = blockNumber
+    this.cursor = cursor
+    this.fetchPage = fetchPage
   }
 
-  async next() {
-    if (this._cursor === undefined || this._limit === undefined) {
-      throw new NoCursorOrLimitError()
-    }
-    if (this._endOfIteration) {
+  /**
+   * Whether another page follows.
+   *
+   * The node omits the cursor once nothing remains, so this is an answer rather than the guess a
+   * short final page would be — a full last page is reported correctly.
+   */
+  hasNextPage(): boolean {
+    return this.cursor !== undefined
+  }
+
+  /**
+   * Fetches the next page.
+   *
+   * @throws {NoMoreResultsError} If this was the last page — check {@link hasNextPage} first.
+   * @throws {QueryError} If the node rejects the request; `kind === "cursor"` means the cursor
+   * expired and the walk has to start again.
+   */
+  // Async so that "no more pages" arrives as a rejection like every other failure here, rather
+  // than as a synchronous throw the caller's `.catch` would miss.
+  async next(): Promise<QueryResult<TEntity>> {
+    if (this.cursor === undefined) {
       throw new NoMoreResultsError()
     }
-    this._queryBuilder.cursor(this._cursor)
-    const result = await this._queryBuilder.fetch()
-    this.entities = result.entities
-    // Update the query builder reference
-    this._queryBuilder = result.queryBuilder
-    // Check if we've reached the end (no more cursor or we got fewer entities than limit)
-    this._endOfIteration = !result.cursor || result.entities.length < this._limit
-    // Update the cursor
-    this._cursor = result.cursor
-
-    // TODO check current block height and if it is not too old
-    logger("Current block height for next page %s", this._validAtBlock?.toString() ?? "unknown")
-  }
-
-  hasNextPage() {
-    return !this._endOfIteration
+    return this.fetchPage(this.cursor)
   }
 }

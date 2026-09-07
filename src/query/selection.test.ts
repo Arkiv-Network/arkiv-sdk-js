@@ -1,120 +1,70 @@
-import { describe, expect, test } from "bun:test"
-import { selectionToIncludeData } from "./selection"
+import { describe, expect, it } from "bun:test"
+import { toRpcSelect } from "./selection"
 
-const ALL = {
+const EVERY_FIELD = {
   key: true,
-  attributes: true,
-  payload: true,
-  contentType: true,
-  expiration: true,
   owner: true,
   creator: true,
-  createdAtBlock: true,
-  lastModifiedAtBlock: true,
-  transactionIndexInBlock: true,
-  operationIndexInTransaction: true,
+  createdAt: true,
+  updatedAt: true,
+  expiresAt: true,
+  creationFlags: true,
+  contentType: true,
+  payload: true,
+  attributeSchema: true,
+  attributes: true,
 }
 
-const EMPTY = {
-  key: false,
-  attributes: false,
-  payload: false,
-  contentType: false,
-  expiration: false,
-  owner: false,
-  creator: false,
-  createdAtBlock: false,
-  lastModifiedAtBlock: false,
-  transactionIndexInBlock: false,
-  operationIndexInTransaction: false,
-}
-
-describe("selectionToIncludeData", () => {
-  test("select() with no argument selects everything", () => {
-    expect(selectionToIncludeData()).toEqual(ALL)
+describe("toRpcSelect", () => {
+  it("selects everything for no argument or a star", () => {
+    expect(toRpcSelect()).toEqual(EVERY_FIELD)
+    expect(toRpcSelect("*")).toEqual(EVERY_FIELD)
   })
 
-  test('select("*") selects everything', () => {
-    expect(selectionToIncludeData("*")).toEqual(ALL)
-  })
-
-  test("empty object throws", () => {
-    // @ts-expect-error – select requires at least one field
-    expect(() => selectionToIncludeData({})).toThrow()
-  })
-
-  test("an all-false selection throws (no field is actually selected)", () => {
-    expect(() => selectionToIncludeData({ key: false })).toThrow()
-    expect(() => selectionToIncludeData({ owner: false, payload: false })).toThrow()
-  })
-
-  test("key: true selects only the key", () => {
-    expect(selectionToIncludeData({ key: true })).toEqual({ ...EMPTY, key: true })
-  })
-
-  test("key is opt-in like every other field", () => {
-    expect(selectionToIncludeData({ key: true }).key).toBe(true)
-    expect(selectionToIncludeData({ attributes: true }).key).toBe(false)
-    expect(selectionToIncludeData({ owner: true }).key).toBe(false)
-  })
-
-  test("attributes only (no key)", () => {
-    expect(selectionToIncludeData({ attributes: true })).toEqual({
-      ...EMPTY,
-      attributes: true,
-    })
-  })
-
-  test("payload only (no key)", () => {
-    expect(selectionToIncludeData({ payload: true })).toEqual({
-      ...EMPTY,
-      payload: true,
-    })
-  })
-
-  test("a single metadata field, selected flat (no key)", () => {
-    expect(selectionToIncludeData({ owner: true })).toEqual({
-      ...EMPTY,
+  it("sends every field, so what was asked for is legible in the request", () => {
+    // The node defaults everything but `key` to off. Spelling out the false ones costs nothing and
+    // pins the answer even if those defaults move.
+    expect(toRpcSelect({ owner: true })).toEqual({
+      key: false,
       owner: true,
+      creator: false,
+      createdAt: false,
+      updatedAt: false,
+      expiresAt: false,
+      creationFlags: false,
+      contentType: false,
+      payload: false,
+      attributeSchema: false,
+      attributes: false,
     })
   })
 
-  test("expiresAtBlock maps to the RPC `expiration` field", () => {
-    expect(selectionToIncludeData({ expiresAtBlock: true })).toEqual({
-      ...EMPTY,
-      expiration: true,
-    })
-  })
-
-  test("several fields selected together", () => {
+  it("passes a named attribute subset through", () => {
     expect(
-      selectionToIncludeData({
-        owner: true,
-        creator: true,
-        createdAtBlock: true,
-        attributes: true,
-      }),
-    ).toEqual({
-      ...EMPTY,
-      owner: true,
-      creator: true,
-      createdAtBlock: true,
-      attributes: true,
-    })
-  })
-
-  test("key can be combined with other fields", () => {
-    expect(selectionToIncludeData({ key: true, attributes: true })).toEqual({
-      ...EMPTY,
+      toRpcSelect({ key: true, attributes: { projectId: true, version: true } }),
+    ).toMatchObject({
       key: true,
-      attributes: true,
+      attributes: { projectId: true, version: true },
     })
   })
 
-  test("a field set to false is not selected", () => {
-    expect(selectionToIncludeData({ owner: true, creator: false })).toEqual({
-      ...EMPTY,
-      owner: true,
-    })
+  it("drops names the subset turned off, and falls back to false when none are left", () => {
+    expect(
+      toRpcSelect({ key: true, attributes: { projectId: true, version: false } }),
+    ).toMatchObject({ attributes: { projectId: true } })
+    // An empty subset asks for no attributes, which is what `false` already means.
+    expect(toRpcSelect({ key: true, attributes: {} })).toMatchObject({ attributes: false })
+  })
+
+  it("rejects a selection that asks for nothing", () => {
+    // @ts-expect-error - AtLeastOne rejects this at compile time too
+    expect(() => toRpcSelect({})).toThrow(/at least one field/)
+    // The type system permits an explicit `false`; the node would answer it with empty rows.
+    expect(() => toRpcSelect({ key: false })).toThrow(/at least one field/)
+    expect(() => toRpcSelect({ key: false, attributes: {} })).toThrow(/at least one field/)
+  })
+
+  it("counts a named attribute subset as a selection in its own right", () => {
+    expect(() => toRpcSelect({ attributes: { projectId: true } })).not.toThrow()
   })
 })

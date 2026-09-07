@@ -7,13 +7,17 @@
     "outDir": "./dist",
     "rootDir": "./",
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "types": ["bun"]
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]

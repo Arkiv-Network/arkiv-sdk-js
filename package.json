@@ -1,6 +1,6 @@
 {
   "name": "@arkiv-network/sdk",
-  "version": "0.7.0",
+  "version": "0.8.0-dev.4",
   "description": "TypeScript client library for Arkiv's blockchains interactions",
   "type": "module",
   "target": "esnext",
@@ -14,6 +14,18 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./attr": {
+      "bun": "./src/attr/index.ts",
+      "import": "./dist/attr/index.js",
+      "require": "./dist/attr/index.cjs",
+      "default": "./dist/attr/index.js"
+    },
+    "./entity": {
+      "bun": "./src/entity/index.ts",
+      "import": "./dist/entity/index.js",
+      "require": "./dist/entity/index.cjs",
+      "default": "./dist/entity/index.js"
     },
     "./chains": {
       "bun": "./src/chains/index.ts",
@@ -43,14 +55,23 @@
   },
   "typesVersions": {
     "*": {
-      "chains": [
-        "./dist/_types/chains/index.d.ts"
+      "attr": [
+        "./dist/attr/index.d.ts"
       ],
-      "utils": [
-        "./dist/_types/utils/index.d.ts"
+      "chains": [
+        "./dist/chains/index.d.ts"
+      ],
+      "entity": [
+        "./dist/entity/index.d.ts"
       ],
       "query": [
-        "./dist/_types/query/index.d.ts"
+        "./dist/query/index.d.ts"
+      ],
+      "types": [
+        "./dist/types/index.d.ts"
+      ],
+      "utils": [
+        "./dist/utils/index.d.ts"
       ]
     }
   },
@@ -64,8 +85,6 @@
     "lint": "biome check src/",
     "lint:fix": "biome check --write src/",
     "test:unit": "bun test src/**/*",
-    "docs": "bunx typedoc --plugin typedoc-plugin-markdown",
-    "docs:verify": "bunx typedoc --emit none --plugin typedoc-plugin-markdown",
     "package": "rimraf arkiv-network-sdk-*.tgz && bun run build && bun pm pack --no-cache",
     "package:test": "bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
     "prepublishOnly": "bun run build && bun run package && mv arkiv-network-sdk-*.tgz arkiv-network-sdk-latest.tgz",
@@ -81,8 +100,6 @@
     "@types/bun": "latest",
     "rimraf": "^6.0.1",
     "tsdown": "^0.16.0",
-    "typedoc": "^0.28.14",
-    "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "^5.9.2",
     "viem": "^2.38.2"
   },

@@ -173,3 +173,8 @@ dist
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Regenerated on every SDK refresh; the packed tarball hash is not reproducible,
+# so a committed lockfile would break cold-cache installs in CI.
+bun.lock
+bun.lockb

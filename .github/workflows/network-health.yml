@@ -9,13 +9,10 @@ on:
       chain:
         description: "Chain to test"
         required: false
-        default: "braga"
+        default: "tiramisu"
         type: choice
         options:
-          - braga
-          - kaolin
-          - mendoza
-          - rosario
+          - tiramisu
       branch:
         description: "Branch to checkout"
         required: false
@@ -28,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["braga"]') }}
+        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["tiramisu"]') }}
 
     steps:
       - name: Checkout code
@@ -48,7 +45,7 @@ jobs:
         run: bun run package:test
 
       - name: Install test dependencies
-        run: cd test && bun install --frozen-lockfile
+        run: cd test && bun install
 
       - name: Run network health CRUD test
         env:

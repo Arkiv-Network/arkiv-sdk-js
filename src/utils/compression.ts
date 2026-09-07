@@ -17,7 +17,7 @@ async function getZlib(): Promise<typeof import("zlib") | null> {
 
   if (!zlib) {
     try {
-      zlib = await import("zlib")
+      zlib = await import("node:zlib")
     } catch (error) {
       console.error("Error importing zlib", error)
       return null

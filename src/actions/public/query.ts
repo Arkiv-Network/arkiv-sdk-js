@@ -1,83 +1,47 @@
-import { numberToHex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
+import { runQuery } from "../../query/engine"
+import type { Expression } from "../../query/expression"
+import { type SelectArg, toRpcSelect } from "../../query/selection"
 import type { Entity } from "../../types/entity"
-import type { RpcQueryOptions } from "../../types/rpcSchema"
-import { entityFromRpcResult } from "../../utils/entities"
-
-export type QueryOptionsIncludeData = {
-  attributes?: boolean
-  payload?: boolean
-  metadata?: boolean
-}
-/**
- * @deprecated Server-side ordering is not supported by the network. Sort the fetched
- * entities in JavaScript instead (e.g. `entities.sort(...)`). This type will be removed
- * in a future release.
- */
-export type QueryOptionsOrderBy = {
-  name: string
-  type: "string" | "numeric"
-  desc: "asc" | "desc"
-}
 
 export type QueryOptions = {
-  includeData?: QueryOptionsIncludeData
-  atBlock?: bigint
-  /**
-   * @deprecated Server-side ordering is not supported by the network, so this option has no
-   * effect on the returned order. Sort the fetched entities in JavaScript instead
-   * (e.g. `entities.sort(...)`). This option will be removed in a future release.
-   */
-  orderBy?: QueryOptionsOrderBy[]
-  resultsPerPage?: number | undefined
+  /** What to return. Defaults to everything. */
+  select?: SelectArg | undefined
+  /** Block height to read at. Defaults to the head. */
+  atBlock?: bigint | undefined
+  /** Page size, up to the node maximum of 200. */
+  limit?: number | undefined
+  /** Cursor from a previous page. */
   cursor?: string | undefined
 }
 
 export type QueryReturnType = {
   entities: Entity[]
+  /** The cursor for the next page, or `undefined` when no pages remain. */
   cursor: string | undefined
-  blockNumber: bigint | undefined
+  /** The block the page was read at. */
+  blockNumber: bigint
 }
 
-export async function query(client: ArkivClient, query: string, queryOptions?: QueryOptions) {
-  const rpcQueryOptions: RpcQueryOptions = {
-    includeData: {
-      key: true,
-      payload: queryOptions?.includeData?.payload ?? true,
-      attributes: queryOptions?.includeData?.attributes ?? false,
-      contentType: queryOptions?.includeData?.metadata ?? false,
-      expiration: queryOptions?.includeData?.metadata ?? false,
-      owner: queryOptions?.includeData?.metadata ?? false,
-      creator: queryOptions?.includeData?.metadata ?? false,
-      createdAtBlock: queryOptions?.includeData?.metadata ?? false,
-      lastModifiedAtBlock: queryOptions?.includeData?.metadata ?? false,
-      transactionIndexInBlock: queryOptions?.includeData?.metadata ?? false,
-      operationIndexInTransaction: queryOptions?.includeData?.metadata ?? false,
-    },
-    ...(queryOptions?.atBlock !== undefined && { atBlock: numberToHex(queryOptions.atBlock) }),
-    ...(queryOptions?.orderBy && {
-      orderBy: queryOptions?.orderBy.map((order) => ({
-        name: order.name,
-        type: order.type,
-        desc: order.desc === "desc",
-      })),
-    }),
-    ...(queryOptions?.resultsPerPage !== undefined && {
-      resultsPerPage: numberToHex(queryOptions.resultsPerPage),
-    }),
-    ...(queryOptions?.cursor !== undefined && { cursor: queryOptions?.cursor }),
-  }
-
-  const result = await client.request({
-    method: "arkiv_query",
-    params: [query, rpcQueryOptions],
+/**
+ * Runs a single query and returns one page, with no builder in between.
+ *
+ * Takes either an {@link Expression} or a raw query string. The string form is an escape hatch for
+ * a query built elsewhere — it goes to the node exactly as written, with none of the name, type or
+ * operator checks the expression combinators apply.
+ *
+ * @throws {QueryError} If the node rejects the query.
+ */
+export function query(
+  client: ArkivClient,
+  query: Expression | string,
+  options: QueryOptions = {},
+): Promise<QueryReturnType> {
+  return runQuery(client, {
+    query: query.toString(),
+    select: toRpcSelect(options.select),
+    limit: options.limit,
+    cursor: options.cursor,
+    atBlock: options.atBlock,
   })
-
-  const entities = await Promise.all(result.data.map((entity) => entityFromRpcResult(entity)))
-
-  return {
-    entities,
-    cursor: result.cursor,
-    blockNumber: BigInt(result.blockNumber),
-  }
 }

@@ -1,38 +1,42 @@
 export type { GetBlockTimingReturnType } from "../actions/public/getBlockTiming"
 export type {
-  QueryOptions,
-  QueryOptionsIncludeData,
-  QueryOptionsOrderBy,
-  QueryReturnType,
-} from "../actions/public/query"
+  PredictEntityKeysParameters,
+  PredictEntityKeysReturnType,
+  PredictedEntityKey,
+} from "../actions/public/predictEntityKeys"
+export type { QueryOptions, QueryReturnType } from "../actions/public/query"
+export type { WatchEntityEventsParameters } from "../actions/public/watchEntityEvents"
 export type {
   ChangeOwnershipParameters,
   ChangeOwnershipReturnType,
 } from "../actions/wallet/changeOwnership"
 export type { CreateEntityParameters, CreateEntityReturnType } from "../actions/wallet/createEntity"
 export type { DeleteEntityParameters, DeleteEntityReturnType } from "../actions/wallet/deleteEntity"
+export type {
+  ExecuteBatchParameters,
+  ExecuteBatchReturnType,
+} from "../actions/wallet/executeBatch"
 export type { ExtendEntityParameters, ExtendEntityReturnType } from "../actions/wallet/extendEntity"
+export type { PatchEntityParameters, PatchEntityReturnType } from "../actions/wallet/patchEntity"
+export type { EntityFields } from "./entity"
+export { Entity } from "./entity"
 export type {
-  MutateEntitiesParameters,
-  MutateEntitiesReturnType,
-} from "../actions/wallet/mutateEntities"
-export type { UpdateEntityParameters, UpdateEntityReturnType } from "../actions/wallet/updateEntity"
-export type { Attribute } from "./attributes"
-export type { Entity } from "./entity"
-export type {
-  OnEntityCreatedEvent,
-  OnEntityDeletedEvent,
-  OnEntityExpiredEvent,
-  OnEntityExpiresInExtendedEvent,
-  OnEntityOwnerChangedEvent,
-  OnEntityUpdatedEvent,
+  EntityCreatedEvent,
+  EntityDeletedEvent,
+  EntityEvent,
+  EntityEventContext,
+  EntityPatchedEvent,
+  ExpiryExtendedEvent,
+  OwnershipTransferredEvent,
 } from "./events"
 export type { MimeType } from "./mimeTypes"
 export type {
   ArkivRpcSchema,
+  RpcAttribute,
+  RpcAttributeSchemaEntry,
+  RpcCreationFlags,
   RpcEntity,
-  RpcIncludeData,
-  RpcOrderByAttribute,
   RpcQueryOptions,
+  RpcSelect,
 } from "./rpcSchema"
 export type { TxParams } from "./txParams"
