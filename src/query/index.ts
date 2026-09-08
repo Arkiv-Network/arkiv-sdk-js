@@ -1,3 +1,5 @@
+export type { StrValue } from "../attr"
+export type { Entity, RpcSelect } from "../types"
 export type { QueryRequest, QueryResponse } from "./engine"
 export { MAX_LIMIT, runQuery } from "./engine"
 export type { QueryErrorKind } from "./errors"
