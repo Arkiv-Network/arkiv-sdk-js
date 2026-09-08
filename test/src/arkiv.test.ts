@@ -698,6 +698,9 @@ describe("Arkiv Integration Tests for public client", () => {
         select: { key: true },
         limit: 6,
         cursor: raw1.cursor,
+        // The raw form takes the block by hand too: the cursor is bound to the block page 1 was
+        // read at, and without it page 2 reads at a head that may have moved on since.
+        atBlock: raw1.blockNumber,
       })
       expect(raw2.entities).toHaveLength(4)
       expect(raw2.cursor).toBeUndefined()
@@ -1114,4 +1117,186 @@ describe("Arkiv Integration Tests for public client", () => {
     },
     { timeout: 90000 },
   )
+
+  // ---------------------------------------------------------------------------------------------
+  // The advanced path: send, ping and read results as separate minimal-RPC steps.
+  // ---------------------------------------------------------------------------------------------
+
+  /** Pings until the transaction is mined — the advanced way: single calls on our own schedule. */
+  async function pingUntilMined(txHash: Hex) {
+    let last: Awaited<ReturnType<typeof publicClient.advanced.pingTransaction>> = {
+      status: "pending",
+    }
+    const mined = await eventually(async () => {
+      last = await publicClient.advanced.pingTransaction(txHash)
+      return last.status !== "pending"
+    }, 30_000)
+    expect(mined).toBe(true)
+    return last
+  }
+
+  test(
+    "the advanced path drives a mixed batch with send, ping and result as separate steps",
+    async () => {
+      const patchTarget = await create("http", { advstage: str("draft") })
+      const deleteTarget = await create("http", { advstage: str("doomed") })
+      const [predicted] = await publicClient.predictEntityKeys({
+        owner: account.address,
+        count: 1,
+      })
+
+      // Send: submits and returns the hash — no receipt, no waiting.
+      const sent = await walletClient.advanced.sendMutation({
+        creates: [
+          {
+            payload: stringToPayload("advanced"),
+            contentType: "text/plain",
+            attributes: { advstage: str("born") },
+            expires: LIFETIME,
+            salt: predicted.salt,
+          },
+        ],
+        patches: [{ entityKey: patchTarget.entityKey, set: { advstage: str("published") } }],
+        deletes: [{ entityKey: deleteTarget.entityKey }],
+      })
+      expect(sent.txHash).toMatch(/^0x[0-9a-f]{64}$/)
+      expect(sent.expected).toEqual({
+        creates: 1,
+        patches: 1,
+        deletes: 1,
+        extensions: 0,
+        ownershipChanges: 0,
+      })
+
+      // Ping: one eth_getTransactionReceipt per attempt, on our own schedule.
+      const ping = await pingUntilMined(sent.txHash)
+      if (ping.status === "pending") throw new Error("unreachable: pingUntilMined asserted mined")
+      expect(ping.status).toBe("success")
+      expect(ping.blockNumber).toBeGreaterThan(0n)
+
+      // Result: the same single call, decoded — no request context needed to read it.
+      const result = await publicClient.advanced.getMutationResult(sent.txHash)
+      if (result.status === "pending") throw new Error("mined a moment ago, cannot be pending")
+      expect(result.status).toBe("success")
+      expect(result.blockNumber).toBe(ping.blockNumber)
+      expect(result.createdEntities).toEqual([predicted.key])
+      expect(result.createdExpiries).toHaveLength(1)
+      expect(result.createdExpiries[0]).toBeGreaterThan(result.blockNumber)
+      expect(result.patchedEntities).toEqual([patchTarget.entityKey])
+      expect(result.deletedEntities).toEqual([deleteTarget.entityKey])
+      expect(result.extendedEntities).toEqual([])
+      expect(result.ownershipChanges).toEqual([])
+
+      // Decode: a receipt already in hand costs zero further RPC calls.
+      const receipt = await publicClient.getTransactionReceipt({ hash: sent.txHash })
+      const decoded = publicClient.advanced.decodeMutationResult(receipt)
+      expect(decoded.createdEntities).toEqual(result.createdEntities)
+      expect(decoded.patchedEntities).toEqual(result.patchedEntities)
+      expect(decoded.deletedEntities).toEqual(result.deletedEntities)
+
+      // And the chain agrees with what the events said.
+      expect((await publicClient.getEntity(predicted.key)).attributes.advstage).toEqual(
+        str("born"),
+      )
+      expect((await publicClient.getEntity(patchTarget.entityKey)).attributes.advstage).toEqual(
+        str("published"),
+      )
+      await expect(publicClient.getEntity(deleteTarget.entityKey)).rejects.toThrow(
+        NoEntityFoundError,
+      )
+    },
+    { timeout: 60000 },
+  )
+
+  test(
+    "a mutation built offline lands with a single eth_sendRawTransaction",
+    async () => {
+      // Everything the build and the signature need, gathered up front — in a real minimal-call
+      // setup these come from the caller's own tracking rather than lookups.
+      const currentBlock = await publicClient.getBlockNumber()
+      const nonce = await publicClient.getTransactionCount({ address: account.address })
+      const [predicted] = await publicClient.predictEntityKeys({
+        owner: account.address,
+        count: 1,
+      })
+
+      // Build: zero RPC calls — the head is supplied and the expiry is absolute anyway.
+      const built = await walletClient.advanced.buildMutation(
+        {
+          creates: [
+            {
+              payload: stringToPayload("signed offline"),
+              contentType: "text/plain",
+              attributes: { advoffline: str("yes") },
+              expires: ExpirationTime.atBlock(currentBlock + 10_000n),
+              salt: predicted.salt,
+            },
+          ],
+        },
+        { currentBlock },
+      )
+      expect(built.operations).toHaveLength(1)
+      expect(built.expected.creates).toBe(1)
+
+      // Sign locally and push the raw bytes: the whole mutation is this one RPC call.
+      const serializedTransaction = await account.signTransaction({
+        chainId,
+        to: built.to,
+        data: built.data,
+        nonce,
+        gas: 1_000_000n,
+        maxFeePerGas: 10_000_000_000n,
+        maxPriorityFeePerGas: 1_000_000_000n,
+        type: "eip1559",
+      })
+      const txHash = await walletClient.sendRawTransaction({ serializedTransaction })
+
+      const ping = await pingUntilMined(txHash)
+      expect(ping.status).toBe("success")
+
+      const result = await publicClient.advanced.getMutationResult(txHash)
+      if (result.status === "pending") throw new Error("mined a moment ago, cannot be pending")
+      // The key was known before the transaction was even signed.
+      expect(result.createdEntities).toEqual([predicted.key])
+      expect((await publicClient.getEntity(predicted.key)).attributes.advoffline).toEqual(
+        str("yes"),
+      )
+    },
+    { timeout: 60000 },
+  )
+
+  test(
+    "pinging a hash the chain has never seen reports pending, not an error",
+    async () => {
+      const nowhere = `0x${"77".repeat(32)}` as Hex
+      expect(await publicClient.advanced.pingTransaction(nowhere)).toEqual({ status: "pending" })
+      expect(await publicClient.advanced.getMutationResult(nowhere)).toEqual({ status: "pending" })
+    },
+    { timeout: 20000 },
+  )
+
+  test(
+    "a reverted mutation pings as reverted and decodes to empty arrays, never an exception",
+    async () => {
+      // Deleting an entity that does not exist reverts on-chain. Explicit gas skips the estimate,
+      // so the transaction is actually submitted and mined rather than rejected up front.
+      const ghost = `0x${"66".repeat(32)}` as Hex
+      const sent = await walletClient.advanced.sendMutation(
+        { deletes: [{ entityKey: ghost }] },
+        { txParams: { gas: 1_000_000n } },
+      )
+
+      const ping = await pingUntilMined(sent.txHash)
+      expect(ping.status).toBe("reverted")
+
+      // The advanced path reports the fact and stops — no simulateContract diagnosis is spent.
+      const result = await publicClient.advanced.getMutationResult(sent.txHash)
+      if (result.status === "pending") throw new Error("mined a moment ago, cannot be pending")
+      expect(result.status).toBe("reverted")
+      expect(result.deletedEntities).toEqual([])
+      expect(result.createdEntities).toEqual([])
+    },
+    { timeout: 60000 },
+  )
+
 })

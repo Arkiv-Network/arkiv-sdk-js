@@ -1,34 +1,19 @@
 import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { TxParams } from "../../types"
-import { sendArkivTransaction } from "../../utils/arkivTransactions"
+import { type EntityMutationOps, sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
-import type { ChangeOwnershipParameters } from "./changeOwnership"
-import type { CreateEntityParameters } from "./createEntity"
-import type { DeleteEntityParameters } from "./deleteEntity"
-import type { ExtendEntityParameters } from "./extendEntity"
-import type { PatchEntityParameters } from "./patchEntity"
 
 const logger = getLogger("actions:wallet:execute-batch")
 
 /**
- * Parameters for the executeBatch function.
+ * Parameters for the executeBatch function — the same batch shape the advanced path takes
+ * ({@link EntityMutationOps}), so the two surfaces cannot drift apart.
  *
  * At least one operation is required; a batch with nothing in it throws rather than spending gas on
  * an empty transaction.
  */
-export type ExecuteBatchParameters = {
-  /** The entities to create. */
-  creates?: CreateEntityParameters[]
-  /** The patches to apply. */
-  patches?: PatchEntityParameters[]
-  /** The entities to delete. */
-  deletes?: DeleteEntityParameters[]
-  /** The expiries to set. */
-  extensions?: ExtendEntityParameters[]
-  /** The ownership transfers to perform. */
-  ownershipChanges?: ChangeOwnershipParameters[]
-}
+export type ExecuteBatchParameters = EntityMutationOps
 
 /** Return type for the executeBatch function. */
 export type ExecuteBatchReturnType = {

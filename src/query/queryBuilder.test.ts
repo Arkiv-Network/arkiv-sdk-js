@@ -242,7 +242,27 @@ describe("pagination", () => {
 
     expect(sent(request, 1).query).toBe("a = i32(1)")
     expect(sent(request, 1).options).not.toHaveProperty("limit")
-    expect(sent(request, 1).options).not.toHaveProperty("atBlock")
+    // The block page 2 reads at is the one page 1 was served from, not the builder's later edit.
+    expect(sent(request, 1).options).toMatchObject({ atBlock: "0x8e1ff" })
+  })
+
+  it("pins the rest of the walk to the block the first page was read at", async () => {
+    const { client, request } = makeClient(
+      page("b64:1", "0x1"),
+      page("b64:2", "0x2"),
+      page(undefined, "0x3"),
+    )
+    // No atBlock on the builder: the first page reads at the head, and every page after it reads
+    // at the block that page came back with. Otherwise a block mined mid-walk moves the head on
+    // and the node rejects a cursor bound to the earlier one.
+    const first = await new SelectQueryBuilder(client, { key: true }).where(eq("a", 1)).fetch()
+    expect(sent(request, 0).options).not.toHaveProperty("atBlock")
+
+    const second = await first.next()
+    expect(sent(request, 1).options).toMatchObject({ cursor: "b64:1", atBlock: "0x8e1ff" })
+
+    await second.next()
+    expect(sent(request, 2).options).toMatchObject({ cursor: "b64:2", atBlock: "0x8e1ff" })
   })
 
   it("walks every page through the async iterator", async () => {
