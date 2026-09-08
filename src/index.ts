@@ -16,6 +16,17 @@ export type { WalletArkivActions } from "./clients/decorators/arkivWallet"
 export * from "./entity"
 // re-export errors
 export * from "./errors"
+// types referenced by the public client, must be reachable from the package root
+// see #106
+export type {
+  EntitySelection,
+  Expression,
+  FullEntity,
+  ProjectedEntity,
+  QueryResult,
+  SelectArg,
+} from "./query"
+export { SelectQueryBuilder } from "./query"
 // re-export arkiv types in main index file
 export * from "./types"
 // re-export chosen utils
