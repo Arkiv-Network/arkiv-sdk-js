@@ -1,3 +1,8 @@
+## [0.8.1] - 2026-09-08
+
+### Fixed
+- Added missing type exports to package root to prevent issues with TypeScript not being able to infer types when using the SDK in a project that has `declaration` enabled.  
+
 ## [0.8.0] - 2026-09-07
 
 This release tracks the arkiv-reth engine and rewrites most of the SDK surface. Every entity write, every attribute and every event changed shape - expect to touch code that used 0.7.x.
