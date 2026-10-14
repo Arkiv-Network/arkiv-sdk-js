@@ -16,8 +16,18 @@ import {
 import type { SaltInput } from "../../entity/key"
 import type { Expression } from "../../query/expression"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
-import type { EntitySelection, FullEntity, ProjectedEntity, SelectArg } from "../../query/selection"
+import type {
+  DynamicSelection,
+  FullEntity,
+  FullRow,
+  SelectArg,
+  Selection,
+} from "../../query/selection"
+import type { Schema } from "../../schema"
 import type { Entity } from "../../types/entity"
+
+/** Rejects `{}` at compile time — a selection has to ask for something. */
+type NonEmpty<S> = keyof S extends never ? { "select() needs at least one field": true } : unknown
 
 export type PublicArkivActions<
   transport extends Transport = Transport,
@@ -39,14 +49,20 @@ export type PublicArkivActions<
   /**
    * Returns the entity with the given key.
    *
+   * Given a schema, it is read through it: the result is a flat row of every entity field and
+   * every column, each typed as the schema declares and checked against it.
+   *
    * - JSON-RPC Methods: `arkiv_query`
    *
    * @param key - The entity key (hex string)
-   * @returns The entity with the given key, with every field populated. {@link FullEntity}
+   * @param schema - Optionally, the schema to read the entity through.
+   * @returns The entity with the given key, with every field populated — a {@link FullEntity}, or
+   * a {@link FullRow} through a schema.
    *
    * @throws {InvalidValueError} If the key is not 32 bytes.
    * @throws {NoEntityFoundError} If no live entity has that key — it never existed, or it was
    * deleted or has expired.
+   * @throws {SchemaMismatchError} If, given a schema, the entity does not fit it.
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
@@ -61,75 +77,88 @@ export type PublicArkivActions<
    * // Entity {
    * //   key: "0x9f2c…",
    * //   owner: "0xabc…",
-   * //   contentType: "application/json",
-   * //   payload: Uint8Array,          // entity.toJson() / entity.toText() decode it
    * //   attributes: { category: { type: "str", value: "docs" } },
    * //   expiresAt: 1_297_000n,
+   * //   ...
    * // }
+   *
+   * const post = await client.getEntity(entityKey, Posts)
+   * // { key: "0x9f2c…", owner: "0xabc…", ..., category: { type: "str", value: "docs" }, ... }
    */
-  getEntity: (key: Hex) => Promise<FullEntity>
+  getEntity: {
+    (key: Hex): Promise<FullEntity>
+    <S extends Schema>(key: Hex, schema: S): Promise<FullRow<S>>
+  }
 
   /**
    * Returns a SelectQueryBuilder for building and executing queries — the recommended way to
    * read entities. You declare up front which parts of an entity you want returned, so results
    * always contain exactly the data you asked for.
    *
+   * Chain `.from(schema)` to read through a schema: the selection then names entity fields and
+   * columns side by side, the results are flat rows typed by the schema, and `where` may only
+   * filter on the schema's indexed columns.
+   *
    * - JSON-RPC Methods: `arkiv_query`
    *
    * @param selection - What to include in the results. Omit it (or pass `"*"`) to select everything,
    *   or pass an object to select specific parts (at least one field is required). Every part is
-   *   opt-in, including the `key`. The selection is flat — each field maps to an entity field.
+   *   opt-in, including the `key`. The selection is flat — each field maps to a field of the result.
    *   {@link SelectArg}
    * @returns A SelectQueryBuilder instance for building and executing queries. {@link SelectQueryBuilder}
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
    * import { tiramisu } from "@arkiv-network/sdk/chains"
-   * import { eq } from "@arkiv-network/sdk/query"
+   * import { and, eq, gt } from "@arkiv-network/sdk/query"
+   * import { dec } from "@arkiv-network/sdk/schema"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
    *   chain: tiramisu,
    *   transport: http(),
    * })
-   * // select everything
-   * await client.select().where(eq("category", "docs")).fetch()
-   * await client.select("*").where(eq("category", "docs")).fetch()
-   * // only the key
-   * await client.select({ key: true }).where(eq("category", "docs")).fetch()
-   * // select specific fields — result typed { owner: Hex; attributes: Attributes }
-   * await client.select({ owner: true, attributes: true }).fetch()
-   * // a single field — result typed { owner: Hex }
-   * await client.select({ owner: true }).fetch()
+   * // through a schema — rows typed { key: Hex; author: AddrValue; title: StrValue }
+   * await client
+   *   .select({ key: true, author: true, title: true })
+   *   .from(Posts)
+   *   .where(and(eq("category", "docs"), gt("score", dec("4.0"))))
+   *   .fetch()
+   * // every field and column
+   * await client.select().from(Posts).where(eq("category", "docs")).fetch()
+   *
+   * // without a schema — entities typed { owner: Hex; attributes: Attributes }
+   * await client.select({ owner: true, attributes: true }).where(eq("category", "docs")).fetch()
    */
   select: {
-    /** Select every field. Pass nothing or `"*"`; the returned entities contain all fields. */
-    (selection?: "*"): SelectQueryBuilder<FullEntity>
     /**
-     * Pick the entity fields to return. Set the ones you want to `true` (at least one is required);
-     * the result is typed to exactly those fields, so reading anything else is a compile error.
+     * Select every field — and, through a schema, every column. Pass nothing or `"*"`.
+     */
+    (selection?: "*"): SelectQueryBuilder<"*">
+    /**
+     * Pick the fields to return. Set the ones you want to `true` (at least one is required); the
+     * result is typed to exactly those fields, so reading anything else is a compile error.
      *
-     * Available fields: `key`, `owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt`,
-     * `creationFlags`, `contentType`, `payload`, `attributeSchema` and `attributes`.
-     *
-     * `attributes` also takes a map of names, to fetch only those:
-     * `select({ key: true, attributes: { projectId: true } })`.
+     * Entity fields: `key`, `owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt` and
+     * `creationFlags`. Through a schema, any of its columns too. Without one, `attributes` (with
+     * `true` for all, or a map of names for some) and `attributeSchema`.
      *
      * Pass the selection inline so its fields stay literal `true`. A selection stored in a `let`/
      * `const` variable widens to `boolean` and the result type can no longer be narrowed — annotate
      * it `as const` (e.g. `const sel = { owner: true } as const`) in that case.
      *
      * @example
-     * client.select({ owner: true, attributes: true }) // entities typed { owner, attributes }
-     * client.select({ key: true, payload: true })      // includes payload → toText()/toJson() too
-     * client.select({ key: true, attributeSchema: true }) // what shape is the data?
+     * client.select({ key: true, title: true }).from(Posts)  // rows typed { key, title }
+     * client.select({ owner: true, attributes: true })        // entities typed { owner, attributes }
+     * client.select({ key: true, attributeSchema: true })     // what shape is the data?
      */
-    <const S extends EntitySelection>(selection: S): SelectQueryBuilder<ProjectedEntity<S>>
+    <const S extends Selection>(selection: S & NonEmpty<S>): SelectQueryBuilder<S>
     /**
-     * Dynamic selection: accepts a value typed {@link SelectArg} (e.g. built at runtime). The
-     * result cannot be narrowed in this case, so the entities are typed as the full entity.
+     * Dynamic selection: accepts a value typed {@link SelectArg} (e.g. built at runtime). Which
+     * fields come back cannot be known statically, so every field of the result is optional — an
+     * {@link Entity}, or through a schema a row whose fields and columns may each be absent.
      */
-    (selection: SelectArg): SelectQueryBuilder<FullEntity>
+    (selection: SelectArg): SelectQueryBuilder<DynamicSelection>
   }
 
   /**
@@ -148,7 +177,7 @@ export type PublicArkivActions<
    * import { createPublicClient } from "@arkiv-network/sdk"
    * import { tiramisu } from "@arkiv-network/sdk/chains"
    * import { and, eq, gte } from "@arkiv-network/sdk/query"
-   * import { i32 } from "@arkiv-network/sdk/attr"
+   * import { i32 } from "@arkiv-network/sdk/schema"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
@@ -226,18 +255,19 @@ export type PublicArkivActions<
    *   {@link PredictEntityKeysReturnType}
    *
    * @example A batch whose second entity points at its first.
-   * import { key } from "@arkiv-network/sdk/attr"
+   * import { defineSchema, key, str } from "@arkiv-network/sdk/schema"
+   *
+   * const Nodes = defineSchema("nodes", { name: str(), parent: key().indexed().optional() })
    *
    * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
    * await wallet.executeBatch({
    *   creates: [
-   *     { payload, contentType, expires, salt: parent.salt },
+   *     { schema: Nodes, values: { name: "root" }, expires, salt: parent.salt },
    *     {
-   *       payload,
-   *       contentType,
+   *       schema: Nodes,
+   *       values: { name: "leaf", parent: key(parent.key) },
    *       expires,
    *       salt: child.salt,
-   *       attributes: { parent: key(parent.key) },
    *     },
    *   ],
    * })
@@ -306,10 +336,14 @@ export function publicArkivActions<
   account extends Account | undefined = Account | undefined,
 >(client: Client<transport, chain, account>) {
   return {
-    getEntity: (key: Hex) => getEntity(client, key),
+    getEntity: ((key: Hex, schema?: Schema) =>
+      schema === undefined
+        ? getEntity(client, key)
+        : getEntity(client, key, schema)) as PublicArkivActions["getEntity"],
     query: (rawQuery: Expression | string, queryOptions?: QueryOptions) =>
       query(client, rawQuery, queryOptions),
-    select: (selection?: SelectArg) => new SelectQueryBuilder(client, selection),
+    select: ((selection?: SelectArg | Selection) =>
+      new SelectQueryBuilder(client, selection)) as PublicArkivActions["select"],
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),
     getEntityNonce: (owner: Address) => getEntityNonce(client, owner),

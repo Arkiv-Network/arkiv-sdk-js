@@ -1,15 +1,24 @@
 import {
-  type ArkivValue,
+  type ColumnsOf,
+  type DecValue,
+  describeColumns,
+  type I32Value,
+  type IndexableTypeTag,
+  type IndexableValue,
+  type IndexedColumnName,
+  lookupColumn,
+  type Schema,
   type StrValue,
   str,
+  type TagOf,
   type TypeTag,
   toValue,
-  type UserTypeTag,
-  type ValueInput,
+  type U64Value,
+  type U256Value,
   validateAttributeName,
-} from "../attr"
+} from "../schema"
 // Internal seam: the typeId table is the protocol's, not part of the package's public surface.
-import { TYPE_IDS } from "../attr/types"
+import { isIndexable, TYPE_IDS } from "../schema/types"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 
 /**
@@ -18,48 +27,70 @@ import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
  */
 export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
 
+/**
+ * A value a predicate can compare against: a value of any indexable type, or a bare boolean,
+ * number, bigint or string. `bytes` is excluded — it is never indexed, so never filterable.
+ */
+export type PredicateValue = IndexableValue | boolean | number | bigint | string
+
+/** A value of a type with an ordered index, which is what `<` `<=` `>` `>=` need. */
+export type OrderedValue = I32Value | U64Value | U256Value | DecValue | number | bigint
+
+/**
+ * The attribute a predicate names, and the type it asserts — `never` when it asserts none, as
+ * `EXISTS` does. Carried by an {@link Expression} at the type level only, so a query against a
+ * schema can be checked at compile time: every name must be an indexed column, and every type the
+ * column's.
+ */
+export type AttributeRef = { readonly name: string; readonly type: IndexableTypeTag }
+
+declare const refs: unique symbol
+
+/** The type-level record of the attributes an expression names. Never present at runtime. */
+type Refs<R extends AttributeRef> = { readonly [refs]?: R }
+
 /** A comparison between an attribute and a typed literal. */
-export type ComparisonNode = {
+export interface ComparisonNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "comparison"
   readonly name: string
   readonly operator: ComparisonOperator
-  readonly value: ArkivValue
+  readonly value: IndexableValue
 }
 
 /** A `STARTSWITH` prefix test, the language's only pattern operator. */
-export type StartsWithNode = {
+export interface StartsWithNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "startsWith"
   readonly name: string
   readonly value: StrValue
 }
 
 /** An `EXISTS(name)` test — true when the attribute is set with any type. */
-export type ExistsNode = {
+export interface ExistsNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "exists"
   readonly name: string
 }
 
 /** A `TYPEOF(name) = tag` test. */
-export type TypeOfNode = {
+export interface TypeOfNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "typeOf"
   readonly name: string
-  readonly tag: UserTypeTag
+  readonly tag: IndexableTypeTag
 }
 
 /** The complement of an expression, evaluated against the active-entity set. */
-export type NotNode = {
+export interface NotNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "not"
   readonly expression: Expression
 }
 
 /** A conjunction. */
-export type AndNode = {
+export interface AndNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "and"
   readonly expressions: readonly Expression[]
 }
 
 /** A disjunction. */
-export type OrNode = {
+export interface OrNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "or"
   readonly expressions: readonly Expression[]
 }
@@ -68,26 +99,38 @@ export type OrNode = {
  * A query expression: an immutable tree built by the combinators below, whose `toString()` is the
  * exact query string sent over the wire.
  *
+ * @typeParam R - The attributes the expression names, as {@link AttributeRef}s — inferred by the
+ * combinators, and checked against the schema by `select(...).from(schema).where(...)`.
+ *
  * @example
  * const q = and(gte("level", i32(10)), or(eq("status", str("open")), not(exists("closedAt"))))
  * String(q) // level >= i32(10) AND (status = str('open') OR NOT EXISTS(closedAt))
  */
-export type Expression =
-  | ComparisonNode
-  | StartsWithNode
-  | ExistsNode
-  | TypeOfNode
-  | NotNode
-  | AndNode
-  | OrNode
+export type Expression<R extends AttributeRef = AttributeRef> =
+  | ComparisonNode<R>
+  | StartsWithNode<R>
+  | ExistsNode<R>
+  | TypeOfNode<R>
+  | NotNode<R>
+  | AndNode<R>
+  | OrNode<R>
+
+/** The attributes an expression names — the `R` of an {@link Expression}. */
+export type RefsOf<E> = E extends Refs<infer R> ? Exclude<R, undefined> : never
+
+/** The reference a comparison against `V` makes to `N`. */
+type ValueRef<N extends string, V> = {
+  readonly name: N
+  readonly type: TagOf<V> & IndexableTypeTag
+}
 
 /**
  * The system attributes a query may filter on, and the type each one carries.
  *
- * Every other system attribute (`$createdAt`, `$updatedAt`, `$creationFlags`, `$contentType`,
- * `$payload`) is returned in query results but is not indexed, so it cannot appear in a predicate.
+ * Every other system attribute (`$createdAt`, `$updatedAt`, `$creationFlags`) is returned in
+ * query results but is not indexed, so it cannot appear in a predicate.
  */
-const QUERYABLE_SYSTEM_ATTRIBUTES = {
+export const QUERYABLE_SYSTEM_ATTRIBUTES = {
   $key: "key",
   $owner: "addr",
   $creator: "addr",
@@ -96,14 +139,30 @@ const QUERYABLE_SYSTEM_ATTRIBUTES = {
 
 type SystemAttributeName = keyof typeof QUERYABLE_SYSTEM_ATTRIBUTES
 
+/** The references a filter on a system attribute makes — each with its fixed type. */
+export type SystemAttributeRef = {
+  [N in SystemAttributeName]: {
+    readonly name: N
+    readonly type: (typeof QUERYABLE_SYSTEM_ATTRIBUTES)[N]
+  }
+}[SystemAttributeName]
+
+/**
+ * The references a filter through schema `S` may make: each indexed column with its declared
+ * type, and the queryable system attributes with theirs. An {@link Expression} naming anything else
+ * is a compile error in `select(...).from(S).where(...)`.
+ */
+export type SchemaRef<S extends Schema> =
+  | {
+      [K in IndexedColumnName<S>]: {
+        readonly name: K
+        readonly type: ColumnsOf<S>[K]["type"] & IndexableTypeTag
+      }
+    }[IndexedColumnName<S>]
+  | SystemAttributeRef
+
 /** System attributes a query can ask for but not filter on — they carry no index. */
-const RESULT_ONLY_SYSTEM_ATTRIBUTES = [
-  "$createdAt",
-  "$updatedAt",
-  "$creationFlags",
-  "$contentType",
-  "$payload",
-]
+const RESULT_ONLY_SYSTEM_ATTRIBUTES = ["$createdAt", "$updatedAt", "$creationFlags"]
 
 /** The types that carry an ordered index, and so accept `<` `<=` `>` `>=`. */
 const ORDERED_TAGS: ReadonlySet<TypeTag> = new Set<TypeTag>(["i32", "u64", "u256", "dec"])
@@ -145,15 +204,14 @@ function resolveReference(name: string): TypeTag | undefined {
 }
 
 /**
- * Whether a string names a type a client may set. `bytes` is excluded: it backs `$payload`, which
- * is neither settable nor queryable.
+ * Whether a string names a type that can be indexed — every type but `bytes`.
  *
- * Takes a `string` rather than a `UserTypeTag` on purpose — the callers' static types already say
- * as much, and this is the runtime check for the code that has no types.
+ * Takes a `string` rather than an `IndexableTypeTag` on purpose — the callers' static types
+ * already say as much, and this is the runtime check for the code that has no types.
  */
-function isUserTypeTag(tag: string): tag is UserTypeTag {
+function isIndexableTag(tag: string): tag is IndexableTypeTag {
   // `Object.hasOwn` rather than `in`, which would also accept every Object.prototype key.
-  return Object.hasOwn(TYPE_IDS, tag) && tag !== "bytes"
+  return Object.hasOwn(TYPE_IDS, tag) && isIndexable(tag as TypeTag)
 }
 
 /** Freezes a node and gives it a (non-enumerable, so still `toEqual`-able) rendering. */
@@ -165,10 +223,21 @@ function node<T extends Expression>(value: T): T {
   return Object.freeze(value)
 }
 
-function comparison(name: string, operator: ComparisonOperator, input: ValueInput): ComparisonNode {
+function comparison<R extends AttributeRef>(
+  name: string,
+  operator: ComparisonOperator,
+  input: PredicateValue,
+): ComparisonNode<R> {
   const system = resolveReference(name)
   const value = toValue(input, name)
 
+  if (value.type === "bytes") {
+    throw new InvalidPredicateError(
+      `"${name}" is compared against a bytes value, and bytes are stored but never indexed, so ` +
+        "they cannot be filtered on. Index a str, bytes32 or key derived from them instead.",
+      name,
+    )
+  }
   if (system !== undefined && value.type !== system) {
     throw new InvalidPredicateError(
       `"${name}" is a ${system}, but the value is a ${value.type}. ` +
@@ -201,7 +270,10 @@ function comparison(name: string, operator: ComparisonOperator, input: ValueInpu
  * eq("flagged", true)           // flagged = true
  * eq("$owner", addr(account))   // $owner = addr(0xd8dA…)
  */
-export function eq(name: string, value: ValueInput): ComparisonNode {
+export function eq<N extends string, V extends PredicateValue>(
+  name: N,
+  value: V,
+): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "=", value)
 }
 
@@ -215,7 +287,10 @@ export function eq(name: string, value: ValueInput): ComparisonNode {
  * ne("status", str("closed"))          // status != str('closed')
  * not(eq("status", str("closed")))     // NOT status = str('closed') — also matches entities with no status
  */
-export function ne(name: string, value: ValueInput): ComparisonNode {
+export function ne<N extends string, V extends PredicateValue>(
+  name: N,
+  value: V,
+): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "!=", value)
 }
 
@@ -228,7 +303,10 @@ export function ne(name: string, value: ValueInput): ComparisonNode {
  * gt("level", i32(10))              // level > i32(10)
  * gt("$expiresAt", u64(1_200_000n)) // $expiresAt > u64(1200000)
  */
-export function gt(name: string, value: ValueInput): ComparisonNode {
+export function gt<N extends string, V extends OrderedValue>(
+  name: N,
+  value: V,
+): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">", value)
 }
 
@@ -240,7 +318,10 @@ export function gt(name: string, value: ValueInput): ComparisonNode {
  * @example
  * gte("score", dec("3.5")) // score >= dec(3.5)
  */
-export function gte(name: string, value: ValueInput): ComparisonNode {
+export function gte<N extends string, V extends OrderedValue>(
+  name: N,
+  value: V,
+): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">=", value)
 }
 
@@ -252,7 +333,10 @@ export function gte(name: string, value: ValueInput): ComparisonNode {
  * @example
  * lt("level", i32(10)) // level < i32(10)
  */
-export function lt(name: string, value: ValueInput): ComparisonNode {
+export function lt<N extends string, V extends OrderedValue>(
+  name: N,
+  value: V,
+): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<", value)
 }
 
@@ -264,7 +348,10 @@ export function lt(name: string, value: ValueInput): ComparisonNode {
  * @example
  * lte("score", dec("5")) // score <= dec(5)
  */
-export function lte(name: string, value: ValueInput): ComparisonNode {
+export function lte<N extends string, V extends OrderedValue>(
+  name: N,
+  value: V,
+): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<=", value)
 }
 
@@ -282,7 +369,10 @@ export function lte(name: string, value: ValueInput): ComparisonNode {
  * @example
  * startsWith("desc", "ab") // desc STARTSWITH str('ab')
  */
-export function startsWith(name: string, prefix: string | StrValue): StartsWithNode {
+export function startsWith<N extends string>(
+  name: N,
+  prefix: string | StrValue,
+): StartsWithNode<{ readonly name: N; readonly type: "str" }> {
   const system = resolveReference(name)
   const value = typeof prefix === "string" ? str(prefix) : toValue(prefix, name)
   if (value.type !== "str") {
@@ -314,7 +404,9 @@ export function startsWith(name: string, prefix: string | StrValue): StartsWithN
  * exists("reviewedBy")        // EXISTS(reviewedBy)
  * not(exists("closedAt"))     // NOT EXISTS(closedAt)
  */
-export function exists(name: string): ExistsNode {
+export function exists<N extends string>(
+  name: N,
+): ExistsNode<{ readonly name: N; readonly type: never }> {
   if (resolveReference(name) !== undefined) {
     throw new InvalidPredicateError(
       `"${name}" is a system attribute, so it is set on every entity and EXISTS(${name}) is ` +
@@ -332,14 +424,17 @@ export function exists(name: string): ExistsNode {
  * asserts the type, so this is for asking about the type alone.
  *
  * @param tag - The type tag: `bool`, `i32`, `u64`, `u256`, `dec`, `bytes32`, `str`, `addr` or
- * `key`.
- * @throws {InvalidPredicateError} If the tag is not a settable type, or the name is a system
+ * `key` — any type but `bytes`, which is never indexed.
+ * @throws {InvalidPredicateError} If the tag is not an indexable type, or the name is a system
  * attribute (whose type is fixed).
  *
  * @example
  * hasType("age", "i32") // TYPEOF(age) = i32
  */
-export function hasType(name: string, tag: UserTypeTag): TypeOfNode {
+export function hasType<N extends string, T extends IndexableTypeTag>(
+  name: N,
+  tag: T,
+): TypeOfNode<{ readonly name: N; readonly type: T }> {
   const system = resolveReference(name)
   if (system !== undefined) {
     throw new InvalidPredicateError(
@@ -348,9 +443,9 @@ export function hasType(name: string, tag: UserTypeTag): TypeOfNode {
       name,
     )
   }
-  if (!isUserTypeTag(tag)) {
+  if (!isIndexableTag(tag)) {
     throw new InvalidPredicateError(
-      `"${tag}" is not a settable attribute type. Use one of ` +
+      `"${tag}" is not an indexable attribute type. Use one of ` +
         "bool, i32, u64, u256, dec, bytes32, str, addr, key.",
       name,
     )
@@ -366,7 +461,7 @@ export function hasType(name: string, tag: UserTypeTag): TypeOfNode {
  * not(exists("closedAt"))            // NOT EXISTS(closedAt)
  * not(and(eq("a", 1), eq("b", 2)))   // NOT (a = i32(1) AND b = i32(2))
  */
-export function not(expression: Expression): NotNode {
+export function not<R extends AttributeRef>(expression: Expression<R>): NotNode<R> {
   return node({ kind: "not", expression })
 }
 
@@ -383,8 +478,12 @@ export function not(expression: Expression): NotNode {
  * and(gte("level", i32(10)), eq("status", "open"))
  * and(filters) // an array works too
  */
-export function and(expressions: readonly Expression[]): Expression
-export function and(...expressions: Expression[]): Expression
+export function and<const E extends readonly Expression[]>(
+  expressions: E,
+): Expression<RefsOf<E[number]>>
+export function and<const E extends readonly Expression[]>(
+  ...expressions: E
+): Expression<RefsOf<E[number]>>
 export function and(...expressions: (Expression | readonly Expression[])[]): Expression {
   return combine("and", expressions.flat())
 }
@@ -400,8 +499,12 @@ export function and(...expressions: (Expression | readonly Expression[])[]): Exp
  * @example
  * or(eq("status", "open"), not(exists("closedAt")))
  */
-export function or(expressions: readonly Expression[]): Expression
-export function or(...expressions: Expression[]): Expression
+export function or<const E extends readonly Expression[]>(
+  expressions: E,
+): Expression<RefsOf<E[number]>>
+export function or<const E extends readonly Expression[]>(
+  ...expressions: E
+): Expression<RefsOf<E[number]>>
 export function or(...expressions: (Expression | readonly Expression[])[]): Expression {
   return combine("or", expressions.flat())
 }
@@ -421,6 +524,59 @@ function combine(kind: "and" | "or", expressions: Expression[]): Expression {
       ? { kind: "and", expressions: Object.freeze(expressions) }
       : { kind: "or", expressions: Object.freeze(expressions) },
   )
+}
+
+/**
+ * Checks every attribute an expression names against a schema — the runtime half of the check
+ * {@link SchemaRef} makes at compile time, for the callers the type system does not reach.
+ *
+ * @throws {InvalidPredicateError} If a predicate names something that is not a column of the
+ * schema, a column that is not indexed, or compares a column against a value of another type.
+ */
+export function checkAgainstSchema(expression: Expression, schema: Schema): void {
+  switch (expression.kind) {
+    case "not":
+      checkAgainstSchema(expression.expression, schema)
+      return
+    case "and":
+    case "or":
+      for (const sub of expression.expressions) checkAgainstSchema(sub, schema)
+      return
+  }
+
+  const { name } = expression
+  // System attributes were checked against their fixed types when the predicate was built.
+  if (name.startsWith("$")) return
+
+  const column = lookupColumn(schema, name)
+  if (column === undefined) {
+    throw new InvalidPredicateError(
+      `"${name}" is not a column of the schema, so a predicate on it can only match entities ` +
+        `written some other way. Its columns are ${describeColumns(schema)}.`,
+      name,
+    )
+  }
+  if (!column.isIndexed) {
+    throw new InvalidPredicateError(
+      `"${name}" is not indexed, and only indexed attributes can be filtered on. Declare it ` +
+        `${column.type}().indexed() — entities written before that are indexed by their next ` +
+        "patch of it — or select it and filter the results in JavaScript.",
+      name,
+    )
+  }
+  const asserted =
+    expression.kind === "comparison" || expression.kind === "startsWith"
+      ? expression.value.type
+      : expression.kind === "typeOf"
+        ? expression.tag
+        : undefined
+  if (asserted !== undefined && asserted !== column.type) {
+    throw new InvalidPredicateError(
+      `"${name}" is a ${column.type} column, but the predicate asserts a ${asserted}, so it could ` +
+        `never match. Write ${column.type}(...) around the value.`,
+      name,
+    )
+  }
 }
 
 /**
@@ -475,7 +631,7 @@ export function render(expression: Expression): string {
 }
 
 /** Renders a typed value as its query literal. `bool` is the one type written bare. */
-function renderLiteral(value: ArkivValue): string {
+function renderLiteral(value: IndexableValue): string {
   switch (value.type) {
     case "bool":
       return value.value ? "true" : "false"

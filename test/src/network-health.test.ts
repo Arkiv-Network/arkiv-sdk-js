@@ -1,14 +1,19 @@
 import { describe, expect, test } from "bun:test"
-import type { PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
+import type {
+  CreationFlags,
+  Expiry,
+  CreateEntityValues,
+  PublicArkivClient,
+  Schema,
+  WalletArkivClient,
+} from "@arkiv-network/sdk"
 import {
   createPublicClient,
   createWalletClient,
   ExpirationTime,
-  jsonToPayload,
   NoEntityFoundError,
 } from "@arkiv-network/sdk"
-import { addr, bool, bytes32, dec, i32, key, str, u64, u256 } from "@arkiv-network/sdk/attr"
-import { tiramisu, localhost } from "@arkiv-network/sdk/chains"
+import { localhost, tiramisu } from "@arkiv-network/sdk/chains"
 import {
   and,
   type Expression,
@@ -23,9 +28,32 @@ import {
   not,
   or,
   QueryError,
+  type SchemaRef,
   startsWith,
 } from "@arkiv-network/sdk/query"
-import { type Chain, defineChain, getAddress, type Hex, http, isHex } from "viem"
+import {
+  addr,
+  bool,
+  bytes,
+  bytes32,
+  dec,
+  defineSchema,
+  i32,
+  key,
+  str,
+  u64,
+  u256,
+} from "@arkiv-network/sdk/schema"
+import {
+  type Chain,
+  defineChain,
+  getAddress,
+  type Hex,
+  hexToString,
+  http,
+  isHex,
+  stringToBytes,
+} from "viem"
 import { privateKeyToAccount } from "viem/accounts"
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY
@@ -82,6 +110,33 @@ const walletClient: WalletArkivClient = createWalletClient({
 /** A short lifetime for entities that only have to outlive the test that made them. */
 const SHORT = ExpirationTime.fromHours(1)
 
+/**
+ * What most checks write: an indexed tag and purpose to find an entity by, and an unindexed body
+ * standing in for what used to be the payload.
+ */
+const Probe = defineSchema({
+  tag: str().indexed().optional(),
+  purpose: str().indexed().optional(),
+  body: bytes().optional(),
+})
+
+/** Creates one entity and waits for it to land. */
+async function create<S extends Schema>(
+  schema: S,
+  values: CreateEntityValues<S>,
+  options: { expires?: Expiry; flags?: CreationFlags } = {},
+) {
+  const created = await walletClient.createEntity(schema, values, {
+    expires: options.expires ?? SHORT,
+    ...(options.flags ? { flags: options.flags } : {}),
+  })
+  const receipt = await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+  return { ...created, blockNumber: receipt.blockNumber }
+}
+
+/** JSON as the bytes of a body column. */
+const json = (value: unknown) => stringToBytes(JSON.stringify(value))
+
 describe(`Network health check (${chain.name})`, () => {
   test(
     "the chain is reachable",
@@ -107,36 +162,39 @@ describe(`Network health check (${chain.name})`, () => {
     "an entity comes back the way it was written",
     async () => {
       const tag = `health-${Date.now()}`
-      const payload = jsonToPayload({ healthCheck: true, tag })
-
-      const { entityKey, txHash, expiresAt } = await walletClient.createEntity({
-        payload,
-        contentType: "application/json",
-        attributes: {
-          tag,
-          healthy: true,
-          level: i32(42),
-          height: u64(1_200_000n),
-        },
-        expires: SHORT,
+      const Health = defineSchema({
+        tag: str().indexed(),
+        healthy: bool().indexed(),
+        level: i32().indexed(),
+        height: u64(),
+        body: bytes(),
+        mimeType: str().default("application/json"),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const body = json({ healthCheck: true, tag })
 
-      const entity = await publicClient.getEntity(entityKey)
+      const { entityKey, expiresAt } = await create(Health, {
+        tag,
+        healthy: true,
+        level: i32(42),
+        height: u64(1_200_000n),
+        body,
+      })
+
+      const entity = await publicClient.getEntity(entityKey, Health)
 
       expect(entity.key).toBe(entityKey)
-      expect(entity.payload).toEqual(payload)
-      expect(entity.toJson()).toMatchObject({ healthCheck: true, tag })
-      expect(entity.contentType).toBe("application/json")
+      expect(entity.body).toEqual(bytes(body))
+      expect(JSON.parse(hexToString(entity.body.value))).toMatchObject({ healthCheck: true, tag })
+      expect(entity.mimeType).toEqual(str("application/json"))
       expect(entity.owner).toBe(account.address)
       expect(entity.creator).toBe(account.address)
       expect(entity.expiresAt).toBe(expiresAt)
       expect(entity.createdAt).toBeGreaterThan(0n)
 
-      expect(entity.attributes.tag).toEqual(str(tag))
-      expect(entity.attributes.healthy).toEqual(bool(true))
-      expect(entity.attributes.level).toEqual(i32(42))
-      expect(entity.attributes.height).toEqual(u64(1_200_000n))
+      expect(entity.tag).toEqual(str(tag))
+      expect(entity.healthy).toEqual(bool(true))
+      expect(entity.level).toEqual(i32(42))
+      expect(entity.height).toEqual(u64(1_200_000n))
 
       expect(entity.creationFlags).toEqual({
         readonly: false,
@@ -152,28 +210,26 @@ describe(`Network health check (${chain.name})`, () => {
     "an entity can be found by the attributes it was written with",
     async () => {
       const tag = `find-${Date.now()}`
+      const Docs = defineSchema({ tag: str().indexed(), category: str().indexed(), level: i32() })
 
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ tag }),
-        contentType: "application/json",
-        attributes: { tag, category: "docs", level: i32(7) },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Docs, { tag, category: "docs", level: i32(7) })
 
       const found = await publicClient
-        .select({ key: true, attributes: true })
+        .select({ key: true, category: true, level: true })
+        .from(Docs)
         .where(eq("tag", str(tag)))
         .ownedBy(account.address)
         .fetch()
 
       expect(found.entities).toHaveLength(1)
       expect(found.entities[0]?.key).toBe(entityKey)
-      expect(found.entities[0]?.attributes.category).toEqual(str("docs"))
+      expect(found.entities[0]?.category).toEqual(str("docs"))
+      expect(found.entities[0]?.level).toEqual(i32(7))
 
       // Something that does not match must not come back.
       const missing = await publicClient
         .select({ key: true })
+        .from(Docs)
         .where(eq("tag", str(tag)), eq("category", str("nope")))
         .fetch()
       expect(missing.entities).toHaveLength(0)
@@ -186,34 +242,38 @@ describe(`Network health check (${chain.name})`, () => {
     "a patch changes what it names and leaves everything else alone",
     async () => {
       const tag = `patch-${Date.now()}`
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ version: 1 }),
-        contentType: "application/json",
-        attributes: { tag, keep: "original", drop: "temporary", level: i32(1) },
-        expires: SHORT,
+      const Versioned = defineSchema({
+        tag: str().indexed(),
+        keep: str(),
+        drop: str().optional(),
+        level: i32().indexed(),
+        body: bytes(),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Versioned, {
+        tag,
+        keep: "original",
+        drop: "temporary",
+        level: i32(1),
+        body: json({ version: 1 }),
+      })
 
-      const patch = await walletClient.patchEntity({
-        entityKey,
-        payload: jsonToPayload({ version: 2 }),
-        contentType: "application/json",
-        set: { level: i32(2) },
+      const patch = await walletClient.patchEntity(Versioned, entityKey, {
+        set: { body: json({ version: 2 }), level: i32(2) },
         unset: ["drop"],
       })
       await publicClient.waitForTransactionReceipt({ hash: patch.txHash })
 
-      const patched = await publicClient.getEntity(entityKey)
+      const patched = await publicClient.getEntity(entityKey, Versioned)
 
       // What the patch named, changed.
-      expect(patched.toJson()).toMatchObject({ version: 2 })
-      expect(patched.attributes.level).toEqual(i32(2))
+      expect(JSON.parse(hexToString(patched.body.value))).toMatchObject({ version: 2 })
+      expect(patched.level).toEqual(i32(2))
       // What it unset, gone.
-      expect(patched.attributes.drop).toBeUndefined()
+      expect(patched.drop).toBeUndefined()
       // What it never mentioned, untouched.
-      expect(patched.attributes.keep).toEqual(str("original"))
-      expect(patched.attributes.tag).toEqual(str(tag))
-      expect(patched.updatedAt).toBeGreaterThanOrEqual(patched.createdAt ?? 0n)
+      expect(patched.keep).toEqual(str("original"))
+      expect(patched.tag).toEqual(str(tag))
+      expect(patched.updatedAt).toBeGreaterThanOrEqual(patched.createdAt)
       console.log(`  PATCH  merged, tombstoned, and left the rest alone`)
     },
     { timeout: 120_000 },
@@ -222,13 +282,10 @@ describe(`Network health check (${chain.name})`, () => {
   test(
     "a deleted entity is gone",
     async () => {
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ doomed: true }),
-        contentType: "application/json",
-        attributes: { purpose: "delete_me" },
-        expires: SHORT,
+      const { entityKey } = await create(Probe, {
+        purpose: "delete_me",
+        body: json({ doomed: true }),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
       expect((await publicClient.getEntity(entityKey)).key).toBe(entityKey)
 
       const removed = await walletClient.deleteEntity({ entityKey })
@@ -244,17 +301,14 @@ describe(`Network health check (${chain.name})`, () => {
     "an entity expires on its own",
     async () => {
       const ttlBlocks = 5
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ shortLived: true }),
-        contentType: "application/json",
-        attributes: { purpose: "ttl_test" },
-        expires: ExpirationTime.fromBlocks(ttlBlocks),
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(
+        Probe,
+        { purpose: "ttl_test" },
+        { expires: ExpirationTime.fromBlocks(ttlBlocks) },
+      )
 
       const entity = await publicClient.getEntity(entityKey)
       const expiresAt = entity.expiresAt
-      if (expiresAt === undefined) throw new Error("entity has no expiresAt")
       console.log(`  EXPIRY  waiting for block ${expiresAt}`)
 
       const deadline = Date.now() + 120_000
@@ -272,13 +326,7 @@ describe(`Network health check (${chain.name})`, () => {
   test(
     "extending an entity pushes its expiry out",
     async () => {
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ extendTest: true }),
-        contentType: "application/json",
-        attributes: { purpose: "extend_test" },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Probe, { purpose: "extend_test" })
 
       const before = await publicClient.getEntity(entityKey)
 
@@ -289,7 +337,7 @@ describe(`Network health check (${chain.name})`, () => {
       await publicClient.waitForTransactionReceipt({ hash: extended.txHash })
 
       const after = await publicClient.getEntity(entityKey)
-      expect(after.expiresAt).toBeGreaterThan(before.expiresAt ?? 0n)
+      expect(after.expiresAt).toBeGreaterThan(before.expiresAt)
       expect(after.expiresAt).toBe(extended.expiresAt)
       console.log(`  EXTEND  ${before.expiresAt} → ${after.expiresAt}`)
     },
@@ -302,13 +350,7 @@ describe(`Network health check (${chain.name})`, () => {
       const newOwner = "0x1234567890abcdef1234567890abcdef12345678" as Hex
       const tag = `owner-${Date.now()}`
 
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ ownershipTest: true }),
-        contentType: "application/json",
-        attributes: { tag },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Probe, { tag })
 
       const transfer = await walletClient.changeOwnership({ entityKey, newOwner })
       await publicClient.waitForTransactionReceipt({ hash: transfer.txHash })
@@ -318,16 +360,20 @@ describe(`Network health check (${chain.name})`, () => {
       expect(after.creator).toBe(account.address)
 
       const byTag = eq("tag", str(tag))
+      const keys = (builder: { fetch(): Promise<{ entities: readonly unknown[] }> }) =>
+        builder.fetch().then((page) => page.entities)
       expect(
-        (await publicClient.select({ key: true }).where(byTag).ownedBy(newOwner).fetch()).entities,
+        await keys(publicClient.select({ key: true }).from(Probe).where(byTag).ownedBy(newOwner)),
       ).toHaveLength(1)
       expect(
-        (await publicClient.select({ key: true }).where(byTag).ownedBy(account.address).fetch())
-          .entities,
+        await keys(
+          publicClient.select({ key: true }).from(Probe).where(byTag).ownedBy(account.address),
+        ),
       ).toHaveLength(0)
       expect(
-        (await publicClient.select({ key: true }).where(byTag).createdBy(account.address).fetch())
-          .entities,
+        await keys(
+          publicClient.select({ key: true }).from(Probe).where(byTag).createdBy(account.address),
+        ),
       ).toHaveLength(1)
       console.log(`  OWNER  ownedBy follows the transfer, createdBy does not`)
     },
@@ -337,14 +383,11 @@ describe(`Network health check (${chain.name})`, () => {
   test(
     "creation flags come back as they were set, and readonly is enforced",
     async () => {
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ readonlyTest: true }),
-        contentType: "application/json",
-        attributes: { purpose: "readonly_test" },
-        expires: SHORT,
-        flags: { readonly: true },
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(
+        Probe,
+        { purpose: "readonly_test" },
+        { flags: { readonly: true } },
+      )
 
       const entity = await publicClient.getEntity(entityKey)
       expect(entity.creationFlags).toEqual({
@@ -354,7 +397,7 @@ describe(`Network health check (${chain.name})`, () => {
       })
 
       await expect(
-        walletClient.patchEntity({ entityKey, set: { purpose: "should_fail" } }),
+        walletClient.patchEntity(Probe, entityKey, { set: { purpose: "should_fail" } }),
       ).rejects.toThrow()
 
       const extended = await walletClient.extendEntity({
@@ -370,13 +413,11 @@ describe(`Network health check (${chain.name})`, () => {
   test(
     "a permanent entity is written with an expiry no chain will reach",
     async () => {
-      const { entityKey, txHash, expiresAt } = await walletClient.createEntity({
-        payload: new Uint8Array(),
-        contentType: "application/octet-stream",
-        attributes: { purpose: "permanent_test" },
-        expires: ExpirationTime.permanent(),
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey, expiresAt } = await create(
+        Probe,
+        { purpose: "permanent_test", body: new Uint8Array() },
+        { expires: ExpirationTime.permanent() },
+      )
 
       expect(expiresAt).toBe(2n ** 64n - 1n)
       expect((await publicClient.getEntity(entityKey)).expiresAt).toBe(2n ** 64n - 1n)
@@ -391,9 +432,8 @@ describe(`Network health check (${chain.name})`, () => {
       const tag = `batch-${Date.now()}`
       const pre = await walletClient.executeBatch({
         creates: (["patch", "delete", "extend", "transfer"] as const).map((purpose) => ({
-          payload: jsonToPayload({ batch: purpose }),
-          contentType: "application/json" as const,
-          attributes: { tag, purpose: `batch_${purpose}` },
+          schema: Probe,
+          values: { tag, purpose: `batch_${purpose}`, body: json({ batch: purpose }) },
           expires: SHORT,
         })),
       })
@@ -403,19 +443,18 @@ describe(`Network health check (${chain.name})`, () => {
       if (!toPatch || !toDelete || !toExtend || !toTransfer) {
         throw new Error(`expected 4 pre-created keys, got ${pre.createdEntities.length}`)
       }
-      const expiryBefore = (await publicClient.getEntity(toExtend)).expiresAt ?? 0n
+      const expiryBefore = (await publicClient.getEntity(toExtend)).expiresAt
 
       const newOwner = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Hex
       const result = await walletClient.executeBatch({
         creates: [
           {
-            payload: jsonToPayload({ batch: "created" }),
-            contentType: "application/json",
-            attributes: { tag, purpose: "batch_created" },
+            schema: Probe,
+            values: { tag, purpose: "batch_created", body: json({ batch: "created" }) },
             expires: SHORT,
           },
         ],
-        patches: [{ entityKey: toPatch, set: { purpose: "batch_patched" } }],
+        patches: [{ schema: Probe, entityKey: toPatch, set: { purpose: "batch_patched" } }],
         deletes: [{ entityKey: toDelete }],
         extensions: [{ entityKey: toExtend, expires: ExpirationTime.fromHours(2) }],
         ownershipChanges: [{ entityKey: toTransfer, newOwner }],
@@ -424,12 +463,8 @@ describe(`Network health check (${chain.name})`, () => {
 
       const created = result.createdEntities[0]
       if (!created) throw new Error("batch reported no created entity")
-      expect((await publicClient.getEntity(created)).attributes.purpose).toEqual(
-        str("batch_created"),
-      )
-      expect((await publicClient.getEntity(toPatch)).attributes.purpose).toEqual(
-        str("batch_patched"),
-      )
+      expect((await publicClient.getEntity(created, Probe)).purpose).toEqual(str("batch_created"))
+      expect((await publicClient.getEntity(toPatch, Probe)).purpose).toEqual(str("batch_patched"))
       await expect(publicClient.getEntity(toDelete)).rejects.toThrow(NoEntityFoundError)
       expect((await publicClient.getEntity(toExtend)).expiresAt).toBeGreaterThan(expiryBefore)
       expect((await publicClient.getEntity(toTransfer)).owner).toBe(getAddress(newOwner))
@@ -442,6 +477,11 @@ describe(`Network health check (${chain.name})`, () => {
     "the keys a batch will mint can be worked out before it is sent",
     async () => {
       const tag = `predicted-${Date.now()}`
+      const Tree = defineSchema({
+        tag: str().indexed(),
+        role: str().indexed(),
+        parent: key().indexed().optional(),
+      })
       const nonceBefore = await publicClient.getEntityNonce(account.address)
 
       // A literal count is a tuple, so the pairs destructure into names — no length check needed.
@@ -455,17 +495,10 @@ describe(`Network health check (${chain.name})`, () => {
       // reason to predict one.
       const batch = await walletClient.executeBatch({
         creates: [
+          { schema: Tree, values: { tag, role: "parent" }, expires: SHORT, salt: parent.salt },
           {
-            payload: jsonToPayload({ role: "parent" }),
-            contentType: "application/json",
-            attributes: { tag, role: "parent" },
-            expires: SHORT,
-            salt: parent.salt,
-          },
-          {
-            payload: jsonToPayload({ role: "child" }),
-            contentType: "application/json",
-            attributes: { tag, role: "child", parent: key(parent.key) },
+            schema: Tree,
+            values: { tag, role: "child", parent: key(parent.key) },
             expires: SHORT,
             salt: child.salt,
           },
@@ -475,14 +508,15 @@ describe(`Network health check (${chain.name})`, () => {
 
       // The engine minted exactly the keys that were predicted, in order.
       expect(batch.createdEntities).toEqual([parent.key, child.key])
-      expect((await publicClient.getEntity(parent.key)).attributes.role).toEqual(str("parent"))
+      expect((await publicClient.getEntity(parent.key, Tree)).role).toEqual(str("parent"))
 
       // And the pointer the child was created with resolves to a real entity.
       const children = await publicClient
-        .select({ key: true, attributes: { parent: true } })
+        .select({ key: true, parent: true })
+        .from(Tree)
         .where(and(eq("tag", str(tag)), eq("role", str("child"))))
         .fetch()
-      expect(children.entities.map((entity) => entity.attributes.parent)).toEqual([key(parent.key)])
+      expect(children.entities.map((row) => row.parent)).toEqual([key(parent.key)])
 
       // Two creates, two nonces.
       expect(await publicClient.getEntityNonce(account.address)).toBe(nonceBefore + 2n)
@@ -495,19 +529,19 @@ describe(`Network health check (${chain.name})`, () => {
     "queries filter with every operator the language offers",
     async () => {
       const group = `filter-${Date.now()}`
+      const Scores = defineSchema({ group: str().indexed(), score: i32().indexed() })
 
       const created = await walletClient.executeBatch({
         creates: [10, 20, 30, 40, 50].map((score) => ({
-          payload: jsonToPayload({ group, score }),
-          contentType: "application/json" as const,
-          attributes: { group, score: i32(score) },
+          schema: Scores,
+          values: { group, score: i32(score) },
           expires: SHORT,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
       const inGroup = eq("group", str(group))
-      const count = async (...predicates: Parameters<typeof and>) =>
+      const count = async (...predicates: Expression[]) =>
         (
           await publicClient
             .select({ key: true })
@@ -533,32 +567,27 @@ describe(`Network health check (${chain.name})`, () => {
     "a projection returns exactly the fields it asked for",
     async () => {
       const tag = `proj-${Date.now()}`
-      const { txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ projection: true, tag }),
-        contentType: "application/json",
-        attributes: { tag, color: "blue" },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const Colored = defineSchema({ tag: str().indexed(), color: str(), body: bytes() })
+      await create(Colored, { tag, color: "blue", body: json({ projection: true, tag }) })
       const where = eq("tag", str(tag))
 
       const keyOnly = await publicClient.select({ key: true }).where(where).fetch()
       expect(keyOnly.entities[0]?.key).toBeDefined()
-      // @ts-expect-error payload was not selected
-      expect(keyOnly.entities[0].payload).toBeUndefined()
       // @ts-expect-error owner was not selected
-      expect(keyOnly.entities[0].owner).toBeUndefined()
+      expect(keyOnly.entities[0]?.owner).toBeUndefined()
       // @ts-expect-error attributes were not selected
-      expect(keyOnly.entities[0].attributes).toBeUndefined()
+      expect(keyOnly.entities[0]?.attributes).toBeUndefined()
 
-      const payloadOnly = await publicClient.select({ payload: true }).where(where).fetch()
-      expect(payloadOnly.entities[0]?.toJson()).toMatchObject({ projection: true, tag })
+      const bodyOnly = await publicClient.select({ body: true }).from(Colored).where(where).fetch()
+      const body = bodyOnly.entities[0]?.body
+      expect(body && JSON.parse(hexToString(body.value))).toMatchObject({ projection: true, tag })
+      // @ts-expect-error color was not selected
+      expect(bodyOnly.entities[0]?.color).toBeUndefined()
 
       const metadata = await publicClient
         .select({
           owner: true,
           creator: true,
-          contentType: true,
           createdAt: true,
           updatedAt: true,
           expiresAt: true,
@@ -570,16 +599,19 @@ describe(`Network health check (${chain.name})`, () => {
       if (!meta) throw new Error("no entity returned for metadata projection")
       expect(meta.owner).toBeDefined()
       expect(meta.creator).toBeDefined()
-      expect(meta.contentType).toBe("application/json")
       expect(meta.createdAt).toBeGreaterThan(0n)
       expect(meta.updatedAt).toBeGreaterThan(0n)
       expect(meta.expiresAt).toBeGreaterThan(0n)
       expect(meta.creationFlags.readonly).toBe(false)
-      // @ts-expect-error payload was not selected
-      expect(meta.payload).toBeUndefined()
+      // @ts-expect-error attributes were not selected
+      expect(meta.attributes).toBeUndefined()
 
       const schema = await publicClient.select({ attributeSchema: true }).where(where).fetch()
-      expect(schema.entities[0]?.attributeSchema.tag).toBe("str")
+      expect(schema.entities[0]?.attributeSchema).toEqual({
+        tag: { type: "str", indexed: true },
+        color: { type: "str", indexed: false },
+        body: { type: "bytes", indexed: false },
+      })
 
       const oneAttribute = await publicClient
         .select({ key: true, attributes: { color: true } })
@@ -588,9 +620,10 @@ describe(`Network health check (${chain.name})`, () => {
       expect(oneAttribute.entities[0]?.attributes.color).toEqual(str("blue"))
       expect(oneAttribute.entities[0]?.attributes.tag).toBeUndefined()
 
-      const everything = await publicClient.select("*").where(where).fetch()
-      expect(everything.entities[0]?.payload.length).toBeGreaterThan(0)
-      expect(everything.entities[0]?.attributes.tag).toEqual(str(tag))
+      const everything = await publicClient.select("*").from(Colored).where(where).fetch()
+      expect(everything.entities[0]?.color).toEqual(str("blue"))
+      expect(everything.entities[0]?.tag).toEqual(str(tag))
+      expect(everything.entities[0]?.owner).toBe(account.address)
       console.log(`  SELECT  projections returned exactly what was asked for`)
     },
     { timeout: 180_000 },
@@ -600,18 +633,19 @@ describe(`Network health check (${chain.name})`, () => {
     "a large result set pages without losing or repeating anything",
     async () => {
       const group = `page-${Date.now()}`
+      const Paged = defineSchema({ group: str().indexed(), index: i32() })
       const created = await walletClient.executeBatch({
         creates: Array.from({ length: 8 }, (_, index) => ({
-          payload: jsonToPayload({ group, index }),
-          contentType: "application/json" as const,
-          attributes: { group },
+          schema: Paged,
+          values: { group, index },
           expires: SHORT,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
       const page1 = await publicClient
-        .select({ key: true })
+        .select({ key: true, index: true })
+        .from(Paged)
         .where(eq("group", str(group)))
         .limit(3)
         .fetch()
@@ -629,8 +663,11 @@ describe(`Network health check (${chain.name})`, () => {
       expect(page2.blockNumber).toBe(page1.blockNumber)
       expect(page3.blockNumber).toBe(page1.blockNumber)
 
-      const keys = [...page1.entities, ...page2.entities, ...page3.entities].map((e) => e.key)
-      expect(new Set(keys).size).toBe(8)
+      const rows = [...page1.entities, ...page2.entities, ...page3.entities]
+      expect(new Set(rows.map((row) => row.key)).size).toBe(8)
+      expect(rows.map((row) => row.index.value).sort((a, b) => a - b)).toEqual([
+        0, 1, 2, 3, 4, 5, 6, 7,
+      ])
       console.log(`  PAGE  8 entities over 3 pages, none lost or repeated`)
     },
     { timeout: 180_000 },
@@ -643,55 +680,67 @@ describe(`Network health check (${chain.name})`, () => {
       const digest = `0x${"de".repeat(32)}` as Hex
       const dangling = `0x${"ab".repeat(32)}` as Hex
       const huge = 2n ** 200n
-
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ attrTest: true }),
-        contentType: "application/json",
-        attributes: {
-          tag,
-          text: "hello",
-          count: 42,
-          zero: 0,
-          negative: i32(-10),
-          big: u64(BigInt(Number.MAX_SAFE_INTEGER)),
-          amount: u256(huge),
-          score: dec("3.5"),
-          flagged: true,
-          digest: bytes32(digest),
-          who: addr(account.address),
-          parent: key(dangling),
-        },
-        expires: SHORT,
+      const AllTypes = defineSchema({
+        tag: str().indexed(),
+        text: str().indexed(),
+        count: i32().indexed(),
+        zero: i32().indexed(),
+        negative: i32().indexed(),
+        big: u64().indexed(),
+        amount: u256().indexed(),
+        score: dec().indexed(),
+        flagged: bool().indexed(),
+        digest: bytes32().indexed(),
+        who: addr().indexed(),
+        parent: key().indexed(),
+        blob: bytes(),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
 
-      const { attributes, attributeSchema } = await publicClient.getEntity(entityKey)
-      expect(attributes.text).toEqual(str("hello"))
-      expect(attributes.count).toEqual(i32(42))
-      expect(attributes.zero).toEqual(i32(0))
-      expect(attributes.negative).toEqual(i32(-10))
-      expect(attributes.big).toEqual(u64(BigInt(Number.MAX_SAFE_INTEGER)))
-      expect(attributes.amount).toEqual(u256(huge))
-      expect(attributes.score).toEqual(dec("3.5"))
-      expect(attributes.flagged).toEqual(bool(true))
-      expect(attributes.digest).toEqual(bytes32(digest))
-      expect(attributes.who).toEqual(addr(account.address))
-      expect(attributes.parent).toEqual(key(dangling))
+      const { entityKey } = await create(AllTypes, {
+        tag,
+        text: "hello",
+        count: 42,
+        zero: 0,
+        negative: i32(-10),
+        big: u64(BigInt(Number.MAX_SAFE_INTEGER)),
+        amount: u256(huge),
+        score: dec("3.5"),
+        flagged: true,
+        digest: bytes32(digest),
+        who: addr(account.address),
+        parent: key(dangling),
+        blob: new Uint8Array([1, 2, 3]),
+      })
 
-      expect(attributeSchema).toMatchObject({
-        text: "str",
-        count: "i32",
-        big: "u64",
-        amount: "u256",
-        score: "dec",
-        flagged: "bool",
-        digest: "bytes32",
-        who: "addr",
-        parent: "key",
+      const entity = await publicClient.getEntity(entityKey, AllTypes)
+      expect(entity.text).toEqual(str("hello"))
+      expect(entity.count).toEqual(i32(42))
+      expect(entity.zero).toEqual(i32(0))
+      expect(entity.negative).toEqual(i32(-10))
+      expect(entity.big).toEqual(u64(BigInt(Number.MAX_SAFE_INTEGER)))
+      expect(entity.amount).toEqual(u256(huge))
+      expect(entity.score).toEqual(dec("3.5"))
+      expect(entity.flagged).toEqual(bool(true))
+      expect(entity.digest).toEqual(bytes32(digest))
+      expect(entity.who).toEqual(addr(account.address))
+      expect(entity.parent).toEqual(key(dangling))
+      expect(entity.blob).toEqual(bytes("0x010203"))
+
+      expect((await publicClient.getEntity(entityKey)).attributeSchema).toMatchObject({
+        text: { type: "str", indexed: true },
+        count: { type: "i32", indexed: true },
+        big: { type: "u64", indexed: true },
+        amount: { type: "u256", indexed: true },
+        score: { type: "dec", indexed: true },
+        flagged: { type: "bool", indexed: true },
+        digest: { type: "bytes32", indexed: true },
+        who: { type: "addr", indexed: true },
+        parent: { type: "key", indexed: true },
+        blob: { type: "bytes", indexed: false },
       })
 
       const byTag = eq("tag", str(tag))
-      const matches = async (predicate: ReturnType<typeof eq>) =>
+      const matches = async (predicate: Expression) =>
         (await publicClient.select({ key: true }).where(byTag, predicate).fetch()).entities.length
 
       expect(await matches(eq("count", i32(42)))).toBe(1)
@@ -708,29 +757,73 @@ describe(`Network health check (${chain.name})`, () => {
       expect(await matches(gte("amount", u256(huge)))).toBe(1)
       expect(await matches(gt("amount", u256(huge)))).toBe(0)
       expect(await matches(lt("negative", i32(0)))).toBe(1)
-      console.log(`  ATTRS  all nine settable types round-tripped, matched and ordered`)
+      console.log(`  ATTRS  every type round-tripped, matched and ordered`)
     },
     { timeout: 180_000 },
+  )
+
+  test(
+    "unindexed columns are stored and selectable, but never match a filter",
+    async () => {
+      const tag = `unindexed-${Date.now()}`
+      const Articles = defineSchema({
+        tag: str().indexed(),
+        title: str(),
+        cover: bytes(),
+        thumbnail: bytes(),
+        lang: str().default("en"),
+      })
+      const { entityKey } = await create(Articles, {
+        tag,
+        title: "Cells, not entities",
+        cover: new Uint8Array(32 * 1024).fill(7),
+        thumbnail: new Uint8Array([9, 9]),
+      })
+
+      const row = (
+        await publicClient
+          .select({ key: true, title: true, thumbnail: true, lang: true })
+          .from(Articles)
+          .where(eq("tag", tag))
+          .fetch()
+      ).entities[0]
+      expect(row).toEqual({
+        key: entityKey,
+        title: str("Cells, not entities"),
+        thumbnail: bytes("0x0909"),
+        lang: str("en"),
+      })
+
+      // There is no index to answer a filter on `title` from: the node refuses it or finds nothing.
+      const byTitle = await publicClient
+        .query(`tag = str('${tag}') AND title = str('Cells, not entities')`, {
+          select: { key: true },
+        })
+        .then((page) => page.entities.map((entity) => entity.key))
+        .catch(() => [])
+      expect(byTitle).not.toContain(entityKey)
+      console.log(`  COLUMNS  unindexed columns and two blobs stored, read back, never matched`)
+    },
+    { timeout: 120_000 },
   )
 
   test(
     "a raw query string works for a query built elsewhere",
     async () => {
       const tag = `raw-${Date.now()}`
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ rawQuery: true, tag }),
-        contentType: "application/json",
-        attributes: { tag, status: "active" },
-        expires: SHORT,
+      const Status = defineSchema({ tag: str().indexed(), status: str().indexed(), body: bytes() })
+      const { entityKey } = await create(Status, {
+        tag,
+        status: "active",
+        body: json({ rawQuery: true, tag }),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
 
       const result = await publicClient.query(`tag = str('${tag}') AND status = str('active')`, {
-        select: { key: true, payload: true },
+        select: { key: true, attributes: { body: true } },
       })
       expect(result.entities).toHaveLength(1)
       expect(result.entities[0]?.key).toBe(entityKey)
-      expect(result.entities[0]?.payload).toBeDefined()
+      expect(result.entities[0]?.attributes?.body?.type).toBe("bytes")
 
       const negated = await publicClient.query(
         `tag = str('${tag}') AND NOT (status = str('active'))`,
@@ -752,16 +845,9 @@ describe(`Network health check (${chain.name})`, () => {
       })
 
       try {
-        const { entityKey, txHash } = await walletClient.createEntity({
-          payload: jsonToPayload({ eventTest: true }),
-          contentType: "application/json",
-          attributes: { purpose: "event_test" },
-          expires: SHORT,
-        })
-        await publicClient.waitForTransactionReceipt({ hash: txHash })
+        const { entityKey } = await create(Probe, { purpose: "event_test" })
 
-        const patch = await walletClient.patchEntity({
-          entityKey,
+        const patch = await walletClient.patchEntity(Probe, entityKey, {
           set: { purpose: "event_test_patched" },
         })
         await publicClient.waitForTransactionReceipt({ hash: patch.txHash })
@@ -796,13 +882,7 @@ describe(`Network health check (${chain.name})`, () => {
     "the entity count reflects what is stored",
     async () => {
       const before = await publicClient.getEntityCount()
-      const { txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ countTest: true }),
-        contentType: "application/json",
-        attributes: { purpose: "count_test" },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await create(Probe, { purpose: "count_test" })
 
       expect(await publicClient.getEntityCount()).toBeGreaterThan(before)
       console.log(`  COUNT  ${before} → ${await publicClient.getEntityCount()}`)
@@ -814,11 +894,11 @@ describe(`Network health check (${chain.name})`, () => {
     "STARTSWITH matches a string prefix",
     async () => {
       const group = `prefix-${Date.now()}`
+      const Labels = defineSchema({ group: str().indexed(), label: str().indexed() })
       const created = await walletClient.executeBatch({
         creates: ["alpha-one", "alpha-two", "beta-one"].map((label) => ({
-          payload: jsonToPayload({ group, label }),
-          contentType: "application/json" as const,
-          attributes: { group, label },
+          schema: Labels,
+          values: { group, label },
           expires: SHORT,
         })),
       })
@@ -843,20 +923,11 @@ describe(`Network health check (${chain.name})`, () => {
     "EXISTS finds attributes by presence, whatever they hold",
     async () => {
       const group = `exists-${Date.now()}`
+      const Reviews = defineSchema({ group: str().indexed(), reviewed: str().indexed().optional() })
       const created = await walletClient.executeBatch({
         creates: [
-          {
-            payload: jsonToPayload({ group, has: true }),
-            contentType: "application/json" as const,
-            attributes: { group, reviewed: "yes" },
-            expires: SHORT,
-          },
-          {
-            payload: jsonToPayload({ group, has: false }),
-            contentType: "application/json" as const,
-            attributes: { group },
-            expires: SHORT,
-          },
+          { schema: Reviews, values: { group, reviewed: "yes" }, expires: SHORT },
+          { schema: Reviews, values: { group }, expires: SHORT },
         ],
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -877,20 +948,14 @@ describe(`Network health check (${chain.name})`, () => {
     "TYPEOF tells apart one name written with two types",
     async () => {
       const group = `typeof-${Date.now()}`
+      // Two schemas that disagree about the type of `reading` — legal, since the node sees only
+      // attributes, and exactly what TYPEOF exists to tell apart.
+      const Numeric = defineSchema({ group: str().indexed(), reading: i32().indexed() })
+      const Textual = defineSchema({ group: str().indexed(), reading: str().indexed() })
       const created = await walletClient.executeBatch({
         creates: [
-          {
-            payload: jsonToPayload({ group, kind: "number" }),
-            contentType: "application/json" as const,
-            attributes: { group, reading: i32(1) },
-            expires: SHORT,
-          },
-          {
-            payload: jsonToPayload({ group, kind: "text" }),
-            contentType: "application/json" as const,
-            attributes: { group, reading: str("1") },
-            expires: SHORT,
-          },
+          { schema: Numeric, values: { group, reading: i32(1) }, expires: SHORT },
+          { schema: Textual, values: { group, reading: str("1") }, expires: SHORT },
         ],
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -913,13 +978,7 @@ describe(`Network health check (${chain.name})`, () => {
     "the indexed system attributes answer predicates",
     async () => {
       const tag = `sys-${Date.now()}`
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ systemTest: true }),
-        contentType: "application/json",
-        attributes: { tag },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Probe, { tag })
 
       const { expiresAt } = await publicClient.getEntity(entityKey)
 
@@ -945,24 +1004,16 @@ describe(`Network health check (${chain.name})`, () => {
     "a query reads the state of a past block",
     async () => {
       const tag = `history-${Date.now()}`
-      const { txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ historyTest: true }),
-        contentType: "application/json",
-        attributes: { tag },
-        expires: SHORT,
-      })
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { blockNumber } = await create(Probe, { tag })
 
       const where = eq("tag", str(tag))
       const at = async (block: bigint) =>
         (await publicClient.select({ key: true }).where(where).atBlock(block).fetch()).entities
           .length
 
-      expect(await at(receipt.blockNumber)).toBe(1)
-      expect(await at(receipt.blockNumber - 1n)).toBe(0)
-      console.log(
-        `  HISTORY  absent at ${receipt.blockNumber - 1n}, present at ${receipt.blockNumber}`,
-      )
+      expect(await at(blockNumber)).toBe(1)
+      expect(await at(blockNumber - 1n)).toBe(0)
+      console.log(`  HISTORY  absent at ${blockNumber - 1n}, present at ${blockNumber}`)
     },
     { timeout: 120_000 },
   )
@@ -971,13 +1022,9 @@ describe(`Network health check (${chain.name})`, () => {
     "a rejected query says which kind of rejection it was",
     async () => {
       const group = `errors-${Date.now()}`
+      const Grouped = defineSchema({ group: str().indexed() })
       const created = await walletClient.executeBatch({
-        creates: [1, 2].map((index) => ({
-          payload: jsonToPayload({ group, index }),
-          contentType: "application/json" as const,
-          attributes: { group },
-          expires: SHORT,
-        })),
+        creates: [1, 2].map(() => ({ schema: Grouped, values: { group }, expires: SHORT })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
@@ -1019,34 +1066,20 @@ describe(`Network health check (${chain.name})`, () => {
       const set = { purpose: "should_not_apply" }
 
       // Nothing to patch.
-      await expect(walletClient.patchEntity({ entityKey: absent, set })).rejects.toThrow(
-        /no entity/,
-      )
+      await expect(walletClient.patchEntity(Probe, absent, { set })).rejects.toThrow(/no entity/)
 
       // Not yours to patch: ownership moved, and with it the right to change the contents.
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ authTest: true }),
-        contentType: "application/json",
-        attributes: { purpose: "auth_test" },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Probe, { purpose: "auth_test" })
       const transfer = await walletClient.changeOwnership({
         entityKey,
         newOwner: "0x00000000000000000000000000000000000000aa" as Hex,
       })
       await publicClient.waitForTransactionReceipt({ hash: transfer.txHash })
-      await expect(walletClient.patchEntity({ entityKey, set })).rejects.toThrow(/owned by/)
+      await expect(walletClient.patchEntity(Probe, entityKey, { set })).rejects.toThrow(/owned by/)
 
       // Lifetimes never shorten. The engine resolves the pair the SDK sends against the block the
       // transaction lands in, so this is its judgement, not the SDK's.
-      const { entityKey: liveKey, txHash: liveHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ shortenTest: true }),
-        contentType: "application/json",
-        attributes: { purpose: "shorten_test" },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: liveHash })
+      const { entityKey: liveKey } = await create(Probe, { purpose: "shorten_test" })
       await expect(
         walletClient.extendEntity({ entityKey: liveKey, expires: ExpirationTime.fromBlocks(1) }),
       ).rejects.toThrow()
@@ -1061,26 +1094,33 @@ describe(`Network health check (${chain.name})`, () => {
       const tag = `names-${Date.now()}`
       // The grammar is a leading letter, then letters, digits, `.`, `-` or `_`, up to 32 bytes.
       const longest = `n${"a".repeat(31)}`
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ nameTest: true }),
-        contentType: "application/json",
-        attributes: {
-          tag,
-          lowercase: str("a"),
-          Uppercase: str("b"),
-          MiXeDcAsE: str("c"),
-          with9digits: str("d"),
-          "dotted.name": str("e"),
-          "dashed-name": str("f"),
-          under_scored: str("g"),
-          [longest]: str("h"),
-          // Names are case-sensitive, so these are two attributes, not one written twice.
-          Level: i32(1),
-          level: i32(2),
-        },
-        expires: SHORT,
+      const Names = defineSchema({
+        tag: str().indexed(),
+        lowercase: str().indexed(),
+        Uppercase: str().indexed(),
+        MiXeDcAsE: str().indexed(),
+        with9digits: str().indexed(),
+        "dotted.name": str().indexed(),
+        "dashed-name": str().indexed(),
+        under_scored: str().indexed(),
+        [longest]: str().indexed(),
+        // Names are case-sensitive, so these are two attributes, not one written twice.
+        Level: i32().indexed(),
+        level: i32().indexed(),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Names, {
+        tag,
+        lowercase: str("a"),
+        Uppercase: str("b"),
+        MiXeDcAsE: str("c"),
+        with9digits: str("d"),
+        "dotted.name": str("e"),
+        "dashed-name": str("f"),
+        under_scored: str("g"),
+        [longest]: str("h"),
+        Level: i32(1),
+        level: i32(2),
+      })
 
       const { attributes } = await publicClient.getEntity(entityKey)
       expect(attributes.lowercase).toEqual(str("a"))
@@ -1117,23 +1157,17 @@ describe(`Network health check (${chain.name})`, () => {
   test(
     "a batch that cannot apply in full applies none of it",
     async () => {
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ atomicTest: true }),
-        contentType: "application/json",
-        attributes: { purpose: "atomic_original" },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Probe, { purpose: "atomic_original" })
 
       // One good operation and one impossible one
       await expect(
         walletClient.executeBatch({
-          patches: [{ entityKey, set: { purpose: "atomic_changed" } }],
+          patches: [{ schema: Probe, entityKey, set: { purpose: "atomic_changed" } }],
           deletes: [{ entityKey: `0x${"88".repeat(32)}` as Hex }],
         }),
       ).rejects.toThrow()
 
-      expect((await publicClient.getEntity(entityKey)).attributes.purpose).toEqual(
+      expect((await publicClient.getEntity(entityKey, Probe)).purpose).toEqual(
         str("atomic_original"),
       )
       console.log(`  ATOMIC  the good operation in a failed batch did not apply`)
@@ -1163,27 +1197,21 @@ describe(`Network health check (${chain.name})`, () => {
       })
 
       try {
-        const base = {
-          contentType: "application/json" as const,
-          attributes: { purpose: "handler_test" },
-          expires: SHORT,
-        }
+        const base = { schema: Probe, expires: SHORT }
         const created = await walletClient.executeBatch({
           creates: [
-            { ...base, payload: jsonToPayload({ role: "mutated" }) },
-            { ...base, payload: jsonToPayload({ role: "transferred" }) },
+            { ...base, values: { purpose: "handler_test", body: json({ role: "mutated" }) } },
+            { ...base, values: { purpose: "handler_test", body: json({ role: "transferred" }) } },
           ],
         })
         await publicClient.waitForTransactionReceipt({ hash: created.txHash })
         const [mutated, transferred] = created.createdEntities
         if (!mutated || !transferred) throw new Error("expected two created keys")
 
-        const patch = await walletClient.patchEntity({
-          entityKey: mutated,
+        const patch = await walletClient.patchEntity(Probe, mutated, {
           set: { purpose: "handler_patched" },
         })
         await publicClient.waitForTransactionReceipt({ hash: patch.txHash })
-
         const extend = await walletClient.extendEntity({
           entityKey: mutated,
           expires: ExpirationTime.fromHours(2),
@@ -1231,13 +1259,7 @@ describe(`Network health check (${chain.name})`, () => {
     async () => {
       const from = await publicClient.getBlockNumber()
 
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ backfillTest: true }),
-        contentType: "application/json",
-        attributes: { purpose: "backfill_test" },
-        expires: SHORT,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(Probe, { purpose: "backfill_test" })
 
       const seen: { at: string; entityKey: Hex }[] = []
       const unwatch = publicClient.watchEntityEvents({
@@ -1293,14 +1315,16 @@ describe(`Network health check (${chain.name})`, () => {
       ] as const
 
       const group = `nested-query-${Date.now()}`
+      const Rows = defineSchema({
+        group: str().indexed(),
+        id: i32().indexed(),
+        color: str().indexed().optional(),
+        flag: bool().indexed().optional(),
+      })
       const created = await walletClient.executeBatch({
         creates: rows.map((row) => ({
-          payload: jsonToPayload({ id: row.id }),
-          contentType: "application/json" as const,
-          attributes: {
-            group,
-            ...row,
-          },
+          schema: Rows,
+          values: { group, ...row },
           expires: SHORT,
         })),
       })
@@ -1309,7 +1333,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       const inGroup = eq("group", str(group))
 
-      const cases: { query: Expression; expected: number[] }[] = [
+      const cases: { query: Expression<SchemaRef<typeof Rows>>; expected: number[] }[] = [
         {
           // (3 <= id < 7) OR blue
           query: or(and(gte("id", i32(3)), lt("id", i32(7))), eq("color", str("blue"))),
@@ -1363,11 +1387,12 @@ describe(`Network health check (${chain.name})`, () => {
 
       for (const { query, expected } of cases) {
         const page = await publicClient
-          .select({ key: true, attributes: { id: true } })
+          .select({ id: true })
+          .from(Rows)
           .where(inGroup, query)
           .limit(200)
           .fetch()
-        const ids = page.entities.map((e) => Number(e.attributes.id?.value)).sort((a, b) => a - b)
+        const ids = page.entities.map((row) => row.id.value).sort((a, b) => a - b)
         expect({ query: String(query), ids }).toEqual({ query: String(query), ids: expected })
       }
       console.log(`  NESTED  ${cases.length} nested queries returned exactly the expected ids`)

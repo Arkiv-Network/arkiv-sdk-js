@@ -30,6 +30,15 @@ export class QueryResult<TEntity = Entity> {
   readonly blockNumber: bigint
   /** The cursor for the next page, or `undefined` when this was the last one. */
   readonly cursor: string | undefined
+  /**
+   * How many matching entities this page left out because they did not fit the schema — always
+   * `0` unless the query ran through `.from(schema, { onMismatch: "skip" })`.
+   *
+   * Counted per page, not per walk: `entities.length + skipped` is what the node returned for this
+   * page, so a short or empty page with a cursor is explained here rather than mistaken for the
+   * end of the results.
+   */
+  readonly skipped: number
 
   private readonly fetchPage: FetchPage<TEntity>
 
@@ -37,11 +46,13 @@ export class QueryResult<TEntity = Entity> {
     entities: readonly TEntity[],
     blockNumber: bigint,
     cursor: string | undefined,
+    skipped: number,
     fetchPage: FetchPage<TEntity>,
   ) {
     this.entities = entities
     this.blockNumber = blockNumber
     this.cursor = cursor
+    this.skipped = skipped
     this.fetchPage = fetchPage
   }
 

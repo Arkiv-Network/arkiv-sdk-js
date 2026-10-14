@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes32, dec, i32, key, str, u64, u256 } from "../attr"
-import { InvalidAttributeNameError } from "../attr/errors"
+import { addr, bytes, bytes32, dec, defineSchema, i32, key, str, u64, u256 } from "../schema"
+import { InvalidAttributeNameError } from "../schema/errors"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 import {
   and,
+  checkAgainstSchema,
   eq,
   exists,
   gt,
@@ -78,16 +79,17 @@ describe("comparisons", () => {
     expect(String(gt("score", dec("1.5")))).toBe("score > dec(1.5)")
 
     // The node treats a range operator on an equality-only type as a parse error rather than an
-    // empty result, so catching it here saves a round trip for an error code.
+    // empty result, so catching it here saves a round trip for an error code. The signatures
+    // already refuse these at compile time; the casts check the runtime guard behind them.
     for (const value of [str("a"), addr(ACCOUNT), key(ENTITY_KEY), bytes32(ENTITY_KEY), true]) {
-      expect(() => gt("a", value)).toThrow(UnsupportedOperatorError)
+      expect(() => gt("a", value as never)).toThrow(UnsupportedOperatorError)
     }
-    expect(() => lte("name", "Bob")).toThrow(/does not define <= for a str/)
+    expect(() => lte("name", "Bob" as never)).toThrow(/does not define <= for a str/)
   })
 
   it("carries the offending operator and type on the error", () => {
     try {
-      gte("name", "Bob")
+      gte("name", "Bob" as never)
       expect.unreachable()
     } catch (error) {
       expect(error).toBeInstanceOf(UnsupportedOperatorError)
@@ -129,12 +131,12 @@ describe("system attributes", () => {
   })
 
   it("allows range comparisons only on $expiresAt", () => {
-    expect(() => gt("$owner", addr(ACCOUNT))).toThrow(UnsupportedOperatorError)
-    expect(() => gt("$key", key(ENTITY_KEY))).toThrow(UnsupportedOperatorError)
+    expect(() => gt("$owner", addr(ACCOUNT) as never)).toThrow(UnsupportedOperatorError)
+    expect(() => gt("$key", key(ENTITY_KEY) as never)).toThrow(UnsupportedOperatorError)
   })
 
   it("rejects the ones that are returned but not indexed", () => {
-    for (const name of ["$createdAt", "$updatedAt", "$creationFlags", "$contentType", "$payload"]) {
+    for (const name of ["$createdAt", "$updatedAt", "$creationFlags"]) {
       expect(() => eq(name, 1)).toThrow(/carries no index, so it cannot be filtered on/)
     }
   })
@@ -177,8 +179,8 @@ describe("exists and hasType", () => {
   })
 
   it("rejects a type that cannot be set on an attribute", () => {
-    // @ts-expect-error - bytes backs $payload and is never a user attribute
-    expect(() => hasType("blob", "bytes")).toThrow(/is not a settable attribute type/)
+    // @ts-expect-error - bytes is never indexed, so TYPEOF can never see it
+    expect(() => hasType("blob", "bytes")).toThrow(/is not an indexable attribute type/)
     // @ts-expect-error - not a type at all
     expect(() => hasType("age", "int")).toThrow(InvalidPredicateError)
   })
@@ -188,7 +190,7 @@ describe("exists and hasType", () => {
     // `TYPEOF(a) = toString` — a query the node can only answer with a parse error.
     for (const inherited of ["constructor", "toString", "valueOf", "hasOwnProperty"]) {
       // @ts-expect-error - not a type tag
-      expect(() => hasType("age", inherited)).toThrow(/is not a settable attribute type/)
+      expect(() => hasType("age", inherited)).toThrow(/is not an indexable attribute type/)
     }
   })
 
@@ -282,5 +284,59 @@ describe("the expression tree", () => {
     const expression = and(eq("a", 1), not(exists("b")))
     expect(expression.toString()).toBe(render(expression))
     expect(`${expression}`).toBe(render(expression))
+  })
+})
+
+describe("bytes", () => {
+  it("cannot be filtered on, bare or tagged — it is never indexed", () => {
+    expect(() => eq("body", new Uint8Array([1]) as never)).toThrow(
+      /bytes are stored but never indexed/,
+    )
+    expect(() => ne("body", bytes("0x01") as never)).toThrow(InvalidPredicateError)
+  })
+})
+
+describe("checkAgainstSchema", () => {
+  const Posts = defineSchema({
+    author: addr().indexed(),
+    category: str().indexed(),
+    score: dec().indexed(),
+    title: str(),
+  })
+
+  it("accepts indexed columns compared against their own type, and system attributes", () => {
+    expect(() =>
+      checkAgainstSchema(
+        and(
+          eq("category", "docs"),
+          not(gt("score", dec("4"))),
+          or(exists("author"), startsWith("category", "d")),
+          hasType("score", "dec"),
+          eq("$owner", addr(ACCOUNT)),
+        ),
+        Posts,
+      ),
+    ).not.toThrow()
+  })
+
+  it("rejects an unindexed column, saying how to index it", () => {
+    expect(() => checkAgainstSchema(eq("title", "x"), Posts)).toThrow(
+      /"title" is not indexed.*str\(\)\.indexed\(\)/,
+    )
+    // Wherever it hides in the tree.
+    expect(() =>
+      checkAgainstSchema(and(eq("category", "docs"), not(exists("title"))), Posts),
+    ).toThrow(InvalidPredicateError)
+  })
+
+  it("rejects a name that is not a column", () => {
+    expect(() => checkAgainstSchema(eq("nope", 1), Posts)).toThrow(/"nope" is not a column/)
+  })
+
+  it("rejects a comparison against a value of another type, which could never match", () => {
+    expect(() => checkAgainstSchema(eq("score", 5), Posts)).toThrow(
+      /"score" is a dec column, but the predicate asserts a i32/,
+    )
+    expect(() => checkAgainstSchema(hasType("score", "i32"), Posts)).toThrow(InvalidPredicateError)
   })
 })

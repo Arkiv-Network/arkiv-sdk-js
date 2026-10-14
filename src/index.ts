@@ -17,12 +17,19 @@ export * from "./errors"
 // types referenced by the public client, must be reachable from the package root
 // see #106
 export type {
+  AttributeRef,
   EntitySelection,
   Expression,
+  FromOptions,
   FullEntity,
+  FullRow,
   ProjectedEntity,
   QueryResult,
+  ResultOf,
+  Row,
+  SchemaRef,
   SelectArg,
+  Selection,
 } from "./query"
 export { SelectQueryBuilder } from "./query"
 // schemas and the attribute type system
