@@ -31,6 +31,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 ### Removed
 - **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead
 - **Breaking:** `AttributeInputs`, and writing attributes without a schema. A schema built at runtime with `defineSchema` covers dynamic attribute sets
+- **Breaking:** `resolveExpiry()`, `toBlocks()`, `encodeCreationFlags()`, `decodeCreationFlags()` and `OperationType`, and the `EncodedExpiry`, `ExpiryContext` and `ResolvedExpiry` types, are no longer exported. They are internal to the SDK
 - The `brotli-wasm` dependency, which nothing in the SDK used
 
 ## [0.8.1] - 2026-09-08
