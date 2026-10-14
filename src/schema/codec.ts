@@ -19,7 +19,7 @@ function strFromChain(value: string): StrValue {
  * The `typeId` marking a tombstone — an attribute being unset. It carries a zero-length value and
  * is legal only in a patch's mutation list, never in a create.
  */
-export const TOMBSTONE_TYPE_ID = 0
+const TOMBSTONE_TYPE_ID = 0
 
 /**
  * An attribute in its ABI form: `(Ident32 name, uint8 typeId, bytes value)`.
