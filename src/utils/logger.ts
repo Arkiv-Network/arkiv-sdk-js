@@ -70,10 +70,6 @@ function isEnabled(namespace: string): boolean {
   return enabled
 }
 
-// Store enabled namespaces (for programmatic enable/disable)
-const enabledNamespaces: Set<string> = new Set()
-const disabledNamespaces: Set<string> = new Set()
-
 // Color palette for namespace coloring (distinct, readable colors)
 const COLOR_PALETTE = [
   "#0000FF", // blue
@@ -161,11 +157,7 @@ function createDebugLogger(namespace: string): DebugLogger {
   const colors = getColorForNamespace(namespace)
 
   return (...args: unknown[]) => {
-    // Check if enabled via environment variable or programmatically
-    const envEnabled = isEnabled(namespace)
-    const progEnabled = enabledNamespaces.has(namespace) && !disabledNamespaces.has(namespace)
-
-    if (envEnabled || progEnabled) {
+    if (isEnabled(namespace)) {
       if (isNode) {
         // Node.js: use ANSI color codes
         const coloredNamespace = `${ANSI_BOLD}${colors.ansi}${namespace}${ANSI_RESET}`
@@ -186,25 +178,4 @@ function createDebugLogger(namespace: string): DebugLogger {
 export const getLogger = (scope: string): DebugLogger => {
   const namespace = `${ROOT_NAMESPACE}:${scope}`
   return createDebugLogger(namespace)
-}
-
-export const enableDebug = (namespaces: string): void => {
-  // Parse and add namespaces to enabled set
-  const patterns = namespaces.split(/[\s,]+/).filter((p) => p.length > 0)
-  for (const pattern of patterns) {
-    if (pattern.startsWith("-")) {
-      // Remove from enabled, add to disabled
-      const namespace = pattern.slice(1)
-      enabledNamespaces.delete(namespace)
-      disabledNamespaces.add(namespace)
-    } else {
-      enabledNamespaces.add(pattern)
-      disabledNamespaces.delete(pattern)
-    }
-  }
-}
-
-export const disableDebug = (): void => {
-  enabledNamespaces.clear()
-  disabledNamespaces.clear()
 }
