@@ -33,4 +33,3 @@ export * from "./types"
 export { chainFromName } from "./utils/chains"
 // every create needs an expiry, and this is the only way to build one
 export { type DeadlineOptions, ExpirationTime } from "./utils/expirationTime"
-export { jsonToPayload, stringToPayload } from "./utils/payload"

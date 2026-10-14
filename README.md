@@ -248,18 +248,18 @@ You have several options to run your TypeScript sample:
      node dist/read_example.js
      ```
 
-### Wallet Client Example (Create Entity)
+### Wallet Client Example (Create an Entity)
 
 Now let's add storage (write) functionality.  
 Create a file named `write_example.ts` with the following content:
 
 ```typescript
-import { createPublicClient, createWalletClient } from "@arkiv-network/sdk"
-import { dec, i32 } from "@arkiv-network/sdk/attr"
+import { createPublicClient, createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
 import { tiramisu } from "@arkiv-network/sdk/chains"
-import { ExpirationTime, jsonToPayload } from "@arkiv-network/sdk/utils"
-import { http } from "viem"
+import { addr, dec } from "@arkiv-network/sdk/schema"
+import { http, stringToBytes } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
+import { Posts } from "./schema"
 
 // Create a public client
 const publicClient = createPublicClient({
@@ -273,32 +273,30 @@ const client = createWalletClient({
   account: privateKeyToAccount('0x...'), // Replace with your private key
 });
 
-// Create an entity
-const { entityKey, txHash } = await client.createEntity({
-  payload: jsonToPayload({
-    entity: {
-      entityType: 'document',
-      entityId: 'doc-123',
-      entityContent: "Hello from DevConnect Hackathon 2025! Arkiv chain wishes you all the best!"
-    },
-  }),
-  contentType: 'application/json',
-  // Attributes are keyed by name. Values carry their type: use the tagged constructors from
-  // "@arkiv-network/sdk/attr" (i32, u64, u256, dec, str, addr, key, bytes32, bool), or pass a bare
-  // boolean, number, bigint or string where the type is unambiguous.
-  attributes: {
-    category: 'documentation',   // bare string -> str
-    version: i32(1),
+// Create an entity. Every required column must be given; a defaulted one (mimeType) left out is
+// written with its default. Values carry their type: use the constructors from
+// "@arkiv-network/sdk/schema", or a bare string, boolean, number, bigint or Uint8Array where it is
+// unambiguous (string -> str, Uint8Array -> bytes, ...).
+const { entityKey, txHash } = await client.createEntity(
+  Posts,
+  {
+    author: addr(client.account.address),
+    category: 'docs',
     score: dec('4.5'),
+    title: 'Hello from Arkiv',
+    body: stringToBytes('# Hello\n\nArkiv wishes you all the best!'),
   },
-  expires: ExpirationTime.fromDays(30), // Entity expires in 30 days
-});
+  { expires: ExpirationTime.fromDays(30) }, // Entity expires in 30 days
+);
 
 console.log('Created entity:', entityKey);
 console.log('Transaction hash:', txHash);
 
-const newEntity = await publicClient.getEntity(entityKey);
-console.log('Entity:', newEntity);
+// Change one column, leaving the rest alone
+await client.patchEntity(Posts, entityKey, { set: { score: dec('4.7') } });
+
+const post = await publicClient.getEntity(entityKey, Posts);
+console.log('Post:', post);
 ```
 
 Now you can run it in the same way as in the previous example:

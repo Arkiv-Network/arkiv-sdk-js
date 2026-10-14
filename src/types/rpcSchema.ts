@@ -3,8 +3,8 @@ import type { Hex, PublicRpcSchema } from "viem"
 /**
  * An attribute as the node renders it: the name, the type **tag** (not the wire typeId), and the
  * value in the JSON encoding that type prescribes — a JSON number for `i32`, a `0x` QUANTITY for
- * `u64` and `u256`, a decimal string for `dec`, `0x` DATA for the byte-shaped types, and a string for
- * `str`.
+ * `u64` and `u256`, a decimal string for `dec`, `0x` DATA for the byte-shaped types (`bytes`
+ * included), and a string for `str`.
  *
  * The encoding follows the *declared type*, never the magnitude, so a decoder dispatches on `type`
  * and never has to guess from the shape of the value.
@@ -15,10 +15,14 @@ export type RpcAttribute = {
   value: unknown
 }
 
-/** An entry of the `attributeSchema` projection — a name and its type, with no value. */
+/**
+ * An entry of the `attributeSchema` projection — a name, its type, and whether the node indexes
+ * it, with no value.
+ */
 export type RpcAttributeSchemaEntry = {
   name: string
   type: string
+  indexed?: boolean
 }
 
 /**
@@ -42,8 +46,6 @@ export type RpcEntity = {
   updatedAt?: Hex
   expiresAt?: Hex
   creationFlags?: RpcCreationFlags | number
-  contentType?: string
-  payload?: Hex
   attributeSchema?: RpcAttributeSchemaEntry[]
   attributes?: RpcAttribute[]
 }
@@ -63,8 +65,6 @@ export type RpcSelect = {
   updatedAt?: boolean
   expiresAt?: boolean
   creationFlags?: boolean
-  contentType?: boolean
-  payload?: boolean
   attributeSchema?: boolean
   attributes?: boolean | Record<string, boolean>
 }

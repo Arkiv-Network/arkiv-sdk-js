@@ -6,14 +6,23 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - Schemas, exported from `@arkiv-network/sdk/schema`. `defineSchema({ ... })` declares an entity's columns. Each column is a type constructor called with no arguments (`str()`, `dec()`, `bytes()`, ...) and refined with `.indexed()`, `.optional()` and `.default(...)`. Called with a value, the same constructor still makes a typed value: `dec()` is a column, `dec("4.1")` is a value
 - `bytes` is a user type: `bytes()` is a column, `bytes(value)` a value, and a bare `Uint8Array` is taken as one. Bytes are stored but never indexed. An entity may have any number of bytes columns, each up to 128 KiB (`MAX_BYTES_LENGTH`)
 - Named schemas: `defineSchema("posts", { ... })` tags every entity it creates with an indexed `schema` attribute holding the name, and `.from()` filters on it, so a query through a named schema only sees entities written through it and needs no other filter. Reads check the tag too. `schema` is a reserved column name, and the tag counts against `MAX_ATTRIBUTES`
+- `executeBatch()` creates and patches each name their own schema and are typed by it, so one batch can write entities of several schemas
 - `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `IndexableTypeTag`, `IndexableValue`
 - Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
 
 ### Changed
 - **Breaking:** `@arkiv-network/sdk/attr` is now `@arkiv-network/sdk/schema`
+- **Breaking:** `createEntity(schema, values, { expires, flags?, salt? })` takes the schema the entity is written through, its values keyed by column, and its options. Values are checked against the schema at compile time and at runtime, each column is written with the indexed flag the schema declares, and defaults are applied by the SDK. The options (`expires`, `flags`, `salt`) are typed `CreateEntityOptions`
+- **Breaking:** `patchEntity(schema, entityKey, { set?, unset? })` takes the schema the changes are typed by. `unset` accepts only optional columns, and a column `set` to `undefined` is left out, as on create. Writing a column whose indexing the schema has changed changes it on the entity too. The changes are typed `PatchEntityChanges`
+- **Breaking:** `CreateEntityParameters` and `PatchEntityParameters` are now the batch-item shapes `{ schema, values, expires, ... }` and `{ schema, entityKey, set?, unset? }`
+- **Breaking:** `executeBatch()` takes `creates: [{ schema, values, expires, ... }]` and `patches: [{ schema, entityKey, set?, unset? }]`
 - **Breaking:** `attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
 - `ArkivValue` includes `BytesValue`, and `AnyArkivValue` is gone. `UserTypeTag` is now `IndexableTypeTag`
 - `MAX_ATTRIBUTES` also caps the number of columns a schema may declare
+
+### Removed
+- **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead
+- **Breaking:** `AttributeInputs`, and writing attributes without a schema. A schema built at runtime with `defineSchema` covers dynamic attribute sets
 
 ## [0.8.1] - 2026-09-08
 

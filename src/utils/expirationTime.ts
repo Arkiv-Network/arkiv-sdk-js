@@ -34,7 +34,7 @@ function deadlineOf(expiresAt: bigint | Date, options?: DeadlineOptions): Expiry
  * object.
  *
  * @example The 90% case: a duration, and nothing else to think about.
- * await client.createEntity({ payload, contentType, expires: ExpirationTime.fromDays(30) })
+ * await client.createEntity(Posts, values, { expires: ExpirationTime.fromDays(30) })
  *
  * @example An exact block, or a wall-clock date.
  * expires: ExpirationTime.atBlock(1_200_000n)
