@@ -46,9 +46,6 @@ export const INDEXED_FLAG = 0x80
 /** Every type tag. */
 export type TypeTag = keyof typeof TYPE_IDS
 
-/** Every typeId, without the {@link INDEXED_FLAG}. */
-export type TypeId = (typeof TYPE_IDS)[TypeTag]
-
 /**
  * The tags an attribute may be indexed with — every type except `bytes`, which is stored but never
  * indexed, and so can never be filtered on.
