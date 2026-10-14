@@ -14,11 +14,11 @@ const logger = getLogger("actions:wallet:create-entity")
  * How an created entity lives: its lifetime, plus the flags and salt it is created with.
  *
  * @example
- * { expires: ExpirationTime.fromDays(30) }
+ * { expiration: ExpirationTime.fromDays(30) }
  *
  * @example Pin an absolute deadline, but refuse to create something nearly dead:
  * {
- *   expires: ExpirationTime.atDate(someDeadline, {
+ *   expiration: ExpirationTime.atDate(someDeadline, {
  *     atLeast: ExpirationTime.fromDays(1),    // ...but live at least a day regardless
  *   }),
  *   flags: { readonly: true },
@@ -31,7 +31,7 @@ export type CreateEntityOptions = {
    * `ExpirationTime.fromDays(30)` is the everyday form. `atBlock` / `atDate` pin an absolute
    * deadline instead, and either can carry `{ atLeast }` to guarantee a minimum life on top of it.
    */
-  expires: Expiry
+  expiration: Expiry
   /**
    * Properties fixed at creation: `readonly` and `permissionlessExtension`. No operation changes
    * them afterwards, so an entity is whatever it was created as for life. Both default to `false`.

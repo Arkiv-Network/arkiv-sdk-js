@@ -42,7 +42,7 @@ const { entityKey, txHash } = await client.createEntity(
     title: "Hello from Arkiv",
     body: stringToBytes("# Hello\n\nArkiv chain wishes you all the best!"),
   },
-  { expires: ExpirationTime.fromDays(30) }, // Entity expires in 30 days
+  { expiration: ExpirationTime.fromDays(30) }, // Entity expires in 30 days
 )
 
 console.log("Created entity:", entityKey)

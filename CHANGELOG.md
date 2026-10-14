@@ -15,10 +15,11 @@ This release implements user-defined entity columns. An entity is no longer a pa
 
 ### Changed
 - **Breaking:** `@arkiv-network/sdk/attr` is now `@arkiv-network/sdk/schema`
-- **Breaking:** `createEntity(schema, values, { expires, flags?, salt? })` takes the schema the entity is written through, its values keyed by column, and its options. Values are checked against the schema at compile time and at runtime, each column is written with the indexed flag the schema declares, and defaults are applied by the SDK. The options (`expires`, `flags`, `salt`) are typed `CreateEntityOptions`
+- **Breaking:** `createEntity(schema, values, { expiration, flags?, salt? })` takes the schema the entity is written through, its values keyed by column, and its options. Values are checked against the schema at compile time and at runtime, each column is written with the indexed flag the schema declares, and defaults are applied by the SDK. The options (`expiration`, `flags`, `salt`) are typed `CreateEntityOptions`
 - **Breaking:** `patchEntity(schema, entityKey, { set?, unset? })` takes the schema the changes are typed by. `unset` accepts only optional columns, and a column `set` to `undefined` is left out, as on create. Writing a column whose indexing the schema has changed changes it on the entity too. The changes are typed `PatchEntityChanges`
-- **Breaking:** `CreateEntityParameters` and `PatchEntityParameters` are now the batch-item shapes `{ schema, values, expires, ... }` and `{ schema, entityKey, set?, unset? }`
-- **Breaking:** `executeBatch()` takes `creates: [{ schema, values, expires, ... }]` and `patches: [{ schema, entityKey, set?, unset? }]`
+- **Breaking:** `CreateEntityParameters` and `PatchEntityParameters` are now the batch-item shapes `{ schema, values, expiration, ... }` and `{ schema, entityKey, set?, unset? }`
+- **Breaking:** `executeBatch()` takes `creates: [{ schema, values, expiration, ... }]` and `patches: [{ schema, entityKey, set?, unset? }]`
+- **Breaking:** `expires` is now `expiration` on `createEntity()`, `extendEntity()` and every batch operation
 - **Breaking:** `attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
 - **Breaking:** `gt`/`gte`/`lt`/`lte` only accept values of ordered types (`i32`, `u64`, `u256`, `dec`, or a bare number or bigint) at compile time. A predicate on a `bytes` value throws `InvalidPredicateError`
 - **Breaking:** `SelectQueryBuilder`'s type parameters are now the selection and the schema, not the result type. `from()` returns a new builder rather than re-typing the one it was called on

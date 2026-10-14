@@ -123,7 +123,7 @@ export async function sendArkivTransaction(
 
   const createOps = encodedCreates.map(({ item, attributes }) => {
     const salt = item.salt === undefined ? randomSalt() : resolveSalt(item.salt)
-    const expiry = resolveExpiry(item.expires, expiryContext)
+    const expiry = resolveExpiry(item.expiration, expiryContext)
 
     return createOperation({
       salt,
@@ -137,7 +137,7 @@ export async function sendArkivTransaction(
   // `max(expiresAt, currentBlock + minLifetime)` to both — so the same bounds are checked here
   // rather than left to a revert.
   const extendOps = (extensions ?? []).map((item) => {
-    const expiry = resolveExpiry(item.expires, expiryContext)
+    const expiry = resolveExpiry(item.expiration, expiryContext)
     return extendExpiryOperation({ entityKey: item.entityKey, expiry })
   })
 
