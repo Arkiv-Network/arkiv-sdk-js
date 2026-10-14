@@ -65,6 +65,21 @@ describe("describeEntityRevert", () => {
     })
   })
 
+  describe("the indexed flag", () => {
+    it("says an indexed bytes attribute is the problem, not an unknown type", () => {
+      // bytes is typeId 7; bit 7 is the indexed flag.
+      expect(describeEntityRevert(reverted("InvalidValueType", [ident("body"), 0x87]))).toBe(
+        '"body" is a bytes attribute flagged as indexed, and bytes are stored but never indexed',
+      )
+    })
+
+    it("still reports a type id it cannot read as unknown", () => {
+      expect(describeEntityRevert(reverted("InvalidValueType", [ident("x"), 0xff]))).toContain(
+        "type id 255, which is not a known type",
+      )
+    })
+  })
+
   describe("entity state", () => {
     it("abbreviates the key so it does not bury the sentence", () => {
       const message = describeEntityRevert(reverted("EntityNotFound", [KEY]))

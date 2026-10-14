@@ -1,4 +1,6 @@
 import { BaseError, ContractFunctionRevertedError, type Hex, hexToString } from "viem"
+// Internal seam: the typeId layout is the protocol's, not part of the package's public surface.
+import { decodeTypeId } from "../schema/codec"
 
 /**
  * Turns a decoded engine revert into a sentence that says what to change.
@@ -44,8 +46,8 @@ function explain(name: string, args: readonly unknown[]): string | undefined {
     // ── the attribute list ───────────────────────────────────────────────────
     case "SystemAttributeNotWritable":
       return (
-        `"${identName(args[0])}" is owned by the engine and cannot be written. Only $payload and ` +
-        "$contentType are yours to set"
+        `"${identName(args[0])}" is owned by the engine and cannot be written. Names starting ` +
+        'with "$" are reserved for system attributes'
       )
     case "TombstoneInCreate":
       return (
@@ -55,7 +57,7 @@ function explain(name: string, args: readonly unknown[]): string | undefined {
     case "TombstoneValueNotEmpty":
       return `the tombstone for "${identName(args[0])}" carries a value; unsetting takes no value`
     case "InvalidValueType":
-      return `"${identName(args[0])}" names type id ${String(args[1])}, which is not a known type`
+      return describeInvalidType(identName(args[0]), Number(args[1]))
     case "AttributesNotSorted":
       return "attributes must be strictly ascending by name, which also makes each name unique"
     case "TooManyAttributes":
@@ -115,6 +117,19 @@ function explain(name: string, args: readonly unknown[]): string | undefined {
     default:
       return undefined
   }
+}
+
+/** Why the engine refused a `typeId` — an indexed `bytes`, or a type it does not know. */
+function describeInvalidType(name: string, typeId: number): string {
+  try {
+    const { tag, indexed } = decodeTypeId(typeId)
+    if (tag === "bytes" && indexed) {
+      return `"${name}" is a bytes attribute flagged as indexed, and bytes are stored but never indexed`
+    }
+  } catch {
+    // Falls through to the generic reading: the low bits name no type the SDK knows either.
+  }
+  return `"${name}" names type id ${typeId}, which is not a known type`
 }
 
 /** A `bytes32` Ident32 cell as the name it holds — left-aligned, null-padded. */

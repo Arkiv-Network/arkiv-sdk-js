@@ -15,11 +15,11 @@
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
     },
-    "./attr": {
-      "bun": "./src/attr/index.ts",
-      "import": "./dist/attr/index.js",
-      "require": "./dist/attr/index.cjs",
-      "default": "./dist/attr/index.js"
+    "./schema": {
+      "bun": "./src/schema/index.ts",
+      "import": "./dist/schema/index.js",
+      "require": "./dist/schema/index.cjs",
+      "default": "./dist/schema/index.js"
     },
     "./entity": {
       "bun": "./src/entity/index.ts",
@@ -55,8 +55,8 @@
   },
   "typesVersions": {
     "*": {
-      "attr": [
-        "./dist/attr/index.d.ts"
+      "schema": [
+        "./dist/schema/index.d.ts"
       ],
       "chains": [
         "./dist/chains/index.d.ts"

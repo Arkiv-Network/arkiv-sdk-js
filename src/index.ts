@@ -2,8 +2,6 @@
  * @module main
  */
 
-// the attribute type system
-export * from "./attr"
 // export main arkiv stuff
 export type { ArkivClient } from "./clients/baseClient"
 export type { PublicArkivClient } from "./clients/createPublicClient"
@@ -27,6 +25,8 @@ export type {
   SelectArg,
 } from "./query"
 export { SelectQueryBuilder } from "./query"
+// schemas and the attribute type system
+export * from "./schema"
 // re-export arkiv types in main index file
 export * from "./types"
 // re-export chosen utils

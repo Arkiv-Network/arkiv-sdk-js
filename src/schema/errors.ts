@@ -33,7 +33,7 @@ export class UntypedValueError extends Error {
     super(
       `Cannot infer an Arkiv type for ${describe(input)}. ` +
         "Attribute values must be a tagged value (i32, u64, u256, dec, str, addr, key, bytes32, " +
-        "bool) or a bare boolean, number, bigint or string.",
+        "bytes, bool) or a bare boolean, number, bigint, string or Uint8Array.",
     )
     this.name = "UntypedValueError"
     this.input = input
@@ -102,6 +102,34 @@ export class TooManyAttributesError extends Error {
   constructor(count: number, max: number) {
     super(`An entity may carry at most ${max} attributes, got ${count}.`)
     this.name = "TooManyAttributesError"
+  }
+}
+
+/** A schema, or one of its columns, was defined in a way the SDK or the protocol cannot honour. */
+export class SchemaDefinitionError extends Error {
+  /** The column at fault, when there is one. */
+  readonly columnName: string | undefined
+
+  constructor(reason: string, columnName?: string) {
+    super(`Invalid schema${columnName === undefined ? "" : ` column "${columnName}"`}: ${reason}.`)
+    this.name = "SchemaDefinitionError"
+    this.columnName = columnName
+  }
+}
+
+/**
+ * Data did not fit its schema: a write named a column the schema does not have, left out one it
+ * requires, or gave one a value of the wrong type — or an entity read back through a schema lacks a
+ * required column or holds one with a different type.
+ */
+export class SchemaMismatchError extends Error {
+  /** The column at fault. */
+  readonly columnName: string
+
+  constructor(columnName: string, reason: string) {
+    super(`Column "${columnName}": ${reason}.`)
+    this.name = "SchemaMismatchError"
+    this.columnName = columnName
   }
 }
 
