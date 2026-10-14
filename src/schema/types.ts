@@ -66,7 +66,7 @@ declare const validated: unique symbol
 
 /**
  * A typed attribute value: the tag it was created with, plus the JavaScript representation of that
- * type. Constructed only by the tagged constructors in `@arkiv-network/sdk/attr`.
+ * type. Constructed only by the tagged constructors in `@arkiv-network/sdk/schema`.
  *
  * @typeParam tag - The type tag, which also discriminates the {@link ArkivValue} union.
  * @typeParam value - The decoded JavaScript representation.
