@@ -6,8 +6,4 @@ export default defineConfig({
   format: ["esm", "cjs"],
   exports: false,
   platform: "neutral", // both browser and node
-  external: [
-    // WASM packages should be external dependencies, not bundled
-    "brotli-wasm",
-  ],
 })
