@@ -37,6 +37,17 @@ export type PredicateValue = IndexableValue | boolean | number | bigint | string
 export type OrderedValue = I32Value | U64Value | U256Value | DecValue | number | bigint
 
 /**
+ * `gt`/`gte`/`lt`/`lte`'s check that the value has an ordered type — `unknown` when it does, and
+ * otherwise an object whose one property is named after the problem. No value has that property,
+ * so the compiler reports the sentence as the property it is missing.
+ */
+type OrderedCheck<V> = V extends OrderedValue
+  ? unknown
+  : {
+      [K in `range comparisons are not supported for ${TagOf<V>}. Only i32, u64, u256 and dec can be compared with < <= > >=`]: never
+    }
+
+/**
  * The attribute a predicate names, and the type it asserts — `never` when it asserts none, as
  * `EXISTS` does. Carried by an {@link Expression} at the type level only, so a query against a
  * schema can be checked at compile time: every name must be an indexed column, and every type the
@@ -303,9 +314,9 @@ export function ne<N extends string, V extends PredicateValue>(
  * gt("level", i32(10))              // level > i32(10)
  * gt("$expiresAt", u64(1_200_000n)) // $expiresAt > u64(1200000)
  */
-export function gt<N extends string, V extends OrderedValue>(
+export function gt<N extends string, V extends PredicateValue>(
   name: N,
-  value: V,
+  value: V & OrderedCheck<V>,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">", value)
 }
@@ -318,9 +329,9 @@ export function gt<N extends string, V extends OrderedValue>(
  * @example
  * gte("score", dec("3.5")) // score >= dec(3.5)
  */
-export function gte<N extends string, V extends OrderedValue>(
+export function gte<N extends string, V extends PredicateValue>(
   name: N,
-  value: V,
+  value: V & OrderedCheck<V>,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">=", value)
 }
@@ -333,9 +344,9 @@ export function gte<N extends string, V extends OrderedValue>(
  * @example
  * lt("level", i32(10)) // level < i32(10)
  */
-export function lt<N extends string, V extends OrderedValue>(
+export function lt<N extends string, V extends PredicateValue>(
   name: N,
-  value: V,
+  value: V & OrderedCheck<V>,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<", value)
 }
@@ -348,9 +359,9 @@ export function lt<N extends string, V extends OrderedValue>(
  * @example
  * lte("score", dec("5")) // score <= dec(5)
  */
-export function lte<N extends string, V extends OrderedValue>(
+export function lte<N extends string, V extends PredicateValue>(
   name: N,
-  value: V,
+  value: V & OrderedCheck<V>,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<=", value)
 }
