@@ -83,5 +83,13 @@ describe("chainFromName", () => {
       expect(chain.rpcUrls.default.http.length).toBeGreaterThan(0)
       expect(chain.rpcUrls.default.webSocket?.length).toBeGreaterThan(0)
     })
+
+    test("returned chain has blockExplorers configured for tiramisu", () => {
+      const chain = chainFromName("tiramisu")
+
+      expect(chain.blockExplorers).toBeDefined()
+      expect(chain.blockExplorers?.default.name).toBe("Arkiv Scanner")
+      expect(chain.blockExplorers?.default.url).toBe("https://tiramisu.scanner.arkiv.network")
+    })
   })
 })
