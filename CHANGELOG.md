@@ -4,7 +4,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 
 ### Added
 - Schemas, exported from `@arkiv-network/sdk/schema`. `defineSchema({ ... })` declares an entity's columns. Each column is a type constructor called with no arguments (`str()`, `dec()`, `bytes()`, ...) and refined with `.indexed()`, `.optional()` and `.default(...)`. Called with a value, the same constructor still makes a typed value: `dec()` is a column, `dec("4.1")` is a value
-- `bytes` is a user type: `bytes()` is a column, `bytes(value)` a value, and a bare `Uint8Array` is taken as one. Bytes are stored but never indexed. An entity may have any number of bytes columns, each up to 128 KiB (`MAX_BYTES_LENGTH`)
+- `bytes` is a user type: `bytes()` is a column, `bytes(value)` a value, and a bare `Uint8Array` is taken as one. Bytes are stored but never indexed. An entity may have any number of bytes columns, each up to 128 KiB (`MAX_BYTES_LENGTH`). The bytes columns of one create or patch may hold at most 128 KiB together (`MAX_ENTITY_BYTES`, provisional until the protocol settles a per-entity cap); more throws `EntityTooLargeError`
 - Named schemas: `defineSchema("posts", { ... })` tags every entity it creates with an indexed `schema` attribute holding the name, and `.from()` filters on it, so a query through a named schema only sees entities written through it and needs no other filter. Reads check the tag too. `schema` is a reserved column name, and the tag counts against `MAX_ATTRIBUTES`
 - `executeBatch()` creates and patches each name their own schema and are typed by it, so one batch can write entities of several schemas
 - `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `IndexableTypeTag`, `IndexableValue`
