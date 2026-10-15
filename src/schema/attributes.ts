@@ -1,9 +1,24 @@
 import { type AbiAttribute, encodeAbiAttribute, encodeTombstone } from "./codec"
 import type { AnyColumn } from "./column"
-import { ConflictingMutationError, SchemaDefinitionError, SchemaMismatchError } from "./errors"
+import {
+  ConflictingMutationError,
+  EntityTooLargeError,
+  SchemaDefinitionError,
+  SchemaMismatchError,
+} from "./errors"
 import { describeColumns, isSchema, lookupColumn, SCHEMA_ATTRIBUTE, type Schema } from "./schema"
-import type { ArkivValue, TypeTag } from "./types"
+import { type ArkivValue, INDEXED_FLAG, TYPE_IDS, type TypeTag } from "./types"
 import { toValue, type ValueInput } from "./values"
+
+/**
+ * The most data the `bytes` columns of one create or patch may hold together, in bytes. Each
+ * `bytes` value is also capped on its own, at `MAX_BYTES_LENGTH`.
+ *
+ * Provisional: the protocol has not settled a per-entity cap yet, so this keeps the budget the
+ * single payload had — and an operation much larger than it would not fit in a transaction the
+ * node accepts anyway.
+ */
+export const MAX_ENTITY_BYTES = 128 * 1024
 
 /**
  * An entity's attributes read back without a schema, keyed by name, every value typed.
@@ -61,6 +76,7 @@ export function encodeCreate(
     }
     attributes.push(encodeColumn(name, column, input))
   }
+  assertBytesFit(attributes)
   return attributes.sort(byName)
 }
 
@@ -115,6 +131,7 @@ export function encodePatch(
     }
     mutations.push(encodeTombstone(name))
   }
+  assertBytesFit(mutations)
   return mutations.sort(byName)
 }
 
@@ -159,6 +176,15 @@ function encodeColumn(name: string, column: AnyColumn, input: unknown): AbiAttri
     )
   }
   return encodeAbiAttribute(name, value, column.isIndexed)
+}
+
+/** Throws if the `bytes` values among `attributes` add up to more than {@link MAX_ENTITY_BYTES}. */
+function assertBytesFit(attributes: readonly AbiAttribute[]): void {
+  let total = 0
+  for (const { typeId, value } of attributes) {
+    if ((typeId & ~INDEXED_FLAG) === TYPE_IDS.bytes) total += (value.length - 2) / 2
+  }
+  if (total > MAX_ENTITY_BYTES) throw new EntityTooLargeError(total, MAX_ENTITY_BYTES)
 }
 
 /**
