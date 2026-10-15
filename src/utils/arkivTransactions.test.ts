@@ -23,10 +23,12 @@ import {
   ConflictingMutationError,
   dec,
   defineSchema,
+  EntityTooLargeError,
   InvalidAttributeNameError,
   InvalidValueError,
   i32,
   MAX_BYTES_LENGTH,
+  MAX_ENTITY_BYTES,
   MissingValueError,
   SchemaMismatchError,
   str,
@@ -574,27 +576,43 @@ describe("create through a schema", () => {
   })
 
   it("caps each bytes value at 128 KiB", async () => {
-    const schema = defineSchema({ body: bytes(), thumbnail: bytes() })
-    const atCap = new Uint8Array(MAX_BYTES_LENGTH)
+    const schema = defineSchema({ body: bytes(), thumbnail: bytes().optional() })
     const { client, writeContract } = makeClient()
-    // The cap is per attribute, so two values at the cap are both fine.
     await sendArkivTransaction(client, {
-      creates: [{ schema, values: { body: atCap, thumbnail: atCap }, expires: DAY }],
+      creates: [{ schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH) }, expires: DAY }],
     })
     expect(writeContract).toHaveBeenCalledTimes(1)
 
     const { client: c2 } = makeClient()
     await expect(
       sendArkivTransaction(c2, {
+        creates: [{ schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH + 1) }, expires: DAY }],
+      }),
+    ).rejects.toThrow(InvalidValueError)
+  })
+
+  it("caps the bytes of one create at 128 KiB in total", async () => {
+    const schema = defineSchema({ body: bytes(), thumbnail: bytes() })
+    const half = new Uint8Array(MAX_ENTITY_BYTES / 2)
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ schema, values: { body: half, thumbnail: half }, expires: DAY }],
+    })
+    expect(writeContract).toHaveBeenCalledTimes(1)
+
+    const { client: c2, writeContract: w2 } = makeClient()
+    await expect(
+      sendArkivTransaction(c2, {
         creates: [
           {
             schema,
-            values: { body: new Uint8Array(MAX_BYTES_LENGTH + 1), thumbnail: atCap },
+            values: { body: half, thumbnail: new Uint8Array(MAX_ENTITY_BYTES / 2 + 1) },
             expires: DAY,
           },
         ],
       }),
-    ).rejects.toThrow(InvalidValueError)
+    ).rejects.toThrow(EntityTooLargeError)
+    expect(w2).not.toHaveBeenCalled()
   })
 
   it("carries no cells for a schema with no columns", async () => {
