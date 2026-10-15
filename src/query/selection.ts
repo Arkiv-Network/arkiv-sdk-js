@@ -214,6 +214,40 @@ export function toRpcSelect(selection?: SelectArg | Selection): RpcSelect {
 }
 
 /**
+ * A frozen copy of a selection, so that editing the object passed to `select()` afterwards cannot
+ * change what the builder sends. An `attributes` map is copied too.
+ */
+export function snapshotSelection<S extends SelectArg | Selection | undefined>(selection: S): S {
+  if (typeof selection !== "object" || selection === null) return selection
+  const copy: Record<string, unknown> = { ...selection }
+  const { attributes } = copy
+  if (typeof attributes === "object" && attributes !== null) {
+    copy.attributes = Object.freeze({ ...attributes })
+  }
+  return Object.freeze(copy) as S
+}
+
+/**
+ * Checks what `select()` can check before any schema is named: that the selection is `"*"` or an
+ * object that asks for something — and, when it names only entity fields, everything
+ * {@link toRpcSelect} checks. Any other name may be a column, which `from()` checks.
+ *
+ * @throws If the selection is not an object, asks for nothing, or is an invalid entity selection.
+ */
+export function checkSelection(selection: SelectArg | Selection | undefined): void {
+  if (selection === undefined || selection === "*") return
+  if (typeof selection !== "object" || selection === null || Array.isArray(selection)) {
+    throw new TypeError('select() takes "*" or an object of fields set to true')
+  }
+  const names = Object.keys(selection)
+  if (names.every((name) => (SELECTION_KEYS as readonly string[]).includes(name))) {
+    toRpcSelect(selection)
+  } else if (!Object.values(selection).some((wanted) => wanted === true)) {
+    throw nothingSelected()
+  }
+}
+
+/**
  * A selection resolved against a schema: what to ask the node for, and how to lay the answer out.
  */
 export type SchemaProjection = {

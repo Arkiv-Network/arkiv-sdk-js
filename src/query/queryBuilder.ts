@@ -23,12 +23,15 @@ import {
 } from "./expression"
 import { QueryResult } from "./queryResult"
 import {
+  checkSelection,
   type DynamicSelection,
   projectSchema,
   type ResultOf,
+  type SchemaProjection,
   type SelectArg,
   type Selection,
   type SelectionFields,
+  snapshotSelection,
   toRow,
   toRpcSelect,
   type UnknownSelection,
@@ -143,6 +146,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
   private readonly _client: ArkivClient
   private readonly _selection: SelectArg | Selection | undefined
   private _schema: Schema | undefined
+  private _projection: SchemaProjection | undefined
   private _onMismatch: "throw" | "skip" = "throw"
   private readonly _filters: Expression[] = []
   private _ownedBy: Expression | undefined
@@ -151,9 +155,15 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
   private _cursor: string | undefined
   private _atBlock: bigint | undefined
 
+  /**
+   * @throws If the selection is not `"*"` or an object, asks for nothing, or — naming only entity
+   * fields — is not a valid entity selection.
+   */
   constructor(client: ArkivClient, selection?: SelectArg | Selection) {
+    checkSelection(selection)
     this._client = client
-    this._selection = selection
+    // A copy: the caller's object may change after this, and the builder is typed for it as it was.
+    this._selection = snapshotSelection(selection)
   }
 
   /**
@@ -174,6 +184,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * @param schema - The schema, built with `defineSchema`.
    * @param options - How to treat entities that do not fit. {@link FromOptions}
    * @throws {SchemaDefinitionError} If `schema` was not built with `defineSchema`.
+   * @throws If the selection names something that is neither an entity field nor a column.
    *
    * @example
    * client.select({ key: true, title: true }).from(Posts)    // rows typed { key; title }
@@ -191,18 +202,25 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
     if (onMismatch !== "throw" && onMismatch !== "skip") {
       throw new TypeError(`onMismatch must be "throw" or "skip", got ${String(onMismatch)}`)
     }
+    // Resolved here rather than at fetch time, so a selection naming something that is neither an
+    // entity field nor a column fails at the call that made it wrong.
+    const projection = projectSchema(this._selection as Selection | "*" | undefined, schema)
     // A copy, not `this` re-typed: a builder typed for one schema must never be the same object as
     // one typed for another, or `base.from(Posts)` and `base.from(Users)` would share their state.
-    const typed = new SelectQueryBuilder<TSelection, S>(this._client, this._selection)
+    const typed = this.copy<S>()
     typed._schema = schema
+    typed._projection = projection
     typed._onMismatch = onMismatch
-    typed._filters.push(...this._filters)
-    typed._ownedBy = this._ownedBy
-    typed._createdBy = this._createdBy
-    typed._limit = this._limit
-    typed._cursor = this._cursor
-    typed._atBlock = this._atBlock
     return typed
+  }
+
+  /**
+   * This builder's state in a new builder. Every field is carried over, so one added later is not
+   * dropped by {@link from}; the filter list, which is mutated in place, is copied rather than shared.
+   */
+  private copy<S extends Schema | undefined>(): SelectQueryBuilder<TSelection, S> {
+    const copy = Object.create(SelectQueryBuilder.prototype) as SelectQueryBuilder<TSelection, S>
+    return Object.assign(copy, this, { _filters: [...this._filters] })
   }
 
   /**
@@ -334,9 +352,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
     // Snapshot the request here, so the pages of one walk are all pages of the *same* query. The
     // builder stays mutable and reusable; a cursor is bound to the query, block and selection it
     // was issued for, so re-reading a since-edited builder would page with a mismatched cursor.
-    const schema = this._schema
-    const projection =
-      schema === undefined ? undefined : projectSchema(this._selection as Selection, schema)
+    const projection = this._projection
     const request = Object.freeze({
       query: this.toString(),
       select: projection?.select ?? toRpcSelect(this._selection),
@@ -370,7 +386,21 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    *   console.log(entity.key)
    * }
    */
-  async *[Symbol.asyncIterator](): AsyncGenerator<ResultOf<TSelection, TSchema>> {
+  [Symbol.asyncIterator](): Fetchable<
+    TSelection,
+    TSchema,
+    AsyncGenerator<ResultOf<TSelection, TSchema>>
+  > {
+    // The same guard as fetch(), on the return type: `for await` does not check a `this` parameter,
+    // but it does need what this returns to be an async iterator.
+    return this.walk() as Fetchable<
+      TSelection,
+      TSchema,
+      AsyncGenerator<ResultOf<TSelection, TSchema>>
+    >
+  }
+
+  private async *walk(): AsyncGenerator<ResultOf<TSelection, TSchema>> {
     let page: QueryResult<ResultOf<TSelection, TSchema>> | undefined = await this.fetchFirstPage()
     while (page) {
       yield* page.entities
