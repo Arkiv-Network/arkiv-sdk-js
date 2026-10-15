@@ -1,8 +1,9 @@
 import { describe, expect, it } from "bun:test"
 import { hexToString } from "viem"
-import { encodeCreate, encodePatch } from "./attributes"
+import { encodeCreate, encodePatch, MAX_ENTITY_BYTES } from "./attributes"
 import {
   ConflictingMutationError,
+  EntityTooLargeError,
   InvalidAttributeNameError,
   InvalidValueError,
   MissingValueError,
@@ -198,6 +199,29 @@ describe("bytes", () => {
         body: new Uint8Array(128 * 1024 + 1),
       }),
     ).toThrow(InvalidValueError)
+  })
+})
+
+describe("the total bytes cap", () => {
+  const half = new Uint8Array(MAX_ENTITY_BYTES / 2)
+  const base = { category: "docs", title: "Hello" }
+
+  it("accepts bytes columns that add up to the cap", () => {
+    expect(() => encodeCreate(Posts, { ...base, body: half, thumbnail: half })).not.toThrow()
+  })
+
+  it("rejects a create whose bytes columns add up to more", () => {
+    const over = new Uint8Array(MAX_ENTITY_BYTES / 2 + 1)
+    expect(() => encodeCreate(Posts, { ...base, body: half, thumbnail: over })).toThrow(
+      EntityTooLargeError,
+    )
+  })
+
+  it("applies to a patch's writes too", () => {
+    const over = new Uint8Array(MAX_ENTITY_BYTES / 2 + 1)
+    expect(() => encodePatch(Posts, { set: { body: half, thumbnail: over } })).toThrow(
+      /at most 131072 bytes in total, got 131073/,
+    )
   })
 })
 
