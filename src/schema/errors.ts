@@ -105,6 +105,17 @@ export class TooManyAttributesError extends Error {
   }
 }
 
+/** The `bytes` values of one create or patch add up to more than `MAX_ENTITY_BYTES`. */
+export class EntityTooLargeError extends Error {
+  constructor(total: number, max: number) {
+    super(
+      `The bytes columns of one create or patch may hold at most ${max} bytes in total, got ` +
+        `${total}. Split the data across entities, or store it elsewhere and keep a reference`,
+    )
+    this.name = "EntityTooLargeError"
+  }
+}
+
 /** A schema, or one of its columns, was defined in a way the SDK or the protocol cannot honour. */
 export class SchemaDefinitionError extends Error {
   /** The column at fault, when there is one. */

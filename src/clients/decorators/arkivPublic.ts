@@ -337,9 +337,7 @@ export function publicArkivActions<
 >(client: Client<transport, chain, account>) {
   return {
     getEntity: ((key: Hex, schema?: Schema) =>
-      schema === undefined
-        ? getEntity(client, key)
-        : getEntity(client, key, schema)) as PublicArkivActions["getEntity"],
+      getEntity(client, key, schema as Schema)) as PublicArkivActions["getEntity"],
     query: (rawQuery: Expression | string, queryOptions?: QueryOptions) =>
       query(client, rawQuery, queryOptions),
     select: ((selection?: SelectArg | Selection) =>

@@ -483,15 +483,54 @@ describe("through a schema", () => {
     expect(request).not.toHaveBeenCalled()
   })
 
-  it("rejects a selection naming something the schema does not have", async () => {
+  it("rejects a selection naming something the schema does not have, at from()", () => {
     const { client } = makeClient()
-    await expect(
+    expect(() =>
       select(client, { key: true, nope: true })
         // @ts-expect-error - nope is not a column
-        .from(Posts)
-        .where(eq("category", "docs"))
-        .fetch(),
-    ).rejects.toThrow(/neither an entity field nor a column/)
+        .from(Posts),
+    ).toThrow(/neither an entity field nor a column/)
+  })
+
+  it("checks a selection built at runtime when from() is called", () => {
+    const { client } = makeClient()
+    const selection: SelectArg = JSON.parse('{"key": true, "nope": true}')
+    expect(() => new SelectQueryBuilder(client, selection).from(Posts)).toThrow(
+      /"nope", which is neither an entity field nor a column/,
+    )
+  })
+
+  it("sends the selection as it was when select() was called", async () => {
+    const { client, request } = makeClient()
+    const selection: Record<string, boolean> = { key: true, title: true }
+    const builder = new SelectQueryBuilder(client, selection as Selection).from(Posts)
+    selection.author = true
+    await builder.where(eq("category", "docs")).fetch()
+    expect(sent(request).options.select).toMatchObject({ attributes: { title: true } })
+  })
+
+  it("carries the filters, owner, limit, cursor and block across from()", async () => {
+    const { client, request } = makeClient()
+    await new SelectQueryBuilder(client, { key: true })
+      .where(eq("category", "docs"))
+      .ownedBy(ACCOUNT)
+      .limit(5)
+      .cursor("0xc0")
+      .atBlock(7n)
+      .from(Posts)
+      .fetch()
+    const { query, options } = sent(request)
+    expect(query).toBe(`category = str('docs') AND $owner = addr(${ACCOUNT})`)
+    expect(options).toMatchObject({ limit: "0x5", cursor: "0xc0", atBlock: "0x7" })
+  })
+
+  it("will not iterate a column selection that never names its schema", () => {
+    const { client } = makeClient()
+    const iterate = async () => {
+      // @ts-expect-error - the selection names columns, so from() is required
+      for await (const entry of select(client, { title: true }).where(eq("a", 1))) void entry
+    }
+    expect(iterate).toBeFunction()
   })
 
   it("rejects a column selection that never names its schema", async () => {
