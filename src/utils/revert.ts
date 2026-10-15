@@ -119,13 +119,23 @@ function explain(name: string, args: readonly unknown[]): string | undefined {
   }
 }
 
-/** Why the engine refused a `typeId` — an indexed `bytes`, or a type it does not know. */
+/**
+ * Why the engine refused a `typeId` — an indexed `bytes`, a known type it would not take (most
+ * likely the indexed flag, on a node that predates it), or a type it does not know.
+ */
 function describeInvalidType(name: string, typeId: number): string {
   try {
     const { tag, indexed } = decodeTypeId(typeId)
     if (tag === "bytes" && indexed) {
       return `"${name}" is a bytes attribute flagged as indexed, and bytes are stored but never indexed`
     }
+    if (indexed) {
+      return (
+        `"${name}" has type ${tag} and is flagged as indexed (type id ${typeId}), which the node ` +
+        "does not accept. The node may not support the indexed flag yet"
+      )
+    }
+    return `"${name}" has type ${tag} (type id ${typeId}), which the node does not accept`
   } catch {
     // Falls through to the generic reading: the low bits name no type the SDK knows either.
   }
