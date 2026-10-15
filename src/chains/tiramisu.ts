@@ -18,5 +18,11 @@ export const tiramisu = defineChain({
       webSocket: ["wss://rpc.tiramisu.db-chain.testnet.arkiv.network"],
     },
   },
+  blockExplorers: {
+    default: {
+      name: "Arkiv Scanner",
+      url: "https://tiramisu.scanner.arkiv.network",
+    },
+  },
   testnet: true,
 })
