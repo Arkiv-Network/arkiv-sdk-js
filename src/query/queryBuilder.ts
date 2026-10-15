@@ -2,6 +2,7 @@ import type { Hex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
 import {
   addr,
+  type ColumnsOf,
   isSchema,
   SCHEMA_ATTRIBUTE,
   type Schema,
@@ -12,12 +13,12 @@ import type { Entity } from "../types/entity"
 import { type QueryRequest, runQuery } from "./engine"
 import { InvalidPredicateError } from "./errors"
 import {
-  type AttributeRef,
   and,
   checkAgainstSchema,
   type Expression,
   eq,
   type or,
+  type RefsOf,
   type SchemaRef,
 } from "./expression"
 import { QueryResult } from "./queryResult"
@@ -33,10 +34,41 @@ import {
   type UnknownSelection,
 } from "./selection"
 
-/** What `where` accepts: anything without a schema, and only the schema's indexed columns with one. */
-type FilterRef<TSchema extends Schema | undefined> = TSchema extends Schema
-  ? SchemaRef<TSchema>
-  : AttributeRef
+/** The expressions in a `where` call — passed one by one, or as one array. */
+type WhereExpressions<E extends readonly (Expression | readonly Expression[])[]> =
+  E[number] extends infer X ? (X extends readonly Expression[] ? X[number] : X) : never
+
+/**
+ * Human-readable messages for compile-time errors when a filter does not fit the schema.
+ */
+type FilterProblem<R, S extends Schema> = R extends {
+  readonly name: infer N extends string
+  readonly type: infer T extends string
+}
+  ? R extends SchemaRef<S>
+    ? never
+    : N extends SchemaRef<S>["name"]
+      ? `"${N}" has type ${Extract<SchemaRef<S>, { name: N }>["type"]}, but is compared against a value of type ${T}`
+      : N extends keyof ColumnsOf<S>
+        ? `"${N}" is not indexed, so it cannot be filtered on. Declare it ${ColumnsOf<S>[N]["type"]}().indexed() to filter on it`
+        : `"${N}" is not a column of this schema`
+  : never
+
+/**
+ * `where`'s check that every filter fits the schema — `unknown` when it does, or when there is no
+ * schema, and otherwise an object whose one property is named after the problem. No expression has
+ * that property, so the compiler reports the sentence as the property it is missing.
+ */
+type FilterCheck<
+  E extends readonly (Expression | readonly Expression[])[],
+  TSchema,
+> = TSchema extends Schema
+  ? [FilterProblem<RefsOf<WhereExpressions<E>>, TSchema>] extends [infer P extends string]
+    ? [P] extends [never]
+      ? unknown
+      : { [K in P]: never }
+    : unknown
+  : unknown
 
 /**
  * `from(schema)`'s check that every selected key is an entity field or a column — `unknown` when
@@ -186,9 +218,9 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * builder.where(gte("level", i32(10)), lt("level", i32(20)))
    * builder.where(or(eq("status", "open"), not(exists("closedAt"))))
    */
-  where(expressions: readonly Expression<FilterRef<TSchema>>[]): this
-  where(...expressions: Expression<FilterRef<TSchema>>[]): this
-  where(...expressions: (Expression | readonly Expression[])[]): this {
+  where<const E extends readonly (Expression | readonly Expression[])[]>(
+    ...expressions: E & FilterCheck<E, TSchema>
+  ): this {
     this._filters.push(...expressions.flat())
     return this
   }
