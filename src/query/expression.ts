@@ -41,10 +41,10 @@ export type OrderedValue = I32Value | U64Value | U256Value | DecValue | number |
  * otherwise an object whose one property is named after the problem. No value has that property,
  * so the compiler reports the sentence as the property it is missing.
  */
-type OrderedCheck<V> = V extends OrderedValue
+type OrderedCheck<V> = [V] extends [OrderedValue]
   ? unknown
   : {
-      [K in `range comparisons are not supported for ${TagOf<V>}. Only i32, u64, u256 and dec can be compared with < <= > >=`]: never
+      [K in `range comparisons are not supported for ${TagOf<Exclude<V, OrderedValue>>}. Only i32, u64, u256 and dec can be compared with < <= > >=`]: never
     }
 
 /**

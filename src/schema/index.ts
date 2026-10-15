@@ -1,9 +1,11 @@
 export type { AttributeSchema, Attributes } from "./attributes"
+export { MAX_ENTITY_BYTES } from "./attributes"
 export type { AnyColumn, Column, ValueArgument } from "./column"
 export { isColumn } from "./column"
 export { DECIMAL_SCALE, DECIMAL_UNIT } from "./decimal"
 export {
   ConflictingMutationError,
+  EntityTooLargeError,
   InvalidAttributeNameError,
   InvalidValueError,
   MissingValueError,

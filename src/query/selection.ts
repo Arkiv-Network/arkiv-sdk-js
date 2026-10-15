@@ -214,6 +214,40 @@ export function toRpcSelect(selection?: SelectArg | Selection): RpcSelect {
 }
 
 /**
+ * A frozen copy of a selection, so that editing the object passed to `select()` afterwards cannot
+ * change what the builder sends. An `attributes` map is copied too.
+ */
+export function snapshotSelection<S extends SelectArg | Selection | undefined>(selection: S): S {
+  if (typeof selection !== "object" || selection === null) return selection
+  const copy: Record<string, unknown> = { ...selection }
+  const { attributes } = copy
+  if (typeof attributes === "object" && attributes !== null) {
+    copy.attributes = Object.freeze({ ...attributes })
+  }
+  return Object.freeze(copy) as S
+}
+
+/**
+ * Checks what `select()` can check before any schema is named: that the selection is `"*"` or an
+ * object that asks for something — and, when it names only entity fields, everything
+ * {@link toRpcSelect} checks. Any other name may be a column, which `from()` checks.
+ *
+ * @throws If the selection is not an object, asks for nothing, or is an invalid entity selection.
+ */
+export function checkSelection(selection: SelectArg | Selection | undefined): void {
+  if (selection === undefined || selection === "*") return
+  if (typeof selection !== "object" || selection === null || Array.isArray(selection)) {
+    throw new TypeError('select() takes "*" or an object of fields set to true')
+  }
+  const names = Object.keys(selection)
+  if (names.every((name) => (SELECTION_KEYS as readonly string[]).includes(name))) {
+    toRpcSelect(selection)
+  } else if (!Object.values(selection).some((wanted) => wanted === true)) {
+    throw nothingSelected()
+  }
+}
+
+/**
  * A selection resolved against a schema: what to ask the node for, and how to lay the answer out.
  */
 export type SchemaProjection = {
@@ -289,12 +323,12 @@ export function toRow(entity: Entity, projection: SchemaProjection): Record<stri
 
   const { tag } = projection
   if (tag !== undefined) {
-    const found = entity.attributes?.[SCHEMA_ATTRIBUTE]
+    const found = attributeOf(entity, SCHEMA_ATTRIBUTE)
     if (found?.type !== "str" || found.value !== tag.value) {
       throw new SchemaMismatchError(
         SCHEMA_ATTRIBUTE,
-        `${subject} is ${found === undefined ? "not tagged with a schema" : `tagged ${JSON.stringify(found.value)}`}, ` +
-          `not ${JSON.stringify(tag.value)}, so it was not written through this schema`,
+        `${subject} is ${describeTag(found)}, not ${JSON.stringify(tag.value)}, so it was not ` +
+          "written through this schema",
       )
     }
   }
@@ -303,7 +337,7 @@ export function toRow(entity: Entity, projection: SchemaProjection): Record<stri
   for (const field of projection.fields) row[field] = entity[field]
 
   for (const [name, column] of projection.columns) {
-    const value: ArkivValue | undefined = entity.attributes?.[name]
+    const value = attributeOf(entity, name)
     if (value === undefined) {
       if (!column.isOptional) {
         throw new SchemaMismatchError(
@@ -321,6 +355,23 @@ export function toRow(entity: Entity, projection: SchemaProjection): Record<stri
     row[name] = value
   }
   return row
+}
+
+/**
+ * The entity's attribute `name`, or `undefined` if it has none. An own-property read: a column may
+ * be named `constructor` or `toString`, and an entity that leaves it unset must not find the
+ * inherited one instead.
+ */
+function attributeOf(entity: Entity, name: string): ArkivValue | undefined {
+  const { attributes } = entity
+  return attributes !== undefined && Object.hasOwn(attributes, name) ? attributes[name] : undefined
+}
+
+/** How an entity's schema tag reads in a mismatch — whatever type another writer gave it. */
+function describeTag(found: ArkivValue | undefined): string {
+  if (found === undefined) return "not tagged with a schema"
+  if (found.type === "str") return `tagged ${JSON.stringify(found.value)}`
+  return `tagged with a value of type ${found.type}`
 }
 
 function nothingSelected(): Error {
