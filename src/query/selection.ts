@@ -289,12 +289,12 @@ export function toRow(entity: Entity, projection: SchemaProjection): Record<stri
 
   const { tag } = projection
   if (tag !== undefined) {
-    const found = entity.attributes?.[SCHEMA_ATTRIBUTE]
+    const found = attributeOf(entity, SCHEMA_ATTRIBUTE)
     if (found?.type !== "str" || found.value !== tag.value) {
       throw new SchemaMismatchError(
         SCHEMA_ATTRIBUTE,
-        `${subject} is ${found === undefined ? "not tagged with a schema" : `tagged ${JSON.stringify(found.value)}`}, ` +
-          `not ${JSON.stringify(tag.value)}, so it was not written through this schema`,
+        `${subject} is ${describeTag(found)}, not ${JSON.stringify(tag.value)}, so it was not ` +
+          "written through this schema",
       )
     }
   }
@@ -303,7 +303,7 @@ export function toRow(entity: Entity, projection: SchemaProjection): Record<stri
   for (const field of projection.fields) row[field] = entity[field]
 
   for (const [name, column] of projection.columns) {
-    const value: ArkivValue | undefined = entity.attributes?.[name]
+    const value = attributeOf(entity, name)
     if (value === undefined) {
       if (!column.isOptional) {
         throw new SchemaMismatchError(
@@ -321,6 +321,23 @@ export function toRow(entity: Entity, projection: SchemaProjection): Record<stri
     row[name] = value
   }
   return row
+}
+
+/**
+ * The entity's attribute `name`, or `undefined` if it has none. An own-property read: a column may
+ * be named `constructor` or `toString`, and an entity that leaves it unset must not find the
+ * inherited one instead.
+ */
+function attributeOf(entity: Entity, name: string): ArkivValue | undefined {
+  const { attributes } = entity
+  return attributes !== undefined && Object.hasOwn(attributes, name) ? attributes[name] : undefined
+}
+
+/** How an entity's schema tag reads in a mismatch — whatever type another writer gave it. */
+function describeTag(found: ArkivValue | undefined): string {
+  if (found === undefined) return "not tagged with a schema"
+  if (found.type === "str") return `tagged ${JSON.stringify(found.value)}`
+  return `tagged with a value of type ${found.type}`
 }
 
 function nothingSelected(): Error {

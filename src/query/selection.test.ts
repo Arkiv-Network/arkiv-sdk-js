@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes, dec, defineSchema, i32, SchemaMismatchError, str } from "../schema"
+import { addr, bytes, dec, defineSchema, i32, SchemaMismatchError, str, u256 } from "../schema"
 import { Entity } from "../types/entity"
 import { projectSchema, toRow, toRpcSelect } from "./selection"
 
@@ -182,6 +182,13 @@ describe("toRow", () => {
       )
     expect(decode).toThrow(/holds a i32, not the str the schema declares/)
   })
+
+  it("reads a column named after an Object.prototype key as absent when the entity lacks it", () => {
+    const Odd = defineSchema({ constructor: str().optional(), toString: str().optional() })
+    const row = toRow(new Entity({ key: KEY, attributes: {} }), projectSchema("*", Odd))
+    expect(row).toHaveProperty("constructor", undefined)
+    expect(row).toHaveProperty("toString", undefined)
+  })
 })
 
 describe("a named schema", () => {
@@ -212,5 +219,15 @@ describe("a named schema", () => {
     expect(() =>
       toRow(new Entity({ key: KEY, attributes: { title: str("Hi") } }), projection),
     ).toThrow(/not tagged with a schema/)
+  })
+
+  it("rejects an entity whose tag is not a str, whatever its type", () => {
+    const decode = () =>
+      toRow(
+        new Entity({ key: KEY, attributes: { title: str("Hi"), schema: u256(5n) } }),
+        projection,
+      )
+    expect(decode).toThrow(SchemaMismatchError)
+    expect(decode).toThrow(/tagged with a value of type u256, not "posts"/)
   })
 })
