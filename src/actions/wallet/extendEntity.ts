@@ -37,9 +37,9 @@ export type ExtendEntityReturnType = {
   entityKey: Hex
   txHash: Hash
   /**
-   * The block the entity is now expected to expire at, resolved against the block the transaction
-   * was built on. Durations are approximate, so treat this as the estimate the operation was built
-   * from rather than the block the engine settled on.
+   * The block the entity now expires at, as the engine recorded it — read from the
+   * `ExpiryExtended` event, so a duration is already resolved against the block the transaction
+   * landed in.
    */
   expiresAt: bigint
 }

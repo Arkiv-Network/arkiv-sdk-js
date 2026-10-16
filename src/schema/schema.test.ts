@@ -142,6 +142,7 @@ describe("named schemas", () => {
     )
     expect(() => defineSchema(columns)).not.toThrow()
     expect(() => defineSchema("full", columns)).toThrow(/at most 32 attributes, got 33/)
+    expect(() => defineSchema("full", columns)).toThrow(/tag counts as one of them/)
   })
 })
 

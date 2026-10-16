@@ -62,13 +62,15 @@ export type WalletArkivActions<
      * defaulted ones left out are written with their default. {@link CreateEntityValues}
      * @param options - The entity's lifetime, plus its flags and salt. {@link CreateEntityOptions}
      * @param txParams - Optional transaction parameters
-     * @returns The new entity's key, the transaction hash, and the block it is expected to
-     * expire at. {@link CreateEntityReturnType}
+     * @returns The new entity's key, the transaction hash, and the block it expires at, as the
+     * engine recorded it. {@link CreateEntityReturnType}
      *
      * @throws {InvalidExpiryError} If the expiry exceeds a protocol bound or would leave the
      * entity dead on arrival.
      * @throws {SchemaMismatchError} If the values do not fit the schema.
      * @throws {InvalidValueError} If a value does not fit its type.
+     * @throws {EntityTooLargeError} If the `bytes` values add up to more than `MAX_ENTITY_BYTES`.
+     * @throws {EntityMutationError} If the transaction fails or reverts.
      *
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
@@ -78,12 +80,13 @@ export type WalletArkivActions<
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const Posts = defineSchema("posts", {
-     *   author:   addr().indexed(),
-     *   category: str().indexed(),
-     *   score:    dec().indexed(),
-     *   title:    str(),
-     *   body:     bytes(),
-     *   mimeType: str().default("text/markdown"),
+     *   author:    addr().indexed(),
+     *   category:  str().indexed(),
+     *   score:     dec().indexed(),
+     *   title:     str(),
+     *   body:      bytes(),
+     *   thumbnail: bytes().optional(),
+     *   mimeType:  str().default("text/markdown"),
      * })
      *
      * const client = createWalletClient({
@@ -126,8 +129,12 @@ export type WalletArkivActions<
      * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
      * @throws {SchemaMismatchError} If the changes do not fit the schema.
      * @throws {InvalidValueError} If a value does not fit its type.
+     * @throws {EntityTooLargeError} If the `bytes` values in `set` add up to more than
+     * `MAX_ENTITY_BYTES`.
+     * @throws {EntityMutationError} If the transaction fails or reverts.
      *
      * @example
+     * // Posts is the schema from the createEntity example.
      * // One column changes, an optional one goes away.
      * const { txHash } = await client.patchEntity(Posts, entityKey, {
      *   set: { score: dec("4.5") },
@@ -180,8 +187,8 @@ export type WalletArkivActions<
      *
      * @param data - The entity key and its new lifetime
      * @param txParams - Optional transaction parameters
-     * @returns The entity's key, the transaction hash, and the block it is now expected to expire
-     * at. {@link ExtendEntityReturnType}
+     * @returns The entity's key, the transaction hash, and the block it now expires at, as the
+     * engine recorded it. {@link ExtendEntityReturnType}
      *
      * @throws {InvalidExpiryError} If the expiry is malformed, exceeds a protocol bound, or would
      * leave the entity dead on arrival.
@@ -236,13 +243,20 @@ export type WalletArkivActions<
      * @returns The transaction hash, plus the keys touched by each kind of operation.
      * {@link ExecuteBatchReturnType}
      *
+     * @throws {Error} If the batch has no operations.
      * @throws {InvalidExpiryError} If an expiry exceeds a protocol bound or would leave the entity
      * dead on arrival.
      * @throws {SchemaMismatchError} If a create's or patch's values do not fit its schema.
      * @throws {InvalidValueError} If a value does not fit its type.
+     * @throws {EmptyPatchError} If a patch has nothing to apply.
+     * @throws {ConflictingMutationError} If a patch names a column in both `set` and `unset`.
+     * @throws {EntityTooLargeError} If the `bytes` values of one create or patch add up to more
+     * than `MAX_ENTITY_BYTES`.
+     * @throws {EntityMutationError} If the transaction fails or reverts.
      *
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
+     * import { dec } from "@arkiv-network/sdk/schema"
      * import { tiramisu } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
@@ -252,6 +266,7 @@ export type WalletArkivActions<
      *   chain: tiramisu,
      *   transport: http(),
      * })
+     * // Posts is the schema from the createEntity example.
      * const { txHash, createdEntities } = await client.executeBatch({
      *   creates: [{
      *     schema: Posts,
