@@ -112,25 +112,29 @@ describe("a named schema's tag", () => {
 
   it("is written on every create, as an indexed str", () => {
     const encoded = byName(encodeCreate(Tagged, { title: "Hi" }))
-    expect(encoded.schema?.typeId).toBe(TYPE_IDS.str | INDEXED_FLAG)
-    expect(hexToString(encoded.schema?.value ?? "0x")).toBe("posts")
+    expect(encoded["arkiv.schema"]?.typeId).toBe(TYPE_IDS.str | INDEXED_FLAG)
+    expect(hexToString(encoded["arkiv.schema"]?.value ?? "0x")).toBe("posts")
   })
 
   it("is not written by an unnamed schema", () => {
     expect(
-      byName(encodeCreate(Posts, { category: "c", title: "t", body: new Uint8Array() })).schema,
+      byName(encodeCreate(Posts, { category: "c", title: "t", body: new Uint8Array() }))[
+        "arkiv.schema"
+      ],
     ).toBeUndefined()
   })
 
   it("is not touched by a patch, which changes only what it names", () => {
-    expect(byName(encodePatch(Tagged, { set: { title: "Hi" } })).schema).toBeUndefined()
+    expect(byName(encodePatch(Tagged, { set: { title: "Hi" } }))["arkiv.schema"]).toBeUndefined()
   })
 
   it("cannot be written or unset as a column", () => {
-    expect(() => encodeCreate(Tagged, { title: "Hi", schema: "other" })).toThrow(
+    expect(() => encodeCreate(Tagged, { title: "Hi", "arkiv.schema": "other" })).toThrow(
       SchemaMismatchError,
     )
-    expect(() => encodePatch(Tagged, { unset: ["schema"] as never })).toThrow(SchemaMismatchError)
+    expect(() => encodePatch(Tagged, { unset: ["arkiv.schema"] as never })).toThrow(
+      SchemaMismatchError,
+    )
   })
 })
 
