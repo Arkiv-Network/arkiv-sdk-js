@@ -36,7 +36,7 @@ cd arkiv-sample
 
 Create an empty `read_example.ts` file:
 ```bash
-touch read_example.ts schema.ts
+touch read_example.ts
 ```
 
 Initialize a new JavaScript/TypeScript project:
@@ -85,7 +85,7 @@ npm install @arkiv-network/sdk viem
 This command will update your `package.json` with a section like:
 ```json
 "dependencies": {
-  "@arkiv-network/sdk": "^0.6.0",
+  "@arkiv-network/sdk": "^0.9.0",
   "viem": "^2.38.2"
 }
 ```
@@ -98,13 +98,14 @@ schema, much as you would describe a table's columns in SQL, and choose per colu
 indexes it. Only indexed columns can be filtered on; the rest are stored and selectable, and do not
 pay for an index.
 
-Create a `schema.ts` file next to your examples:
+The examples below use this schema for blog posts. Each example declares it at the top of its own
+file, so that it runs as a single file under Node.js, Bun or `tsc` alike:
 
 ```typescript
 import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
 
 // Called with no arguments, a type constructor describes a column.
-export const Posts = defineSchema("posts", {
+const Posts = defineSchema("posts", {
   author:    addr().indexed(),
   category:  str().indexed(),
   score:     dec().indexed(),
@@ -139,9 +140,19 @@ You can now use Arkiv's public client to query data. Paste the following in `rea
 import { createPublicClient } from "@arkiv-network/sdk"
 import { tiramisu } from "@arkiv-network/sdk/chains"
 import { and, eq, gt } from "@arkiv-network/sdk/query"
-import { dec } from "@arkiv-network/sdk/schema"
+import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
 import { http } from "viem"
-import { Posts } from "./schema"
+
+// The schema from "Define a Schema" above
+const Posts = defineSchema("posts", {
+  author:    addr().indexed(),
+  category:  str().indexed(),
+  score:     dec().indexed(),
+  title:     str(),
+  body:      bytes(),
+  thumbnail: bytes().optional(),
+  mimeType:  str().default("text/markdown"),
+})
 
 const publicClient = createPublicClient({
   chain: tiramisu, // "tiramisu" is Arkiv's testnet
@@ -181,9 +192,10 @@ for await (const row of publicClient
 
 #### Selecting fields with `select()`
 
-Pass nothing (or `"*"`) to fetch everything, or pass an object to fetch only specific fields. The
-selection names entity fields (`key`, `owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt`,
-`creationFlags`) and attributes side by side, and each result is a flat row:
+Pass nothing (or `"*"`) to fetch everything — through a schema, every entity field and every
+column — or pass an object to fetch only specific fields. The selection names entity fields (`key`,
+`owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt`, `creationFlags`) and attributes side by
+side, and each result is a flat row:
 
 ```typescript
 // Every entity field and every column
@@ -200,16 +212,17 @@ The result type is inferred from your selection and schema: each column is typed
 declares it, and reading a field you didn't select is a compile error.
 
 ```typescript
-const [row] = (
+const row = (
   await publicClient.select({ owner: true, score: true }).from(Posts).where(eq("category", "docs")).fetch()
-).entities;
+).entities[0]!;
 row.owner;    // ✅ Hex
 row.score;    // ✅ DecValue — row.score.value is "4.1"
 row.title;    // ❌ compile error — not selected
 ```
 
-`where` is checked against the schema too. Filtering on a column the schema does not index, or
-comparing a column against a value of another type, is a compile error:
+`where` is checked against the schema too. It takes the schema's indexed columns and the system
+attributes `$key`, `$owner`, `$creator` and `$expiresAt`. Filtering on a column the schema does not
+index, or comparing a column against a value of another type, is a compile error:
 
 ```typescript
 .where(eq("title", "x"))   // ❌ title is not indexed
@@ -217,13 +230,15 @@ comparing a column against a value of another type, is a compile error:
 .where(gt("author", ...))  // ❌ addr has no ordering
 ```
 
-A named schema needs no `where` at all — `select().from(Posts).fetch()` lists every post. An
-unnamed schema types a query without filtering it, so `where` alone decides which entities match.
+A named schema needs no `where` at all — `select().from(Posts)` matches every post: `fetch()`
+returns the first page, and `for await` walks them all. An unnamed schema types a query without
+filtering it, so `where` alone decides which entities match.
 
-An entity that matches but does not fit the schema — a required column missing, a column of another
-type, or another schema's tag — fails the fetch with a `SchemaMismatchError`. Pass
-`{ onMismatch: "skip" }` to leave such entities out instead; a page can then hold fewer rows than its
-limit, and reports how many it left out as `skipped`:
+Only what you select is checked. An entity that matches but does not fit the schema — a selected
+column that is required but missing or holds another type, or, for a named schema, another schema's
+tag — fails the fetch with a `SchemaMismatchError`. Pass `{ onMismatch: "skip" }` to leave such
+entities out instead; a page can then hold fewer rows than its limit, and reports how many it left
+out as `skipped`:
 
 ```typescript
 const page = await publicClient.select().from(Posts, { onMismatch: "skip" }).where(eq("category", "docs")).fetch();
@@ -231,19 +246,21 @@ page.skipped; // matching entities on this page that did not fit Posts
 ```
 
 A query reads the same without a schema — say, to explore what a node holds. Leave out
-`.from(...)` and the selection means what it did, and the rows keep their shape. Only the checking is
-gone: each attribute comes back as whatever value the entity holds, or `undefined`, and `where` takes
-any attribute:
+`.from(...)` and the selection means what it did (save `"*"`, below), and the rows keep their
+shape. Only the checking is gone, along with a named schema's tag filter: each attribute comes back
+as whatever value the entity holds, or `undefined`, and `where` takes any attribute:
 
 ```typescript
-const [row] = (
+const row = (
   await publicClient.select({ key: true, title: true }).where(eq("category", "docs")).fetch()
-).entities;
+).entities[0]!;
 row.title;    // ArkivValue | undefined — e.g. { type: "str", value: "Hello" }
 ```
 
 To read every attribute without naming them, select `attributes` — a map of all of them — and
-`attributeSchema` for their types and indexing. Both work through a schema too:
+`attributeSchema` for their types and indexing. Both work through a schema too. This is also what
+`"*"` (or nothing) fetches without a schema, alongside the entity fields, since there are no columns
+to list:
 
 ```typescript
 await publicClient.select({ key: true, attributes: true, attributeSchema: true }).where(eq("category", "docs")).fetch();
@@ -300,10 +317,20 @@ Create a file named `write_example.ts` with the following content:
 ```typescript
 import { createPublicClient, createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
 import { tiramisu } from "@arkiv-network/sdk/chains"
-import { addr, dec } from "@arkiv-network/sdk/schema"
+import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
 import { http, stringToBytes } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
-import { Posts } from "./schema"
+
+// The schema from "Define a Schema" above
+const Posts = defineSchema("posts", {
+  author:    addr().indexed(),
+  category:  str().indexed(),
+  score:     dec().indexed(),
+  title:     str(),
+  body:      bytes(),
+  thumbnail: bytes().optional(),
+  mimeType:  str().default("text/markdown"),
+})
 
 // Create a public client
 const publicClient = createPublicClient({
