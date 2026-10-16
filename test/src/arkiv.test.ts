@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import type {
+  CreateEntityValues,
   CreationFlags,
   EntityEvent,
   Expiry,
-  CreateEntityValues,
   PublicArkivClient,
   Schema,
   WalletArkivClient,
@@ -253,14 +253,14 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const entity = await read.getEntity(testKey)
 
-      expect(entity.key).toBe(testKey)
-      expect(entity.attributes).toBeDefined()
-      expect(entity.owner).toBe(account.address)
-      expect(entity.creator).toBe(account.address)
-      expect(entity.expiresAt).toBeGreaterThan(entity.createdAt)
-      expect(entity.createdAt).toBeGreaterThan(0n)
-      expect(entity.updatedAt).toBe(entity.createdAt)
-      expect(entity.creationFlags).toEqual({
+      expect(entity.$key).toBe(testKey)
+      expect(entity.$attributes).toBeDefined()
+      expect(entity.$owner).toBe(account.address)
+      expect(entity.$creator).toBe(account.address)
+      expect(entity.$expiresAt).toBeGreaterThan(entity.$createdAt)
+      expect(entity.$createdAt).toBeGreaterThan(0n)
+      expect(entity.$updatedAt).toBe(entity.$createdAt)
+      expect(entity.$creationFlags).toEqual({
         readonly: false,
         permissionlessExtension: false,
         raw: 0,
@@ -309,7 +309,7 @@ describe("Arkiv Integration Tests for public client", () => {
       })
       expect(entity.testkey).toEqual(str("testValue"))
       expect(entity.added).toBeUndefined()
-      expect(entity.expiresAt).toBe(expiresAt)
+      expect(entity.$expiresAt).toBe(expiresAt)
 
       // Patch: new contents, one column set, one unset — and `keeper` left alone
       const updatedBody = stringToBytes("plain text now")
@@ -330,10 +330,10 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(patched.added).toEqual(str("new"))
       expect(patched.keeper).toEqual(i32(7))
       expect(patched.testkey).toBeUndefined()
-      expect(patched.updatedAt).toBeGreaterThan(patched.createdAt)
+      expect(patched.$updatedAt).toBeGreaterThan(patched.$createdAt)
 
       // The same entity, read without a schema, holds exactly those attributes.
-      expect((await read.getEntity(entityKey)).attributes).toEqual({
+      expect((await read.getEntity(entityKey)).$attributes).toEqual({
         added: str("new"),
         keeper: i32(7),
         body: bytes(updatedBody),
@@ -346,7 +346,7 @@ describe("Arkiv Integration Tests for public client", () => {
       })
       await read.waitForTransactionReceipt({ hash: extendedTx })
       expect(extendedExpiresAt).toBeGreaterThan(expiresAt)
-      expect((await read.getEntity(entityKey)).expiresAt).toBe(extendedExpiresAt)
+      expect((await read.getEntity(entityKey)).$expiresAt).toBe(extendedExpiresAt)
 
       // Delete.
       const { txHash: deletedTx } = await write.deleteEntity({ entityKey })
@@ -369,9 +369,9 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(changedKey).toBe(entityKey)
 
       const entity = await publicClient.getEntity(entityKey)
-      expect(entity.owner).toBe(SOMEONE_ELSE)
+      expect(entity.$owner).toBe(SOMEONE_ELSE)
       // The creator is fixed at creation and survives a transfer.
-      expect(entity.creator).toBe(account.address)
+      expect(entity.$creator).toBe(account.address)
 
       // And the entity is no longer ours to change.
       await expect(walletClient.deleteEntity({ entityKey })).rejects.toThrow(EntityMutationError)
@@ -390,7 +390,7 @@ describe("Arkiv Integration Tests for public client", () => {
       )
 
       const entity = await publicClient.getEntity(entityKey)
-      expect(entity.creationFlags).toEqual({
+      expect(entity.$creationFlags).toEqual({
         readonly: true,
         permissionlessExtension: false,
         raw: 1,
@@ -418,7 +418,7 @@ describe("Arkiv Integration Tests for public client", () => {
         { expiration: ExpirationTime.permanent() },
       )
 
-      expect((await publicClient.getEntity(entityKey)).expiresAt).toBe(MAX_EXPIRES_AT)
+      expect((await publicClient.getEntity(entityKey)).$expiresAt).toBe(MAX_EXPIRES_AT)
     },
     { timeout: 20000 },
   )
@@ -472,7 +472,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(patched.body).toEqual(bytes(stringToBytes("patched")))
       await expect(publicClient.getEntity(toDeleteA)).rejects.toThrow(NoEntityFoundError)
       await expect(publicClient.getEntity(toDeleteB)).rejects.toThrow(NoEntityFoundError)
-      expect((await publicClient.getEntity(toTransfer)).owner).toBe(SOMEONE_ELSE)
+      expect((await publicClient.getEntity(toTransfer)).$owner).toBe(SOMEONE_ELSE)
     },
     { timeout: 60000 },
   )
@@ -509,32 +509,32 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // Both entities carry `group`, but the tag filter keeps the author out of a Books query.
       const books = await publicClient
-        .select({ key: true, title: true })
+        .select({ $key: true, title: true })
         .from(Books)
         .where(eq("group", group))
         .fetch()
-      expect(books.entities.map((row) => row.key)).toEqual([book])
+      expect(books.entities.map((row) => row.$key)).toEqual([book])
       // A named schema needs no other filter to list its entities.
-      const everyBook = await publicClient.select({ key: true }).from(Books).fetch()
-      expect(everyBook.entities.map((row) => row.key)).toContain(book)
-      expect(everyBook.entities.map((row) => row.key)).not.toContain(author)
+      const everyBook = await publicClient.select({ $key: true }).from(Books).fetch()
+      expect(everyBook.entities.map((row) => row.$key)).toContain(book)
+      expect(everyBook.entities.map((row) => row.$key)).not.toContain(author)
 
       // An unnamed schema types a query without filtering it: the author matches `group` too,
       // and does not fit — which fails the fetch by default, or is skipped on request.
       const UntaggedBooks = defineSchema({ group: str().indexed(), title: str() })
       await expect(
         publicClient
-          .select({ key: true, title: true })
+          .select({ $key: true, title: true })
           .from(UntaggedBooks)
           .where(eq("group", group))
           .fetch(),
       ).rejects.toThrow(SchemaMismatchError)
       const skipped = await publicClient
-        .select({ key: true, title: true })
+        .select({ $key: true, title: true })
         .from(UntaggedBooks, { onMismatch: "skip" })
         .where(eq("group", group))
         .fetch()
-      expect(skipped.entities.map((row) => row.key)).toEqual([book])
+      expect(skipped.entities.map((row) => row.$key)).toEqual([book])
       expect(skipped.skipped).toBe(1)
     },
     { timeout: 30000 },
@@ -561,7 +561,7 @@ describe("Arkiv Integration Tests for public client", () => {
       ).rejects.toThrow(EntityMutationError)
 
       const survivors = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(Notes)
         .where(eq("tag", str(marker)))
         .fetch()
@@ -605,28 +605,28 @@ describe("Arkiv Integration Tests for public client", () => {
       const matches = eq("tag", str(value))
 
       const byAttribute = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(Notes)
         .where(matches)
         .fetch()
-      expect(byAttribute.entities.map((e) => e.key)).toEqual([entityKey])
+      expect(byAttribute.entities.map((e) => e.$key)).toEqual([entityKey])
 
       const byOwner = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .ownedBy(account.address)
         .fetch()
       expect(byOwner.entities).toHaveLength(1)
 
       const byCreator = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .createdBy(account.address)
         .fetch()
       expect(byCreator.entities).toHaveLength(1)
 
       const byBoth = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .ownedBy(account.address)
         .createdBy(account.address)
@@ -634,17 +634,17 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(byBoth.entities).toHaveLength(1)
 
       const byStranger = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .createdBy("0x0000000000000000000000000000000000000000")
         .fetch()
       expect(byStranger.entities).toHaveLength(0)
 
       const byKey = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(eq("$key", key(entityKey)))
         .fetch()
-      expect(byKey.entities.map((e) => e.key)).toEqual([entityKey])
+      expect(byKey.entities.map((e) => e.$key)).toEqual([entityKey])
     },
     { timeout: 30000 },
   )
@@ -660,77 +660,75 @@ describe("Arkiv Integration Tests for public client", () => {
       // key only — the result type is narrowed to exactly { key }, and the RPC must actually omit
       // the rest rather than merely typing it away. That over-fetch guarantee is what select()
       // exists for, so it is asserted at runtime too.
-      const keyOnly = await publicClient.select({ key: true }).where(where).fetch()
-      expect(keyOnly.entities[0]?.key).toBeDefined()
+      const keyOnly = await publicClient.select({ $key: true }).where(where).fetch()
+      expect(keyOnly.entities[0]?.$key).toBeDefined()
       // @ts-expect-error owner was not selected
-      expect(keyOnly.entities[0]?.owner).toBeUndefined()
+      expect(keyOnly.entities[0]?.$owner).toBeUndefined()
       // @ts-expect-error attributes were not selected
-      expect(keyOnly.entities[0]?.attributes).toBeUndefined()
+      expect(keyOnly.entities[0]?.$attributes).toBeUndefined()
       // @ts-expect-error creator was not selected
-      expect(keyOnly.entities[0]?.creator).toBeUndefined()
+      expect(keyOnly.entities[0]?.$creator).toBeUndefined()
       // @ts-expect-error expiresAt was not selected
-      expect(keyOnly.entities[0]?.expiresAt).toBeUndefined()
+      expect(keyOnly.entities[0]?.$expiresAt).toBeUndefined()
       // @ts-expect-error createdAt was not selected
-      expect(keyOnly.entities[0]?.createdAt).toBeUndefined()
+      expect(keyOnly.entities[0]?.$createdAt).toBeUndefined()
       // @ts-expect-error updatedAt was not selected
-      expect(keyOnly.entities[0]?.updatedAt).toBeUndefined()
+      expect(keyOnly.entities[0]?.$updatedAt).toBeUndefined()
 
       const metadataOnly = await publicClient
         .select({
-          owner: true,
-          creator: true,
-          expiresAt: true,
-          createdAt: true,
-          updatedAt: true,
-          creationFlags: true,
+          $owner: true,
+          $creator: true,
+          $expiresAt: true,
+          $createdAt: true,
+          $updatedAt: true,
+          $creationFlags: true,
         })
         .where(where)
         .fetch()
-      expect(metadataOnly.entities[0]?.owner).toBe(account.address)
-      expect(metadataOnly.entities[0]?.creator).toBe(account.address)
-      expect(metadataOnly.entities[0]?.expiresAt).toBeGreaterThan(0n)
-      expect(metadataOnly.entities[0]?.createdAt).toBeGreaterThan(0n)
-      expect(metadataOnly.entities[0]?.updatedAt).toBeGreaterThan(0n)
-      expect(metadataOnly.entities[0]?.creationFlags.raw).toBe(0)
+      expect(metadataOnly.entities[0]?.$owner).toBe(account.address)
+      expect(metadataOnly.entities[0]?.$creator).toBe(account.address)
+      expect(metadataOnly.entities[0]?.$expiresAt).toBeGreaterThan(0n)
+      expect(metadataOnly.entities[0]?.$createdAt).toBeGreaterThan(0n)
+      expect(metadataOnly.entities[0]?.$updatedAt).toBeGreaterThan(0n)
+      expect(metadataOnly.entities[0]?.$creationFlags.raw).toBe(0)
       // @ts-expect-error attributes were not selected
-      expect(metadataOnly.entities[0]?.attributes).toBeUndefined()
+      expect(metadataOnly.entities[0]?.$attributes).toBeUndefined()
 
-      const attributesOnly = await publicClient.select({ attributes: true }).where(where).fetch()
-      expect(attributesOnly.entities[0]?.attributes.tag).toEqual(str(value))
+      const attributesOnly = await publicClient.select({ $attributes: true }).where(where).fetch()
+      expect(attributesOnly.entities[0]?.$attributes.tag).toEqual(str(value))
       // @ts-expect-error key was not selected
-      expect(attributesOnly.entities[0]?.key).toBeUndefined()
+      expect(attributesOnly.entities[0]?.$key).toBeUndefined()
 
       // The schema projection names the types and indexing without paying for the values.
-      const schemaOnly = await publicClient.select({ attributeSchema: true }).where(where).fetch()
-      expect(schemaOnly.entities[0]?.attributeSchema).toEqual({
+      const schemaOnly = await publicClient.select({ $attributeSchema: true }).where(where).fetch()
+      expect(schemaOnly.entities[0]?.$attributeSchema).toEqual({
         tag: { type: "str", indexed: true },
         body: { type: "bytes", indexed: false },
         mimeType: { type: "str", indexed: false },
       })
 
-      // Attributes can be narrowed to just the names you want.
-      const oneAttribute = await publicClient
-        .select({ key: true, attributes: { tag: true } })
-        .where(where)
-        .fetch()
-      expect(oneAttribute.entities[0]?.attributes).toEqual({ tag: str(value) })
+      // Attributes are selected by name, each as a field of its own.
+      const oneAttribute = await publicClient.select({ $key: true, tag: true }).where(where).fetch()
+      expect(oneAttribute.entities[0]?.tag).toEqual(str(value))
+      expect(oneAttribute.entities[0]).not.toHaveProperty("$attributes")
 
       // No selection at all is every field.
       const everything = await publicClient.select().where(where).fetch()
-      expect(everything.entities[0]?.key).toBeDefined()
-      expect(everything.entities[0]?.owner).toBe(account.address)
-      expect(everything.entities[0]?.attributes.tag).toEqual(str(value))
-      expect(everything.entities[0]?.attributes.body).toEqual(bytes(body))
+      expect(everything.entities[0]?.$key).toBeDefined()
+      expect(everything.entities[0]?.$owner).toBe(account.address)
+      expect(everything.entities[0]?.$attributes.tag).toEqual(str(value))
+      expect(everything.entities[0]?.$attributes.body).toEqual(bytes(body))
 
       // Through the schema, entity fields and columns sit side by side in one flat row.
       const rows = await publicClient
-        .select({ key: true, owner: true, body: true })
+        .select({ $key: true, $owner: true, body: true })
         .from(Notes)
         .where(where)
         .fetch()
       const row = rows.entities[0]
       if (!row) throw new Error("no row returned through the schema")
-      expect(row.owner).toBe(account.address)
+      expect(row.$owner).toBe(account.address)
       expect(row.body).toEqual(bytes(body))
       // @ts-expect-error mimeType was not selected
       expect(row.mimeType).toBeUndefined()
@@ -739,7 +737,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const fullRow = (await publicClient.select().from(Notes).where(where).fetch()).entities[0]
       expect(fullRow?.mimeType).toEqual(str("application/json"))
       expect(fullRow?.tag).toEqual(str(value))
-      expect(fullRow?.creator).toBe(account.address)
+      expect(fullRow?.$creator).toBe(account.address)
     },
     { timeout: 30000 },
   )
@@ -806,7 +804,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // 6 then 4. `next()` returns a new page rather than mutating this one.
       const page1 = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(Notes)
         .where(where)
         .limit(6)
@@ -821,7 +819,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // 5 then 5 — a full final page is still reported as the last one, because the node omits
       // the cursor rather than leaving it to be guessed from a short page.
-      const evenPage1 = await publicClient.select({ key: true }).where(where).limit(5).fetch()
+      const evenPage1 = await publicClient.select({ $key: true }).where(where).limit(5).fetch()
       expect(evenPage1.entities).toHaveLength(5)
       expect(evenPage1.hasNextPage()).toBe(true)
 
@@ -829,24 +827,24 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(evenPage2.entities).toHaveLength(5)
       expect(evenPage2.hasNextPage()).toBe(false)
 
-      const keys = [...evenPage1.entities, ...evenPage2.entities].map((e) => e.key)
+      const keys = [...evenPage1.entities, ...evenPage2.entities].map((e) => e.$key)
       expect(new Set(keys).size).toBe(10)
 
       // The same walk through the raw form, which takes the cursor by hand.
       const raw1 = await publicClient.query(`tag = str('${value}')`, {
-        select: { key: true },
+        select: { $key: true },
         limit: 6,
       })
       expect(raw1.entities).toHaveLength(6)
       expect(raw1.cursor).toBeDefined()
       const raw2 = await publicClient.query(`tag = str('${value}')`, {
-        select: { key: true },
+        select: { $key: true },
         limit: 6,
         cursor: raw1.cursor,
       })
       expect(raw2.entities).toHaveLength(4)
       expect(raw2.cursor).toBeUndefined()
-      expect(new Set([...raw1.entities, ...raw2.entities].map((e) => e.key)).size).toBe(10)
+      expect(new Set([...raw1.entities, ...raw2.entities].map((e) => e.$key)).size).toBe(10)
     },
     { timeout: 60000 },
   )
@@ -860,14 +858,14 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // No selection: full entities.
       const full = await publicClient.query(queryString)
-      expect(full.entities.map((e) => e.key)).toEqual([entityKey])
-      expect(full.entities[0]?.owner).toBe(account.address)
+      expect(full.entities.map((e) => e.$key)).toEqual([entityKey])
+      expect(full.entities[0]?.$owner).toBe(account.address)
       expect(full.blockNumber).toBeGreaterThan(0n)
       expect(full.cursor).toBeUndefined()
 
       // A selection narrows what the node sends back, raw query or not.
-      const projected = await publicClient.query(queryString, { select: { key: true, tag: true } })
-      expect(projected.entities).toEqual([{ key: entityKey, tag: str(value) }])
+      const projected = await publicClient.query(queryString, { select: { $key: true, tag: true } })
+      expect(projected.entities).toEqual([{ $key: entityKey, tag: str(value) }])
     },
     { timeout: 30000 },
   )
@@ -882,7 +880,9 @@ describe("Arkiv Integration Tests for public client", () => {
         version: i32(1),
       })
 
-      const { txHash } = await walletClient.patchEntity(History, entityKey, { set: { version: i32(2) } })
+      const { txHash } = await walletClient.patchEntity(History, entityKey, {
+        set: { version: i32(2) },
+      })
       const { blockNumber: patchedAt } = await publicClient.waitForTransactionReceipt({
         hash: txHash,
       })
@@ -961,12 +961,12 @@ describe("Arkiv Integration Tests for public client", () => {
         keyattr: key(entityKey),
         blobattr: bytes("0x000102ff"),
       }
-      expect((await publicClient.getEntity(created.entityKey)).attributes).toEqual(expected)
+      expect((await publicClient.getEntity(created.entityKey)).$attributes).toEqual(expected)
       expect(await publicClient.getEntity(created.entityKey, AllTypes)).toMatchObject(expected)
 
       // And each indexed one is queryable by the value it holds.
       const found = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(AllTypes)
         .where(
           and(
@@ -983,7 +983,7 @@ describe("Arkiv Integration Tests for public client", () => {
           ),
         )
         .fetch()
-      expect(found.entities.map((e) => e.key)).toEqual([created.entityKey])
+      expect(found.entities.map((e) => e.$key)).toEqual([created.entityKey])
     },
     { timeout: 30000 },
   )
@@ -996,7 +996,7 @@ describe("Arkiv Integration Tests for public client", () => {
       await create("http", Notes, { tag: uniqueId })
 
       const result = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(Notes)
         .where(eq("tag", str(uniqueId)))
         .fetch()
@@ -1041,20 +1041,20 @@ describe("Arkiv Integration Tests for public client", () => {
       })
 
       const rows = await publicClient
-        .select({ key: true, title: true, summary: true })
+        .select({ $key: true, title: true, summary: true })
         .from(Articles)
         .where(eq("group", group))
         .fetch()
       expect(rows.entities).toEqual([
         {
-          key: entityKey,
+          $key: entityKey,
           title: str("Cells, not entities"),
           summary: str("stored, never indexed"),
         },
       ])
 
       // The schema refuses the filter at compile time, and the SDK before the request goes out.
-      const byTitle = publicClient.select({ key: true }).from(Articles)
+      const byTitle = publicClient.select({ $key: true }).from(Articles)
       // @ts-expect-error title is not indexed
       await expect(byTitle.where(eq("title", "Cells, not entities")).fetch()).rejects.toThrow(
         InvalidPredicateError,
@@ -1064,14 +1064,14 @@ describe("Arkiv Integration Tests for public client", () => {
       // either refuses the predicate or finds nothing — it never finds the entity.
       const raw = await publicClient
         .query(`group = str('${group}') AND title = str('Cells, not entities')`, {
-          select: { key: true },
+          select: { $key: true },
         })
-        .then((page) => page.entities.map((e) => e.key))
+        .then((page) => page.entities.map((e) => e.$key))
         .catch(() => [])
       expect(raw).not.toContain(entityKey)
 
       // And the node reports the attributes as unindexed.
-      expect((await publicClient.getEntity(entityKey)).attributeSchema).toEqual({
+      expect((await publicClient.getEntity(entityKey)).$attributeSchema).toEqual({
         group: { type: "str", indexed: true },
         title: { type: "str", indexed: false },
         summary: { type: "str", indexed: false },
@@ -1147,11 +1147,11 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // The default is a real, indexed attribute on the node, not something the SDK fills in on read.
       const markdown = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(Docs)
         .where(eq("group", group), eq("mimeType", "text/markdown"))
         .fetch()
-      expect(markdown.entities.map((row) => row.key)).toEqual([defaulted])
+      expect(markdown.entities.map((row) => row.$key)).toEqual([defaulted])
     },
     { timeout: 30000 },
   )
@@ -1171,7 +1171,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const open = await publicClient.getEntity(entityKey, Tasks)
       expect(open.closedAt).toBeUndefined()
       expect(open.note).toBeUndefined()
-      expect(Object.keys((await publicClient.getEntity(entityKey)).attributes).sort()).toEqual([
+      expect(Object.keys((await publicClient.getEntity(entityKey)).$attributes).sort()).toEqual([
         "group",
         "title",
       ])
@@ -1179,11 +1179,11 @@ describe("Arkiv Integration Tests for public client", () => {
       const openOnes = async () =>
         (
           await publicClient
-            .select({ key: true })
+            .select({ $key: true })
             .from(Tasks)
             .where(eq("group", group), not(exists("closedAt")))
             .fetch()
-        ).entities.map((row) => row.key)
+        ).entities.map((row) => row.$key)
       expect(await openOnes()).toEqual([entityKey])
 
       const close = await walletClient.patchEntity(Tasks, entityKey, {
@@ -1195,7 +1195,9 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(closed.note).toEqual(str("done"))
       expect(await openOnes()).toEqual([])
 
-      const reopen = await walletClient.patchEntity(Tasks, entityKey, { unset: ["closedAt", "note"] })
+      const reopen = await walletClient.patchEntity(Tasks, entityKey, {
+        unset: ["closedAt", "note"],
+      })
       await publicClient.waitForTransactionReceipt({ hash: reopen.txHash })
       const reopened = await publicClient.getEntity(entityKey, Tasks)
       expect(reopened.closedAt).toBeUndefined()
@@ -1217,11 +1219,11 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const byRank = async () =>
         await publicClient
-          .select({ key: true })
+          .select({ $key: true })
           .from(RankedV2)
           .where(eq("group", group), eq("rank", 1))
           .fetch()
-          .then((page) => page.entities.map((row) => row.key))
+          .then((page) => page.entities.map((row) => row.$key))
           .catch(() => [])
       expect(await byRank()).not.toContain(entityKey)
 
@@ -1229,13 +1231,15 @@ describe("Arkiv Integration Tests for public client", () => {
       const { txHash } = await walletClient.patchEntity(RankedV2, entityKey, { set: { rank: 1 } })
       await publicClient.waitForTransactionReceipt({ hash: txHash })
       expect(await byRank()).toEqual([entityKey])
-      expect((await publicClient.getEntity(entityKey)).attributeSchema.rank).toEqual({
+      expect((await publicClient.getEntity(entityKey)).$attributeSchema.rank).toEqual({
         type: "i32",
         indexed: true,
       })
 
       // And back: the old version writes it unindexed again.
-      const { txHash: back } = await walletClient.patchEntity(RankedV1, entityKey, { set: { rank: 1 } })
+      const { txHash: back } = await walletClient.patchEntity(RankedV1, entityKey, {
+        set: { rank: 1 },
+      })
       await publicClient.waitForTransactionReceipt({ hash: back })
       expect(await byRank()).not.toContain(entityKey)
     },
@@ -1402,7 +1406,7 @@ describe("Arkiv Integration Tests for public client", () => {
         predictEntityKey({ owner: newcomer.address, nonce: 0n, salt: 42n, chainId }),
       )
       // And the entity is really there under that key.
-      expect((await publicClient.getEntity(entityKey)).owner).toBe(newcomer.address)
+      expect((await publicClient.getEntity(entityKey)).$owner).toBe(newcomer.address)
 
       // The nonce the engine keeps for it moved by exactly that one create.
       expect(await publicClient.getEntityNonce(newcomer.address)).toBe(1n)
@@ -1452,11 +1456,11 @@ describe("Arkiv Integration Tests for public client", () => {
       expect((await publicClient.getEntity(parent.key, Tree)).role).toEqual(str("parent"))
 
       const children = await publicClient
-        .select({ key: true, parent: true })
+        .select({ $key: true, parent: true })
         .from(Tree)
         .where(and(eq("predictgroup", str(group)), eq("role", str("child"))))
         .fetch()
-      expect(children.entities.map((row) => row.key)).toEqual([child.key])
+      expect(children.entities.map((row) => row.$key)).toEqual([child.key])
       expect(children.entities.map((row) => row.parent)).toEqual([key(parent.key)])
 
       // Two creates, two nonces.
@@ -1491,7 +1495,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       await expect(publicClient.getEntity(entityKey)).rejects.toThrow(NoEntityFoundError)
       const live = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(Notes)
         .where(eq("tag", str(value)))
         .fetch()
@@ -1500,7 +1504,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const at = async (block: bigint) =>
         (
           await publicClient
-            .select({ key: true })
+            .select({ $key: true })
             .from(Notes)
             .where(eq("tag", str(value)))
             .atBlock(block)

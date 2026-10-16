@@ -10,7 +10,7 @@ import { isSchema, key, type Schema, SchemaDefinitionError } from "../../schema"
  * Reads one entity by key, with every field selected.
  *
  * The same as `select("*")`: a {@link FullEntity} — every entity field, every attribute as the
- * `attributes` map, and the `attributeSchema` — with none of them needing a `?` at the call site.
+ * `$attributes` map, and the `$attributeSchema` — with none of them needing a `?` at the call site.
  *
  * Given a schema, it reads the entity through it instead, as `select("*").from(schema)` would — a
  * {@link FullRow}, every entity field and every column, each column checked against its declared

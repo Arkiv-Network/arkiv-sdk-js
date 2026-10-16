@@ -10,60 +10,71 @@ import {
   type Schema,
   SchemaMismatchError,
   type StrValue,
-  SYSTEM_FIELDS,
-  type SystemField,
   type TypeTag,
   type ValueOf,
   validateAttributeName,
 } from "../schema"
-import type { Entity } from "../types/entity"
+import type { Entity, EntityFields } from "../types/entity"
 import type { RpcSelect } from "../types/rpcSchema"
 
 /**
- * The keys a selection gives a fixed meaning: the entity fields, plus `attributes` and
- * `attributeSchema`, which read an entity's attributes as a whole. Any other key names an attribute.
- *
- * `attributes` takes a third form beyond `true`/`false`: a map of names, to fetch only those.
+ * The entity fields a row can carry. Each is `$`-prefixed, like the system attributes `where`
+ * filters on: an attribute name cannot start with `$`, so no attribute can collide with one.
+ */
+export const SYSTEM_FIELDS = [
+  "$key",
+  "$owner",
+  "$creator",
+  "$createdAt",
+  "$updatedAt",
+  "$expiresAt",
+  "$creationFlags",
+] as const
+
+/** The name of an entity field a row carries alongside its attributes. */
+export type SystemField = (typeof SYSTEM_FIELDS)[number]
+
+/** The {@link Entity} property a system field reads. */
+type EntityField<F extends SystemField> = F extends `$${infer N extends keyof EntityFields}`
+  ? N
+  : never
+
+/**
+ * The keys a selection gives a fixed meaning: the entity fields, plus `$attributes` and
+ * `$attributeSchema`, which read an entity's attributes as a whole. Any key without a `$` names an
+ * attribute.
  */
 export type SelectionFields = { [K in SystemField]?: boolean } & {
   /** Attribute names, types and indexing, without their values. */
-  attributeSchema?: boolean
-  /** `true` for every attribute, or a map of names for a subset. */
-  attributes?: boolean | Readonly<Record<string, boolean>>
+  $attributeSchema?: boolean
+  /** Every attribute, as a map keyed by name. */
+  $attributes?: boolean
 }
 
 /** The selection keys with a fixed meaning, in the order they are written into the RPC `select`. */
 const SELECTION_KEYS = [
   ...SYSTEM_FIELDS,
-  "attributeSchema",
-  "attributes",
+  "$attributeSchema",
+  "$attributes",
 ] as const satisfies readonly (keyof SelectionFields)[]
 
+/** A selection key with a fixed meaning. */
+type SelectionKey = (typeof SELECTION_KEYS)[number]
+
 /**
- * A selection: entity fields, `attributes` / `attributeSchema`, and attributes by name, each set to
- * `true` to ask for it. The same selection means the same thing with or without a schema — naming
- * one with `.from(...)` only types and checks the selected attributes, and the filter. A named
- * schema also restricts the query to entities tagged with its name, and leaves the tag out of every
- * row.
+ * A selection: entity fields, `$attributes` / `$attributeSchema`, and attributes by name, each set
+ * to `true` to ask for it. The same selection means the same thing with or without a schema —
+ * naming one with `.from(...)` only types and checks the selected attributes, and the filter. A
+ * named schema also restricts the query to entities tagged with its name, and leaves the tag out of
+ * every row.
  */
-export type Selection = Readonly<
-  Record<string, boolean | undefined | Readonly<Record<string, boolean | undefined>>>
->
+export type Selection = Readonly<Record<string, boolean | undefined>>
 
 /** Argument accepted by `select()` — a {@link Selection}, or `"*"` for everything. */
 export type SelectArg = Selection | "*"
 
-/**
- * Whether a selection value asks for the field: `true`, or a map of attribute names with at least
- * one set to `true`. `false`, `undefined` and a map that names nothing ask for nothing.
- */
-export type Selected<V> = V extends false | undefined
-  ? false
-  : V extends Readonly<Record<string, boolean | undefined>>
-    ? true extends V[keyof V]
-      ? true
-      : false
-    : true
+/** Whether a selection value asks for the field: `true` does, `false` and `undefined` do not. */
+export type Selected<V> = V extends false | undefined ? false : true
 
 /**
  * What a column reads back as: a value of its type, or `undefined` too if the column is optional.
@@ -80,16 +91,18 @@ export type ColumnValue<C> = C extends {
  * whole, or one attribute — typed by its column through a schema, and any value or none without.
  */
 type FieldValue<K, TSchema extends Schema | undefined> = K extends SystemField
-  ? NonNullable<Entity[K]>
-  : K extends "attributes"
+  ? NonNullable<Entity[EntityField<K>]>
+  : K extends "$attributes"
     ? Attributes
-    : K extends "attributeSchema"
+    : K extends "$attributeSchema"
       ? AttributeSchema
-      : TSchema extends Schema
-        ? K extends keyof ColumnsOf<TSchema>
-          ? ColumnValue<ColumnsOf<TSchema>[K]>
-          : never
-        : ArkivValue | undefined
+      : K extends `$${string}`
+        ? never
+        : TSchema extends Schema
+          ? K extends keyof ColumnsOf<TSchema>
+            ? ColumnValue<ColumnsOf<TSchema>[K]>
+            : never
+          : ArkivValue | undefined
 
 /**
  * One result of selection `S`, through schema `TSchema` or without one: the selected entity fields
@@ -98,8 +111,8 @@ type FieldValue<K, TSchema extends Schema | undefined> = K extends SystemField
  * unselected field is a compile error.
  *
  * @example
- * // select({ key: true, title: true })               → { key: Hex; title: ArkivValue | undefined }
- * // select({ key: true, title: true }).from(Posts)   → { key: Hex; title: StrValue }
+ * // select({ $key: true, title: true })               → { $key: Hex; title: ArkivValue | undefined }
+ * // select({ $key: true, title: true }).from(Posts)   → { $key: Hex; title: StrValue }
  */
 export type Row<S, TSchema extends Schema | undefined = undefined> = {
   readonly [K in keyof S as Selected<S[K]> extends true ? K : never]: FieldValue<K, TSchema>
@@ -131,10 +144,10 @@ export type DynamicSelection = { readonly [dynamic]: true }
  * absent, because nothing says statically which were selected.
  */
 export type PartialRow<TSchema extends Schema | undefined = undefined> = {
-  readonly [K in SystemField]?: NonNullable<Entity[K]>
+  readonly [K in SystemField]?: NonNullable<Entity[EntityField<K>]>
 } & {
-  readonly attributes?: Attributes
-  readonly attributeSchema?: AttributeSchema
+  readonly $attributes?: Attributes
+  readonly $attributeSchema?: AttributeSchema
 } & (TSchema extends Schema
     ? { readonly [K in keyof ColumnsOf<TSchema>]?: ValueOf<ColumnsOf<TSchema>[K]["type"]> }
     : { readonly [name: string]: ArkivValue | undefined })
@@ -165,15 +178,31 @@ export type SelectionOf<S> = [S] extends ["*"]
     : S
 
 /**
- * Rejects a selection that asks for nothing at compile time — `{}`, every field `false`, or an
- * `attributes` map that names nothing: `unknown` when `S` asks for something, or when that is only
- * known at runtime, and an object no selection satisfies otherwise.
+ * Rejects a selection that asks for nothing at compile time — `{}`, or every field `false`:
+ * `unknown` when `S` asks for something, or when that is only known at runtime, and an object no
+ * selection satisfies otherwise.
  */
 export type NonEmptySelection<S> = SelectionOf<S> extends "*" | DynamicSelection
   ? unknown
   : [keyof { [K in keyof S as Selected<S[K]> extends true ? K : never]: true }] extends [never]
     ? { "select() needs at least one field set to true": true }
     : unknown
+
+/**
+ * Rejects a `$` key that is not an entity field, `$attributes` or `$attributeSchema` at compile
+ * time. An attribute name cannot start with `$`, so such a key can only be a typo: `unknown` when
+ * there is none, and an object naming the offenders, which no selection satisfies, otherwise.
+ */
+export type KnownSystemFields<S> = SelectionOf<S> extends "*" | DynamicSelection
+  ? unknown
+  : [Extract<Exclude<keyof S, SelectionKey>, `$${string}`>] extends [never]
+    ? unknown
+    : {
+        "selected names that are not entity fields": Extract<
+          Exclude<keyof S, SelectionKey>,
+          `$${string}`
+        >
+      }
 
 /** What a query returns per result — a flat row, typed by the schema when there is one. */
 export type ResultOf<
@@ -189,14 +218,14 @@ export type ResultOf<
 
 /**
  * The keys of a selection that mean nothing through `TSchema` — neither an entity field,
- * `attributes` / `attributeSchema`, nor a column. None for a star or a selection only known at
+ * `$attributes` / `$attributeSchema`, nor a column. None for a star or a selection only known at
  * runtime, which `from()` checks when it runs instead.
  */
 export type UnknownSelection<TSelection, TSchema extends Schema> = TSelection extends
   | "*"
   | DynamicSelection
   ? never
-  : Exclude<keyof TSelection, (typeof SELECTION_KEYS)[number] | keyof ColumnsOf<TSchema>>
+  : Exclude<keyof TSelection, SelectionKey | keyof ColumnsOf<TSchema>>
 
 /**
  * Converts a selection into the RPC `select` object — the same request {@link projectSelection}
@@ -212,8 +241,8 @@ export type UnknownSelection<TSelection, TSchema extends Schema> = TSelection ex
  *
  * @example
  * toRpcSelect()                                     // everything
- * toRpcSelect({ key: true })                        // only the key
- * toRpcSelect({ key: true, projectId: true })       // the key and one attribute
+ * toRpcSelect({ $key: true })                       // only the key
+ * toRpcSelect({ $key: true, projectId: true })      // the key and one attribute
  */
 export function toRpcSelect(selection?: SelectArg): RpcSelect {
   return projectSelection(selection).select
@@ -221,16 +250,11 @@ export function toRpcSelect(selection?: SelectArg): RpcSelect {
 
 /**
  * A frozen copy of a selection, so that editing the object passed to `select()` afterwards cannot
- * change what the builder sends. An `attributes` map is copied too.
+ * change what the builder sends.
  */
 export function snapshotSelection<S extends SelectArg | undefined>(selection: S): S {
   if (typeof selection !== "object" || selection === null) return selection
-  const copy: Record<string, unknown> = { ...selection }
-  const { attributes } = copy
-  if (typeof attributes === "object" && attributes !== null) {
-    copy.attributes = Object.freeze({ ...attributes })
-  }
-  return Object.freeze(copy) as S
+  return Object.freeze({ ...selection }) as S
 }
 
 /**
@@ -246,31 +270,32 @@ export type Projection = {
    * through a schema, which the value is checked against, and `undefined` without one.
    */
   readonly columns: readonly (readonly [name: string, column: AnyColumn | undefined])[]
-  /** Whether each row carries the `attributes` map: every attribute, the named ones, or none. */
-  readonly attributes: true | readonly string[] | undefined
-  /** Whether each row carries the `attributeSchema`. */
+  /** Whether each row carries the `$attributes` map. */
+  readonly attributes: boolean
+  /** Whether each row carries the `$attributeSchema`. */
   readonly attributeSchema: boolean
   /** The tag each entity must carry, for a named schema. Checked, never part of the row. */
   readonly tag: StrValue | undefined
 }
 
 /**
- * Resolves a selection, through a schema or without one. A key that is not an entity field,
- * `attributes` or `attributeSchema` names an attribute — through a schema, it must be a column.
+ * Resolves a selection, through a schema or without one. A key that does not start with `$` names
+ * an attribute — through a schema, it must be a column.
  *
  * `undefined` or `"*"` selects every entity field and, through a schema, every column; without one,
- * every attribute as the `attributes` map, and the `attributeSchema`.
+ * every attribute as the `$attributes` map, and the `$attributeSchema`.
  *
  * Attributes are fetched by name where possible, so the ones a row does not carry stay on the node.
  * A named schema's tag is fetched too, so each entity can be checked against it.
  *
- * @throws If the selection asks for nothing, names an attribute outside the name grammar, or —
- * through a schema — names something that is neither an entity field nor a column.
+ * @throws If the selection asks for nothing, names a `$` key that is not an entity field, names an
+ * attribute outside the name grammar, or — through a schema — names an attribute that is not a
+ * column.
  */
 export function projectSelection(selection?: SelectArg, schema?: Schema): Projection {
   const fields: SystemField[] = []
   const columns: [string, AnyColumn | undefined][] = []
-  let attributes: true | string[] | undefined
+  let attributes = false
   let attributeSchema = false
 
   if (selection === undefined || selection === "*") {
@@ -286,54 +311,52 @@ export function projectSelection(selection?: SelectArg, schema?: Schema): Projec
       throw new TypeError('select() takes "*" or an object of fields set to true')
     }
     for (const [name, wanted] of Object.entries(selection)) {
-      if (name === "attributes" && typeof wanted === "object" && wanted !== null) {
-        // A named subset. An empty map asks for no attributes at all, which is what `false` means.
-        const names = Object.keys(wanted).filter((attribute) => wanted[attribute] === true)
-        // Checked rather than forwarded: a name outside the grammar cannot exist on any entity, so
-        // asking for one is a typo that would otherwise come back as a silently absent attribute.
-        for (const attribute of names) validateAttributeName(attribute)
-        if (names.length > 0) attributes = names
-        continue
-      }
       if (typeof wanted !== "boolean" && wanted !== undefined) {
-        throw new Error(`select() takes true or false for "${name}", got ${typeof wanted}.`)
+        throw new Error(
+          name === "$attributes"
+            ? 'select() takes true or false for "$attributes", which reads every attribute. To ' +
+                "read some of them, select each by name: select({ title: true, body: true })."
+            : `select() takes true or false for "${name}", got ${typeof wanted}.`,
+        )
       }
       const fixed = (SELECTION_KEYS as readonly string[]).includes(name)
+      if (!fixed && name.startsWith("$")) {
+        throw new Error(
+          `select() names "${name}", which is not an entity field. The entity fields are ` +
+            `${SYSTEM_FIELDS.join(", ")}, and $attributes and $attributeSchema read the ` +
+            "attributes as a whole.",
+        )
+      }
       const column = fixed || schema === undefined ? undefined : lookupColumn(schema, name)
       if (!fixed) {
         if (schema !== undefined && column === undefined) {
           throw new Error(
-            `select() names "${name}", which is neither an entity field nor a column of the ` +
-              `schema. Its columns are ${describeColumns(schema)}.`,
+            `select() names "${name}", which is not a column of the schema. Its columns are ` +
+              `${describeColumns(schema)}.`,
           )
         }
         validateAttributeName(name)
       }
       if (!wanted) continue
-      if (name === "attributes") attributes = true
-      else if (name === "attributeSchema") attributeSchema = true
+      if (name === "$attributes") attributes = true
+      else if (name === "$attributeSchema") attributeSchema = true
       else if (fixed) fields.push(name as SystemField)
       else columns.push([name, column])
     }
     // Rejects both `{}` and a selection whose fields are all explicitly `false` — the type system
-    // permits `select({ key: false })`, and the node would answer it with a page of empty objects.
-    if (
-      fields.length === 0 &&
-      columns.length === 0 &&
-      attributes === undefined &&
-      !attributeSchema
-    ) {
+    // permits `select({ $key: false })`, and the node would answer it with a page of empty objects.
+    if (fields.length === 0 && columns.length === 0 && !attributes && !attributeSchema) {
       throw nothingSelected()
     }
   }
 
   const select: RpcSelect = {}
-  for (const field of SYSTEM_FIELDS) select[field] = fields.includes(field)
+  for (const field of SYSTEM_FIELDS) select[entityField(field)] = fields.includes(field)
   select.attributeSchema = attributeSchema
-  if (attributes === true) {
+  if (attributes) {
     select.attributes = true
   } else {
-    const names = new Set([...columns.map(([name]) => name), ...(attributes ?? [])])
+    const names = new Set(columns.map(([name]) => name))
     if (schema?.tag !== undefined) names.add(SCHEMA_ATTRIBUTE)
     select.attributes =
       names.size > 0 ? Object.fromEntries([...names].map((n) => [n, true])) : false
@@ -364,7 +387,7 @@ export function toRow(entity: Entity, projection: Projection): Record<string, un
   }
 
   const row: Record<string, unknown> = {}
-  for (const field of projection.fields) row[field] = entity[field]
+  for (const field of projection.fields) row[field] = entity[entityField(field)]
 
   for (const [name, column] of projection.columns) {
     const value = attributeOf(entity, name)
@@ -387,22 +410,18 @@ export function toRow(entity: Entity, projection: Projection): Record<string, un
     row[name] = value
   }
 
-  if (projection.attributes === true) {
-    row.attributes = withoutTag(entity.attributes ?? {}, tag)
-  } else if (projection.attributes !== undefined) {
-    const picked: Record<string, ArkivValue> = {}
-    for (const name of projection.attributes) {
-      // Asking for the tag by name does not bring it back: a row never carries it.
-      if (tag !== undefined && name === SCHEMA_ATTRIBUTE) continue
-      const value = attributeOf(entity, name)
-      if (value !== undefined) picked[name] = value
-    }
-    row.attributes = picked
+  if (projection.attributes) {
+    row.$attributes = withoutTag(entity.attributes ?? {}, tag)
   }
   if (projection.attributeSchema) {
-    row.attributeSchema = withoutTag(entity.attributeSchema ?? {}, tag)
+    row.$attributeSchema = withoutTag(entity.attributeSchema ?? {}, tag)
   }
   return row
+}
+
+/** The {@link Entity} property, and RPC `select` key, a system field reads: its name without `$`. */
+function entityField<F extends SystemField>(field: F): EntityField<F> {
+  return field.slice(1) as EntityField<F>
 }
 
 /**

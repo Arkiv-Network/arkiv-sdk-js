@@ -34,7 +34,7 @@ describe("toRpcSelect", () => {
   it("sends every field, so what was asked for is legible in the request", () => {
     // The node defaults everything but `key` to off. Spelling out the false ones costs nothing and
     // pins the answer even if those defaults move.
-    expect(toRpcSelect({ owner: true })).toEqual({
+    expect(toRpcSelect({ $owner: true })).toEqual({
       key: false,
       owner: true,
       creator: false,
@@ -47,48 +47,60 @@ describe("toRpcSelect", () => {
     })
   })
 
-  it("passes a named attribute subset through", () => {
-    expect(
-      toRpcSelect({ key: true, attributes: { projectId: true, version: true } }),
-    ).toMatchObject({
+  it("asks for any name without a $ as an attribute, by name", () => {
+    expect(toRpcSelect({ $key: true, title: true, body: true })).toMatchObject({
       key: true,
-      attributes: { projectId: true, version: true },
+      attributes: { title: true, body: true },
+    })
+    expect(toRpcSelect({ title: true, body: false })).toMatchObject({ attributes: { title: true } })
+    expect(() => toRpcSelect({ "not a name": true })).toThrow(InvalidAttributeNameError)
+  })
+
+  it("reads a name an entity field has, written without the $, as an attribute", () => {
+    // `owner` and `attributes` are ordinary attribute names; only `$owner` is the entity field.
+    expect(toRpcSelect({ owner: true, attributes: true })).toMatchObject({
+      owner: false,
+      attributes: { owner: true, attributes: true },
     })
   })
 
-  it("drops names the subset turned off, and falls back to false when none are left", () => {
-    expect(
-      toRpcSelect({ key: true, attributes: { projectId: true, version: false } }),
-    ).toMatchObject({ attributes: { projectId: true } })
-    // An empty subset asks for no attributes, which is what `false` already means.
-    expect(toRpcSelect({ key: true, attributes: {} })).toMatchObject({ attributes: false })
+  it("asks for every attribute with $attributes, and their types with $attributeSchema", () => {
+    expect(toRpcSelect({ $key: true, $attributes: true, $attributeSchema: true })).toMatchObject({
+      key: true,
+      attributes: true,
+      attributeSchema: true,
+    })
+  })
+
+  it("rejects a map for $attributes, pointing at selecting attributes by name", () => {
+    expect(() => toRpcSelect({ $attributes: { title: true } } as never)).toThrow(
+      /select each by name/,
+    )
+  })
+
+  it("rejects a $ name that is not an entity field", () => {
+    expect(() => toRpcSelect({ $title: true })).toThrow(/"\$title", which is not an entity field/)
+    // The fields are written with the $, so the bare RPC spelling is not one of them either.
+    expect(() => toRpcSelect({ $schema: true })).toThrow(/not an entity field/)
   })
 
   it("rejects a selection that asks for nothing", () => {
     expect(() => toRpcSelect({})).toThrow(/at least one field/)
     // The type system permits an explicit `false`; the node would answer it with empty rows.
-    expect(() => toRpcSelect({ key: false })).toThrow(/at least one field/)
-    expect(() => toRpcSelect({ key: false, attributes: {} })).toThrow(/at least one field/)
+    expect(() => toRpcSelect({ $key: false })).toThrow(/at least one field/)
+    expect(() => toRpcSelect({ $key: false, title: false })).toThrow(/at least one field/)
   })
 
-  it("counts a named attribute subset as a selection in its own right", () => {
-    expect(() => toRpcSelect({ attributes: { projectId: true } })).not.toThrow()
+  it("counts an attribute alone as a selection", () => {
+    expect(() => toRpcSelect({ title: true })).not.toThrow()
   })
 
   it("treats a field set to undefined as not selected", () => {
-    expect(toRpcSelect({ key: true, owner: undefined })).toMatchObject({ key: true, owner: false })
-    expect(() => toRpcSelect({ key: undefined })).toThrow(/at least one field/)
-  })
-
-  it("asks for any other name as an attribute, by name", () => {
-    expect(toRpcSelect({ key: true, title: true })).toMatchObject({
+    expect(toRpcSelect({ $key: true, $owner: undefined })).toMatchObject({
       key: true,
-      attributes: { title: true },
+      owner: false,
     })
-    expect(toRpcSelect({ title: true, attributes: { body: true } })).toMatchObject({
-      attributes: { title: true, body: true },
-    })
-    expect(() => toRpcSelect({ "not a name": true })).toThrow(InvalidAttributeNameError)
+    expect(() => toRpcSelect({ $key: undefined })).toThrow(/at least one field/)
   })
 })
 
@@ -105,7 +117,10 @@ const AUTHOR = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
 
 describe("projectSelection", () => {
   it("asks for the selected entity fields, and the selected columns by name", () => {
-    const projection = projectSelection({ key: true, title: true, body: true, score: false }, Posts)
+    const projection = projectSelection(
+      { $key: true, title: true, body: true, score: false },
+      Posts,
+    )
     expect(projection.select).toEqual({
       key: true,
       owner: false,
@@ -117,7 +132,7 @@ describe("projectSelection", () => {
       attributeSchema: false,
       attributes: { title: true, body: true },
     })
-    expect(projection.fields).toEqual(["key"])
+    expect(projection.fields).toEqual(["$key"])
     expect(projection.columns.map(([name]) => name)).toEqual(["title", "body"])
   })
 
@@ -137,35 +152,35 @@ describe("projectSelection", () => {
   })
 
   it("asks for no attributes when only entity fields are selected", () => {
-    expect(projectSelection({ owner: true }, Posts).select.attributes).toBe(false)
+    expect(projectSelection({ $owner: true }, Posts).select.attributes).toBe(false)
   })
 
-  it("rejects a name that is neither an entity field nor a column", () => {
-    expect(() => projectSelection({ key: true, nope: true }, Posts)).toThrow(
-      /"nope", which is neither an entity field nor a column/,
+  it("rejects a name that is not a column", () => {
+    expect(() => projectSelection({ $key: true, nope: true }, Posts)).toThrow(
+      /"nope", which is not a column/,
     )
   })
 
   it("reads attributes as a whole the same way through a schema as without one", () => {
-    const projection = projectSelection({ key: true, title: true, attributes: true }, Posts)
+    const projection = projectSelection({ $key: true, title: true, $attributes: true }, Posts)
     expect(projection.select.attributes).toBe(true)
     const entity = new Entity({ key: KEY, attributes: { title: str("Hi"), extra: i32(1) } })
     expect(toRow(entity, projection)).toEqual({
-      key: KEY,
+      $key: KEY,
       title: str("Hi"),
-      attributes: { title: str("Hi"), extra: i32(1) },
+      $attributes: { title: str("Hi"), extra: i32(1) },
     })
   })
 
   it("rejects a selection that asks for nothing, or a map where a boolean belongs", () => {
-    expect(() => projectSelection({ key: false }, Posts)).toThrow(/at least one field/)
-    expect(() => projectSelection({ title: { x: true } }, Posts)).toThrow(/true or false/)
+    expect(() => projectSelection({ $key: false }, Posts)).toThrow(/at least one field/)
+    expect(() => projectSelection({ title: { x: true } } as never, Posts)).toThrow(/true or false/)
   })
 })
 
 describe("toRow", () => {
   const projection = projectSelection(
-    { key: true, author: true, title: true, thumbnail: true },
+    { $key: true, author: true, title: true, thumbnail: true },
     Posts,
   )
 
@@ -184,10 +199,27 @@ describe("toRow", () => {
       projection,
     )
     expect(row).toEqual({
-      key: KEY,
+      $key: KEY,
       author: addr(AUTHOR),
       title: str("Hi"),
       thumbnail: bytes("0x01"),
+    })
+  })
+
+  it("keeps a column named like an entity field apart from the field", () => {
+    const Owned = defineSchema({ owner: addr(), attributes: str() })
+    const row = toRow(
+      new Entity({
+        key: KEY,
+        owner: AUTHOR,
+        attributes: { owner: addr(KEY.slice(0, 42)), attributes: str("mine") },
+      }),
+      projectSelection({ $owner: true, owner: true, attributes: true }, Owned),
+    )
+    expect(row).toEqual({
+      $owner: AUTHOR,
+      owner: addr(KEY.slice(0, 42)),
+      attributes: str("mine"),
     })
   })
 
@@ -225,25 +257,27 @@ describe("toRow", () => {
 
 describe("a named schema", () => {
   const Tagged = defineSchema("posts", { title: str(), score: dec().optional() })
-  const projection = projectSelection({ key: true, title: true }, Tagged)
+  const projection = projectSelection({ $key: true, title: true }, Tagged)
 
   it("fetches the tag alongside the columns, even when no column is selected", () => {
-    expect(projection.select.attributes).toEqual({ title: true, schema: true })
-    expect(projectSelection({ key: true }, Tagged).select.attributes).toEqual({ schema: true })
+    expect(projection.select.attributes).toEqual({ title: true, "arkiv.schema": true })
+    expect(projectSelection({ $key: true }, Tagged).select.attributes).toEqual({
+      "arkiv.schema": true,
+    })
   })
 
   it("checks the tag, but leaves it out of the row", () => {
     const row = toRow(
-      new Entity({ key: KEY, attributes: { title: str("Hi"), schema: str("posts") } }),
+      new Entity({ key: KEY, attributes: { title: str("Hi"), "arkiv.schema": str("posts") } }),
       projection,
     )
-    expect(row).toEqual({ key: KEY, title: str("Hi") })
+    expect(row).toEqual({ $key: KEY, title: str("Hi") })
   })
 
   it("rejects an entity tagged by another schema, or not tagged at all", () => {
     const other = () =>
       toRow(
-        new Entity({ key: KEY, attributes: { title: str("Hi"), schema: str("comments") } }),
+        new Entity({ key: KEY, attributes: { title: str("Hi"), "arkiv.schema": str("comments") } }),
         projection,
       )
     expect(other).toThrow(SchemaMismatchError)
@@ -254,35 +288,29 @@ describe("a named schema", () => {
   })
 
   it("leaves the tag out of the attributes map and the attribute schema too", () => {
-    const whole = projectSelection({ key: true, attributes: true, attributeSchema: true }, Tagged)
+    const whole = projectSelection(
+      { $key: true, $attributes: true, $attributeSchema: true },
+      Tagged,
+    )
     const entity = new Entity({
       key: KEY,
-      attributes: { title: str("Hi"), schema: str("posts") },
+      attributes: { title: str("Hi"), "arkiv.schema": str("posts") },
       attributeSchema: {
         title: { type: "str", indexed: false },
-        schema: { type: "str", indexed: true },
+        "arkiv.schema": { type: "str", indexed: true },
       },
     })
     expect(toRow(entity, whole)).toEqual({
-      key: KEY,
-      attributes: { title: str("Hi") },
-      attributeSchema: { title: { type: "str", indexed: false } },
+      $key: KEY,
+      $attributes: { title: str("Hi") },
+      $attributeSchema: { title: { type: "str", indexed: false } },
     })
-  })
-
-  it("leaves the tag out of an attributes map that names it", () => {
-    const named = projectSelection({ key: true, attributes: { title: true, schema: true } }, Tagged)
-    const entity = new Entity({
-      key: KEY,
-      attributes: { title: str("Hi"), schema: str("posts") },
-    })
-    expect(toRow(entity, named)).toEqual({ key: KEY, attributes: { title: str("Hi") } })
   })
 
   it("rejects an entity whose tag is not a str, whatever its type", () => {
     const decode = () =>
       toRow(
-        new Entity({ key: KEY, attributes: { title: str("Hi"), schema: u256(5n) } }),
+        new Entity({ key: KEY, attributes: { title: str("Hi"), "arkiv.schema": u256(5n) } }),
         projection,
       )
     expect(decode).toThrow(SchemaMismatchError)

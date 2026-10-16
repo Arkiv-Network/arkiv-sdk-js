@@ -21,8 +21,8 @@ import { toValue, type ValueInput } from "./values"
 export const MAX_ENTITY_BYTES = 128 * 1024
 
 /**
- * An entity's attributes as a whole — what the `attributes` selection returns — keyed by name, every
- * value typed.
+ * An entity's attributes as a whole — what the `$attributes` selection returns — keyed by name,
+ * every value typed.
  *
  * The vocabulary is the same in both directions, so a value read from here drops straight back into
  * a write — as long as its name is a column of the schema the write goes through.
@@ -31,7 +31,7 @@ export type Attributes = Readonly<Record<string, ArkivValue>>
 
 /**
  * The names, types and indexing of an entity's attributes, with no values — what the
- * `attributeSchema` projection returns. `indexed` is `undefined` when the node did not say.
+ * `$attributeSchema` selection returns. `indexed` is `undefined` when the node did not say.
  *
  * Useful for asking what shape the data has without paying to transfer it, and for telling apart
  * two entities that use the same name with different types.

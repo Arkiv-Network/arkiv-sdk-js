@@ -127,10 +127,9 @@ A schema is an SDK-side convention: the node sees only attributes, each with a t
 flag. The schema is what types your writes and reads, and checks them at runtime.
 
 The name, `"posts"`, is optional but recommended. A named schema tags every entity it creates with
-an indexed `schema` attribute holding its name, and a query through it only matches entities with
-that tag — the way a collection keeps one model's documents apart from another's. For that reason
-`schema` cannot be used as a column name, along with the entity fields (`key`, `owner`, `creator`,
-`createdAt`, `updatedAt`, `expiresAt`, `creationFlags`) and `attributes`/`attributeSchema`.
+an indexed `arkiv.schema` attribute holding its name, and a query through it only matches entities
+with that tag — the way a collection keeps one model's documents apart from another's. For that
+reason `arkiv.schema` cannot be used as a column name.
 
 ### Public Client Example (Query Data)
 
@@ -165,14 +164,14 @@ console.log('Title:', post.title.value);
 
 // Build and execute a query: select what to return, name the schema, then filter
 const result = await publicClient
-  .select({ key: true, author: true, title: true, body: true })
+  .select({ $key: true, author: true, title: true, body: true })
   .from(Posts)
   .where(and(eq('category', 'docs'), gt('score', dec('4.0'))))
   .limit(10)
   .fetch();
 
 for (const row of result.entities) {
-  console.log(row.key, row.author.value, row.title.value);
+  console.log(row.$key, row.author.value, row.title.value);
 }
 
 // Pagination
@@ -183,26 +182,28 @@ if (result.hasNextPage()) {
 
 // Or walk every page at once
 for await (const row of publicClient
-  .select({ key: true, title: true })
+  .select({ $key: true, title: true })
   .from(Posts)
   .where(eq('category', 'docs'))) {
-  console.log(row.key, row.title.value);
+  console.log(row.$key, row.title.value);
 }
 ```
 
 #### Selecting fields with `select()`
 
 Pass nothing (or `"*"`) to fetch everything — through a schema, every entity field and every
-column — or pass an object to fetch only specific fields. The selection names entity fields (`key`,
-`owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt`, `creationFlags`) and attributes side by
-side, and each result is a flat row:
+column — or pass an object to fetch only specific fields. The selection names entity fields and
+attributes side by side, and each result is a flat row. Entity fields start with `$`, as they do in
+`where`: `$key`, `$owner`, `$creator`, `$createdAt`, `$updatedAt`, `$expiresAt` and
+`$creationFlags`. Any other name is an attribute. An attribute name cannot start with `$`, so the
+two never collide — an attribute called `owner` is just `owner`:
 
 ```typescript
 // Every entity field and every column
 await publicClient.select().from(Posts).where(eq("category", "docs")).fetch();
 
 // Only the fields you need
-await publicClient.select({ key: true, title: true }).from(Posts).where(eq("category", "docs")).fetch();
+await publicClient.select({ $key: true, title: true }).from(Posts).where(eq("category", "docs")).fetch();
 ```
 
 **Select only what you need.** Every selected field is fetched over the network, so requesting
@@ -213,9 +214,9 @@ declares it, and reading a field you didn't select is a compile error.
 
 ```typescript
 const row = (
-  await publicClient.select({ owner: true, score: true }).from(Posts).where(eq("category", "docs")).fetch()
+  await publicClient.select({ $owner: true, score: true }).from(Posts).where(eq("category", "docs")).fetch()
 ).entities[0]!;
-row.owner;    // ✅ Hex
+row.$owner;   // ✅ Hex
 row.score;    // ✅ DecValue — row.score.value is "4.1"
 row.title;    // ❌ compile error — not selected
 ```
@@ -252,25 +253,25 @@ as whatever value the entity holds, or `undefined`, and `where` takes any attrib
 
 ```typescript
 const row = (
-  await publicClient.select({ key: true, title: true }).where(eq("category", "docs")).fetch()
+  await publicClient.select({ $key: true, title: true }).where(eq("category", "docs")).fetch()
 ).entities[0]!;
 row.title;    // ArkivValue | undefined — e.g. { type: "str", value: "Hello" }
 ```
 
-To read every attribute without naming them, select `attributes` — a map of all of them — and
-`attributeSchema` for their types and indexing. Both work through a schema too. This is also what
+To read every attribute without naming them, select `$attributes` — a map of all of them — and
+`$attributeSchema` for their types and indexing. Both work through a schema too. This is also what
 `"*"` (or nothing) fetches without a schema, alongside the entity fields, since there are no columns
 to list:
 
 ```typescript
-await publicClient.select({ key: true, attributes: true, attributeSchema: true }).where(eq("category", "docs")).fetch();
+await publicClient.select({ $key: true, $attributes: true, $attributeSchema: true }).where(eq("category", "docs")).fetch();
 ```
 
 > **Footgun:** pass the selection inline. A selection stored in a variable widens its `true` values
 > to `boolean`, so which fields come back is only known at runtime and every field of the result is
 > optional. If you need to reuse one, annotate it `as const`:
 > ```typescript
-> const fields = { owner: true, title: true } as const;
+> const fields = { $owner: true, title: true } as const;
 > await publicClient.select(fields).from(Posts).where(eq("category", "docs")).fetch();
 > ```
 

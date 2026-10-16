@@ -12,7 +12,7 @@ type FetchPage<TEntity> = (cursor: string) => Promise<QueryResult<TEntity>>
  * @typeParam TEntity - The shape of each row, inferred from the selection by `client.select()`.
  *
  * @example
- * let page = await client.select({ key: true }).where(eq("category", "docs")).limit(100).fetch()
+ * let page = await client.select({ $key: true }).where(eq("category", "docs")).limit(100).fetch()
  * while (page.hasNextPage()) {
  *   page = await page.next()
  * }

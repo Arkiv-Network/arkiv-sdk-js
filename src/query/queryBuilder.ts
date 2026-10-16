@@ -107,7 +107,7 @@ export type FromOptions = {
  * attributes — they come back typed and checked as the schema declares — and has `where` checked
  * against it, so that filtering on a column the schema does not index, or comparing one against the
  * wrong type, is a compile error. A named schema also restricts the query to entities tagged with
- * its name, and leaves that tag out of the rows' `attributes` and `attributeSchema`.
+ * its name, and leaves that tag out of the rows' `$attributes` and `$attributeSchema`.
  *
  * Every filter added with {@link where}, {@link ownedBy} and {@link createdBy} must hold; use
  * {@link or} for alternatives inside one call.
@@ -125,13 +125,13 @@ export type FromOptions = {
  * const client = createPublicClient({ chain: tiramisu, transport: http() })
  *
  * const page = await client
- *   .select({ key: true, author: true, title: true })
+ *   .select({ $key: true, author: true, title: true })
  *   .from(Posts)
  *   .where(and(eq("category", "docs"), gt("score", dec("4.0"))))
  *   .limit(20)
  *   .fetch()
  *
- * for (const row of page.entities) console.log(row.key, row.title.value)
+ * for (const row of page.entities) console.log(row.$key, row.title.value)
  */
 export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undefined = undefined> {
   private readonly _client: ArkivClient
@@ -164,9 +164,9 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    *
    * A named schema also filters: only entities tagged with its name match, so a query through it
    * sees only entities written through it, and needs no other filter. The tag is how the query finds
-   * them rather than one of their attributes, so rows leave it out of `attributes` and
-   * `attributeSchema`. An unnamed schema types the query without filtering it — `where` alone decides
-   * which entities match.
+   * them rather than one of their attributes, so rows leave it out of `$attributes` and
+   * `$attributeSchema`. An unnamed schema types the query without filtering it — `where` alone
+   * decides which entities match.
    *
    * A matching entity that does not fit — a selected required column missing or of another type,
    * or, for a named schema, a tag that does not match — fails the fetch with a
@@ -181,7 +181,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * @throws If the selection names something that is neither an entity field nor a column.
    *
    * @example
-   * client.select({ key: true, title: true }).from(Posts)    // rows typed { key; title }
+   * client.select({ $key: true, title: true }).from(Posts)   // rows typed { $key; title }
    * client.select().from(Posts)                               // every field and every column
    * client.select().from(Posts, { onMismatch: "skip" })       // leave out entities that do not fit
    */
@@ -331,7 +331,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * @throws {QueryError} If the node rejects the query.
    *
    * @example
-   * const page = await client.select({ key: true }).where(eq("category", "docs")).fetch()
+   * const page = await client.select({ $key: true }).where(eq("category", "docs")).fetch()
    * page.entities        // this page
    * await page.next()    // the next one
    */
@@ -371,8 +371,8 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * Walks every page, yielding one row at a time.
    *
    * @example
-   * for await (const row of client.select({ key: true }).where(eq("category", "docs"))) {
-   *   console.log(row.key)
+   * for await (const row of client.select({ $key: true }).where(eq("category", "docs"))) {
+   *   console.log(row.$key)
    * }
    */
   async *[Symbol.asyncIterator](): AsyncGenerator<ResultOf<TSelection, TSchema>> {

@@ -6,7 +6,7 @@ import {
   SchemaDefinitionError,
   TooManyAttributesError,
 } from "./errors"
-import { defineSchema, isSchema, MAX_ATTRIBUTES, SCHEMA_ATTRIBUTE, SYSTEM_FIELDS } from "./schema"
+import { defineSchema, isSchema, MAX_ATTRIBUTES, SCHEMA_ATTRIBUTE } from "./schema"
 import { addr, bytes, dec, i32, str, u64 } from "./values"
 
 describe("columns", () => {
@@ -89,9 +89,9 @@ describe("defineSchema", () => {
     expect(() => defineSchema({ $owner: addr() })).toThrow(/reserved for system attributes/)
   })
 
-  it("reserves the names a row already uses for entity fields and selection keys", () => {
-    for (const name of [...SYSTEM_FIELDS.filter((field) => field !== "key"), "attributes"]) {
-      expect(() => defineSchema({ [name]: str() })).toThrow(/a column cannot use it/)
+  it("lets a column take a name an entity field has without the $, which a row keeps apart", () => {
+    for (const name of ["owner", "creator", "createdAt", "expiresAt", "attributes"]) {
+      expect(() => defineSchema({ [name]: str() })).not.toThrow()
     }
   })
 

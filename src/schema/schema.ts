@@ -11,39 +11,11 @@ import { type BareOf, str } from "./values"
 export const MAX_ATTRIBUTES = 32
 
 /**
- * The entity fields a query row carries alongside its columns. A column may not take one of these
- * names, because a row is flat: `row.owner` has to mean one thing.
- */
-export const SYSTEM_FIELDS = [
-  "key",
-  "owner",
-  "creator",
-  "createdAt",
-  "updatedAt",
-  "expiresAt",
-  "creationFlags",
-] as const
-
-/** The name of an entity field a row carries alongside its columns. */
-export type SystemField = (typeof SYSTEM_FIELDS)[number]
-
-/**
  * The attribute a named schema tags its entities with: an indexed `str` holding the schema's name.
  * Creates write it, and `.from(schema)` filters on it, so a query through a schema only ever sees
  * entities written through it.
  */
-export const SCHEMA_ATTRIBUTE = "schema"
-
-/**
- * Names a schema may not use for a column: the system fields a row carries, the two selection keys
- * that read an entity's attributes as a whole, and the schema tag.
- */
-const RESERVED_COLUMN_NAMES: ReadonlySet<string> = new Set([
-  ...SYSTEM_FIELDS,
-  "attributes",
-  "attributeSchema",
-  SCHEMA_ATTRIBUTE,
-])
+export const SCHEMA_ATTRIBUTE = "arkiv.schema"
 
 /**
  * Marks a schema. A registry symbol rather than `instanceof`, so a schema defined through one copy
@@ -93,18 +65,18 @@ export class Schema<C extends Columns = Columns> {
  * refined with `.indexed()`, `.optional()` or `.default(...)`. Only indexed columns can be
  * filtered on; the rest are stored and selectable, and do not pay for an index.
  *
- * Give the schema a name to tag its entities: every create then also writes an indexed `schema`
- * attribute holding the name, and `.from(schema)` filters on it — the way a collection keeps one
- * model's documents apart from another's. Without a name, a query through the schema sees every
- * entity its `where` matches, whatever wrote it — though the columns it selects are still checked
- * against the schema, so an entity that does not fit fails the query, or is skipped with
- * `{ onMismatch: "skip" }`.
+ * Give the schema a name to tag its entities: every create then also writes an indexed
+ * `arkiv.schema` attribute holding the name, and `.from(schema)` filters on it — the way a
+ * collection keeps one model's documents apart from another's. Without a name, a query through the
+ * schema sees every entity its `where` matches, whatever wrote it — though the columns it selects
+ * are still checked against the schema, so an entity that does not fit fails the query, or is
+ * skipped with `{ onMismatch: "skip" }`.
  *
  * @param name - The name entities are tagged with — a `str`, so at most 128 bytes. Optional.
  * @param columns - The columns, keyed by attribute name.
  * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
  * @throws {SchemaDefinitionError} If the name is not a valid `str`, an entry is not a column, or a
- * name is reserved.
+ * column is named after the schema tag.
  * @throws {TooManyAttributesError} If there are more columns than one create can carry — at most
  * {@link MAX_ATTRIBUTES}, or one fewer for a named schema, whose tag counts as an attribute.
  *
@@ -155,22 +127,15 @@ function validateColumns(columns: Columns, tagged: boolean): void {
   }
   for (const [name, column] of entries) {
     validateAttributeName(name)
-    if (RESERVED_COLUMN_NAMES.has(name)) {
+    if (name === SCHEMA_ATTRIBUTE) {
       throw new SchemaDefinitionError(
-        `"${name}" is ${reservedFor(name)}, so a column cannot use it. Pick another name, e.g. ` +
-          `"${name}Value"`,
+        `"${name}" is the attribute a named schema tags its entities with, so a column cannot ` +
+          "use it. Pick another name",
         name,
       )
     }
     if (!isColumn(column)) throw notAColumn(name, column)
   }
-}
-
-function reservedFor(name: string): string {
-  if (name === SCHEMA_ATTRIBUTE) return "the attribute a named schema tags its entities with"
-  return SYSTEM_FIELDS.includes(name as SystemField)
-    ? "an entity field that query rows already carry"
-    : "a selection key that reads an entity's attributes as a whole"
 }
 
 /** Whether `input` is a schema built with {@link defineSchema}. */

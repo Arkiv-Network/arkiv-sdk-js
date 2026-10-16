@@ -48,7 +48,7 @@ function sent(request: ReturnType<typeof makeClient>["request"], call = 0) {
 describe("the query it sends", () => {
   it("ANDs everything across repeated where() calls", async () => {
     const { client, request } = makeClient()
-    await new SelectQueryBuilder(client, { key: true })
+    await new SelectQueryBuilder(client, { $key: true })
       .where(gte("level", i32(10)))
       .where(eq("category", "docs"), or(eq("status", "open"), eq("status", "review")))
       .fetch()
@@ -62,13 +62,13 @@ describe("the query it sends", () => {
 
   it("takes an array of expressions", async () => {
     const { client, request } = makeClient()
-    await new SelectQueryBuilder(client, { key: true }).where([eq("a", 1), eq("b", 2)]).fetch()
+    await new SelectQueryBuilder(client, { $key: true }).where([eq("a", 1), eq("b", 2)]).fetch()
     expect(sent(request).query).toBe("a = i32(1) AND b = i32(2)")
   })
 
   it("turns ownedBy and createdBy into typed system predicates", async () => {
     const { client, request } = makeClient()
-    await new SelectQueryBuilder(client, { key: true })
+    await new SelectQueryBuilder(client, { $key: true })
       .where(eq("category", "docs"))
       .ownedBy(ACCOUNT)
       .createdBy(ACCOUNT)
@@ -82,20 +82,20 @@ describe("the query it sends", () => {
   it("replaces rather than ANDs a second ownedBy — two owners would match nothing", async () => {
     const other = "0x1111111111111111111111111111111111111111"
     const { client, request } = makeClient()
-    await new SelectQueryBuilder(client, { key: true }).ownedBy(ACCOUNT).ownedBy(other).fetch()
+    await new SelectQueryBuilder(client, { $key: true }).ownedBy(ACCOUNT).ownedBy(other).fetch()
     expect(sent(request).query).toBe(`$owner = addr(${other})`)
   })
 
   it("is readable without running anything", () => {
     const { client } = makeClient()
-    const builder = new SelectQueryBuilder(client, { key: true }).where(eq("a", 1))
+    const builder = new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1))
     expect(builder.toString()).toBe("a = i32(1)")
     expect(`${builder}`).toBe("a = i32(1)")
   })
 
   it("refuses a query with no filter, which the language cannot spell", async () => {
     const { client, request } = makeClient()
-    const builder = new SelectQueryBuilder(client, { key: true })
+    const builder = new SelectQueryBuilder(client, { $key: true })
     expect(() => builder.toString()).toThrow(InvalidPredicateError)
     await expect(builder.fetch()).rejects.toThrow(/at least one filter/)
     expect(request).not.toHaveBeenCalled()
@@ -105,7 +105,9 @@ describe("the query it sends", () => {
 describe("the options it sends", () => {
   it("sends the resolved selection, and nothing else by default", async () => {
     const { client, request } = makeClient()
-    await new SelectQueryBuilder(client, { key: true, attributes: true }).where(eq("a", 1)).fetch()
+    await new SelectQueryBuilder(client, { $key: true, $attributes: true })
+      .where(eq("a", 1))
+      .fetch()
 
     const { options } = sent(request)
     expect(options).toEqual({ select: expect.objectContaining({ key: true, attributes: true }) })
@@ -115,7 +117,7 @@ describe("the options it sends", () => {
 
   it("sends limit, cursor and atBlock as the RPC spells them", async () => {
     const { client, request } = makeClient()
-    await new SelectQueryBuilder(client, { key: true })
+    await new SelectQueryBuilder(client, { $key: true })
       .where(eq("a", 1))
       .limit(100)
       .cursor("b64:abc")
@@ -132,7 +134,7 @@ describe("the options it sends", () => {
 
   it("rejects a page size the node would reject", async () => {
     const { client, request } = makeClient()
-    const query = () => new SelectQueryBuilder(client, { key: true }).where(eq("a", 1))
+    const query = () => new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1))
     await expect(
       query()
         .limit(MAX_LIMIT + 1)
@@ -173,27 +175,27 @@ describe("decoding", () => {
     const page = await new SelectQueryBuilder(client, "*").where(eq("a", 1)).fetch()
     const entity = page.entities[0]
 
-    expect(entity.key).toBe(KEY)
-    expect(entity.expiresAt).toBe(0x92e21n)
-    expect(entity.creationFlags).toEqual({
+    expect(entity.$key).toBe(KEY)
+    expect(entity.$expiresAt).toBe(0x92e21n)
+    expect(entity.$creationFlags).toEqual({
       readonly: false,
       permissionlessExtension: true,
       raw: 2,
     })
-    expect(entity.attributes).toEqual({
+    expect(entity.$attributes).toEqual({
       projectId: { type: "str", value: "alice-123" },
       version: { type: "i32", value: 4 },
       balance: { type: "u256", value: 1_000_000n },
       score: { type: "dec", value: "3.5" },
       body: { type: "bytes", value: "0x7b7d" },
     })
-    expect(entity.attributeSchema).toEqual({
+    expect(entity.$attributeSchema).toEqual({
       version: { type: "i32", indexed: true },
       body: { type: "bytes", indexed: false },
     })
     // Unselected stays undefined rather than becoming an empty value.
-    expect(entity.creator).toBeUndefined()
-    expect(entity.createdAt).toBeUndefined()
+    expect(entity.$creator).toBeUndefined()
+    expect(entity.$createdAt).toBeUndefined()
     expect(page.blockNumber).toBe(0x8e1ffn)
   })
 
@@ -203,7 +205,7 @@ describe("decoding", () => {
       data: [{ key: KEY, attributeSchema: [{ name: "version", type: "i32" }] }],
     })
     const page = await new SelectQueryBuilder(client, "*").where(eq("a", 1)).fetch()
-    expect(page.entities[0].attributeSchema).toEqual({
+    expect(page.entities[0].$attributeSchema).toEqual({
       version: { type: "i32", indexed: undefined },
     })
   })
@@ -222,7 +224,7 @@ describe("pagination", () => {
       page("b64:2", "0x3"),
       page(undefined, "0x4"),
     )
-    const builder = new SelectQueryBuilder(client, { key: true }).where(eq("a", 1)).limit(2)
+    const builder = new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).limit(2)
 
     const first = await builder.fetch()
     expect(first.entities).toHaveLength(2)
@@ -239,7 +241,7 @@ describe("pagination", () => {
 
   it("leaves an already-read page readable", async () => {
     const { client } = makeClient(page("b64:1", "0x1"), page(undefined, "0x2"))
-    const first = await new SelectQueryBuilder(client, { key: true }).where(eq("a", 1)).fetch()
+    const first = await new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).fetch()
     await first.next()
     // next() returns the following page rather than mutating this one.
     expect(first.entities).toHaveLength(1)
@@ -250,7 +252,7 @@ describe("pagination", () => {
     // The old heuristic was "fewer rows than the limit means the end", which mistakes a final page
     // that happens to be exactly full for a middle one. The node omits the cursor instead.
     const { client } = makeClient(page(undefined, "0x1", "0x2"))
-    const result = await new SelectQueryBuilder(client, { key: true })
+    const result = await new SelectQueryBuilder(client, { $key: true })
       .where(eq("a", 1))
       .limit(2)
       .fetch()
@@ -260,7 +262,7 @@ describe("pagination", () => {
 
   it("pages the query it started with, not whatever the builder says later", async () => {
     const { client, request } = makeClient(page("b64:1", "0x1"), page(undefined, "0x2"))
-    const builder = new SelectQueryBuilder(client, { key: true }).where(eq("a", 1))
+    const builder = new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1))
 
     const first = await builder.fetch()
     // The builder stays mutable and reusable. Re-reading it per page would send page 2 under a
@@ -277,8 +279,8 @@ describe("pagination", () => {
   it("walks every page through the async iterator", async () => {
     const { client } = makeClient(page("b64:1", "0x1", "0x2"), page(undefined, "0x3"))
     const keys: unknown[] = []
-    for await (const entity of new SelectQueryBuilder(client, { key: true }).where(eq("a", 1))) {
-      keys.push((entity as { key: string }).key)
+    for await (const entity of new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1))) {
+      keys.push((entity as { $key: string }).$key)
     }
     expect(keys).toEqual(["0x1", "0x2", "0x3"])
   })
@@ -299,7 +301,7 @@ describe("node rejections", () => {
     const data = { position: 14, expected: "typed literal", got: "3.5" }
     ;(client.request as ReturnType<typeof vi.fn>).mockRejectedValue(rpcFailure(-32001, data))
 
-    const promise = new SelectQueryBuilder(client, { key: true }).where(eq("a", 1)).fetch()
+    const promise = new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).fetch()
     await expect(promise).rejects.toThrow(QueryError)
 
     const error = (await promise.catch((e) => e)) as QueryError
@@ -322,7 +324,7 @@ describe("node rejections", () => {
     for (const [code, kind] of Object.entries(kinds)) {
       const { client } = makeClient()
       ;(client.request as ReturnType<typeof vi.fn>).mockRejectedValue(rpcFailure(Number(code)))
-      const error = await new SelectQueryBuilder(client, { key: true })
+      const error = await new SelectQueryBuilder(client, { $key: true })
         .where(eq("a", 1))
         .fetch()
         .catch((e) => e)
@@ -335,7 +337,7 @@ describe("node rejections", () => {
     const transportFailure = new Error("fetch failed")
     ;(client.request as ReturnType<typeof vi.fn>).mockRejectedValue(transportFailure)
 
-    const error = await new SelectQueryBuilder(client, { key: true })
+    const error = await new SelectQueryBuilder(client, { $key: true })
       .where(eq("a", 1))
       .fetch()
       .catch((e) => e)
@@ -351,37 +353,34 @@ describe("the projected type", () => {
       data: [{ key: KEY, owner: ACCOUNT }],
     })
 
-    const page = await new SelectQueryBuilder<{ key: true; owner: true }>(client, {
-      key: true,
-      owner: true,
+    const page = await new SelectQueryBuilder<{ $key: true; $owner: true }>(client, {
+      $key: true,
+      $owner: true,
     })
       .where(eq("a", 1))
       .fetch()
 
     const entity = page.entities[0]
-    expectType<Hex>(entity.key)
-    expectType<Hex>(entity.owner)
+    expectType<Hex>(entity.$key)
+    expectType<Hex>(entity.$owner)
     // @ts-expect-error - creator was not selected
-    entity.creator
+    entity.$creator
   })
 
-  it("treats a named attribute subset as a selection of attributes", async () => {
+  it("reads every attribute as a map with $attributes", async () => {
     const { client } = makeClient({
       blockNumber: "0x1",
       data: [{ key: KEY, attributes: [{ name: "version", type: "i32", value: 4 }] }],
     })
-    const page = await new SelectQueryBuilder<{ key: true; attributes: { version: true } }>(
-      client,
-      {
-        key: true,
-        attributes: { version: true },
-      },
-    )
+    const page = await new SelectQueryBuilder<{ $key: true; $attributes: true }>(client, {
+      $key: true,
+      $attributes: true,
+    })
       .where(eq("a", 1))
       .fetch()
 
-    expectType<Attributes>(page.entities[0].attributes)
-    expect(page.entities[0].attributes).toEqual({ version: { type: "i32", value: 4 } })
+    expectType<Attributes>(page.entities[0].$attributes)
+    expect(page.entities[0].$attributes).toEqual({ version: { type: "i32", value: 4 } })
   })
 })
 
@@ -411,7 +410,7 @@ describe("through a schema", () => {
 
   it("asks for the selected columns by name, alongside the entity fields", async () => {
     const { client, request } = makeClient()
-    await select(client, { key: true, title: true, body: true })
+    await select(client, { $key: true, title: true, body: true })
       .from(Posts)
       .where(eq("category", "docs"))
       .fetch()
@@ -425,7 +424,7 @@ describe("through a schema", () => {
   it("returns flat rows with each column typed by the schema", async () => {
     const { client } = makeClient({ blockNumber: "0x1", data: [row] })
     const page = await select(client, {
-      key: true,
+      $key: true,
       author: true,
       title: true,
       body: true,
@@ -437,13 +436,13 @@ describe("through a schema", () => {
 
     const [first] = page.entities
     expect(first).toEqual({
-      key: KEY,
+      $key: KEY,
       author: addr(ACCOUNT),
       title: str("Hello"),
       body: bytes("0x2348"),
       thumbnail: undefined,
     })
-    expectType<Hex>(first.key)
+    expectType<Hex>(first.$key)
     expectType<AddrValue>(first.author)
     expectType<StrValue>(first.title)
     expectType<BytesValue>(first.body)
@@ -472,16 +471,16 @@ describe("through a schema", () => {
       data: [{ key: KEY, attributes: [{ name: "author", type: "addr", value: ACCOUNT }] }],
     })
     await expect(
-      select(client, { key: true, title: true }).from(Posts).where(eq("category", "docs")).fetch(),
+      select(client, { $key: true, title: true }).from(Posts).where(eq("category", "docs")).fetch(),
     ).rejects.toThrow(SchemaMismatchError)
   })
 
   it("checks the filters against the schema before sending anything", async () => {
     const { client, request } = makeClient()
-    const builder = select(client, { key: true }).from(Posts)
+    const builder = select(client, { $key: true }).from(Posts)
     // @ts-expect-error - title is not indexed
     await expect(builder.where(eq("title", "Hello")).fetch()).rejects.toThrow(/not indexed/)
-    const bytesFilter = select(client, { key: true }).from(Posts)
+    const bytesFilter = select(client, { $key: true }).from(Posts)
     // @ts-expect-error - body is bytes, which is never indexed
     await expect(bytesFilter.where(exists("body")).fetch()).rejects.toThrow(/never indexed/)
     expect(request).not.toHaveBeenCalled()
@@ -490,23 +489,23 @@ describe("through a schema", () => {
   it("rejects a selection naming something the schema does not have, at from()", () => {
     const { client } = makeClient()
     expect(() =>
-      select(client, { key: true, nope: true })
+      select(client, { $key: true, nope: true })
         // @ts-expect-error - nope is not a column
         .from(Posts),
-    ).toThrow(/neither an entity field nor a column/)
+    ).toThrow(/"nope", which is not a column/)
   })
 
   it("checks a selection built at runtime when from() is called", () => {
     const { client } = makeClient()
-    const selection: SelectArg = JSON.parse('{"key": true, "nope": true}')
+    const selection: SelectArg = JSON.parse('{"$key": true, "nope": true}')
     expect(() => new SelectQueryBuilder(client, selection).from(Posts)).toThrow(
-      /"nope", which is neither an entity field nor a column/,
+      /"nope", which is not a column/,
     )
   })
 
   it("sends the selection as it was when select() was called", async () => {
     const { client, request } = makeClient()
-    const selection: Record<string, boolean> = { key: true, title: true }
+    const selection: Record<string, boolean> = { $key: true, title: true }
     const builder = new SelectQueryBuilder(client, selection as Selection).from(Posts)
     selection.author = true
     await builder.where(eq("category", "docs")).fetch()
@@ -515,7 +514,7 @@ describe("through a schema", () => {
 
   it("carries the filters, owner, limit, cursor and block across from()", async () => {
     const { client, request } = makeClient()
-    await new SelectQueryBuilder(client, { key: true })
+    await new SelectQueryBuilder(client, { $key: true })
       .where(eq("category", "docs"))
       .ownedBy(ACCOUNT)
       .limit(5)
@@ -531,7 +530,7 @@ describe("through a schema", () => {
   it("reads the same selection without a schema, untyped and unchecked", async () => {
     const misfit = { key: KEY, attributes: [{ name: "title", type: "i32", value: 7 }] }
     const { client, request } = makeClient({ blockNumber: "0x1", data: [row, misfit] })
-    const page = await select(client, { key: true, title: true, body: true })
+    const page = await select(client, { $key: true, title: true, body: true })
       .where(eq("category", "docs"))
       .fetch()
 
@@ -542,8 +541,8 @@ describe("through a schema", () => {
     // The same flat rows as through a schema; without one, nothing is checked, so the misfit
     // comes back as it is and a missing attribute as undefined.
     expect(page.entities).toEqual([
-      { key: KEY, title: str("Hello"), body: bytes("0x2348") },
-      { key: KEY, title: i32(7), body: undefined },
+      { $key: KEY, title: str("Hello"), body: bytes("0x2348") },
+      { $key: KEY, title: i32(7), body: undefined },
     ])
     const title: ArkivValue | undefined = page.entities[0]?.title
     expect(title).toEqual(str("Hello"))
@@ -554,10 +553,13 @@ describe("through a schema", () => {
     const pages = () => makeClient({ blockNumber: "0x1", data: [row, misfit, row] }).client
 
     await expect(
-      select(pages(), { key: true, title: true }).from(Posts).where(eq("category", "docs")).fetch(),
+      select(pages(), { $key: true, title: true })
+        .from(Posts)
+        .where(eq("category", "docs"))
+        .fetch(),
     ).rejects.toThrow(SchemaMismatchError)
 
-    const page = await select(pages(), { key: true, title: true })
+    const page = await select(pages(), { $key: true, title: true })
       .from(Posts, { onMismatch: "skip" })
       .where(eq("category", "docs"))
       .fetch()
@@ -621,7 +623,7 @@ describe("through a schema", () => {
       .fetch()
     expect(throughSchema.skipped).toBe(0)
 
-    const plain = await new SelectQueryBuilder(makeClient().client, { key: true })
+    const plain = await new SelectQueryBuilder(makeClient().client, { $key: true })
       .where(eq("category", "docs"))
       .fetch()
     expect(plain.skipped).toBe(0)
@@ -639,7 +641,7 @@ describe("through a schema", () => {
     await users.where(eq("category", "people")).fetch()
     await posts.fetch()
     // Each carried what `base` held when it was made, and nothing the other added since.
-    expect(sent(request, 0).query).toBe("schema = str('users') AND category = str('people')")
+    expect(sent(request, 0).query).toBe("arkiv.schema = str('users') AND category = str('people')")
     expect(sent(request, 0).options.limit).toBe("0x5")
     expect(sent(request, 1).query).toBe("category = str('docs')")
     expect(() => base.toString()).toThrow(/at least one filter/)
@@ -647,14 +649,14 @@ describe("through a schema", () => {
 
   it("types a dynamic selection's rows with every field optional", async () => {
     const { client } = makeClient({ blockNumber: "0x1", data: [row] })
-    const selection: SelectArg = { key: true }
+    const selection: SelectArg = { $key: true }
     const page = await new SelectQueryBuilder<DynamicSelection>(client, selection)
       .from(Posts)
       .where(eq("category", "docs"))
       .fetch()
     const [first] = page.entities
     expectType<StrValue | undefined>(first.title)
-    expect(first).toEqual({ key: KEY })
+    expect(first).toEqual({ $key: KEY })
   })
 
   it("rejects an onMismatch it does not know", () => {
@@ -679,27 +681,27 @@ describe("through a named schema", () => {
 
   it("filters on the schema's tag, ahead of everything else", async () => {
     const { client, request } = makeClient()
-    await select(client, { key: true }).from(Posts).where(eq("category", "docs")).fetch()
-    expect(sent(request).query).toBe("schema = str('posts') AND category = str('docs')")
+    await select(client, { $key: true }).from(Posts).where(eq("category", "docs")).fetch()
+    expect(sent(request).query).toBe("arkiv.schema = str('posts') AND category = str('docs')")
   })
 
   it("needs no other filter, so it can list every entity of the schema", async () => {
     const { client, request } = makeClient()
-    await select(client, { key: true }).from(Posts).fetch()
-    expect(sent(request).query).toBe("schema = str('posts')")
+    await select(client, { $key: true }).from(Posts).fetch()
+    expect(sent(request).query).toBe("arkiv.schema = str('posts')")
   })
 
   it("checks the caller's filters, not the tag it adds itself", async () => {
     const { client } = makeClient()
-    const builder = select(client, { key: true }).from(Posts)
-    // @ts-expect-error - schema is not a column
-    builder.where(eq("schema", "comments"))
-    await expect(builder.fetch()).rejects.toThrow(/"schema" is not a column/)
+    const builder = select(client, { $key: true }).from(Posts)
+    // @ts-expect-error - arkiv.schema is not a column
+    builder.where(eq("arkiv.schema", "comments"))
+    await expect(builder.fetch()).rejects.toThrow(/"arkiv.schema" is not a column/)
   })
 
   it("leaves an unnamed schema's query to its filters alone", async () => {
     const { client, request } = makeClient()
-    await select(client, { key: true })
+    await select(client, { $key: true })
       .from(defineSchema({ category: str().indexed() }))
       .where(eq("category", "docs"))
       .fetch()
