@@ -37,6 +37,9 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** `resolveExpiry()`, `toBlocks()`, `encodeCreationFlags()`, `decodeCreationFlags()` and `OperationType`, and the `EncodedExpiry`, `ExpiryContext` and `ResolvedExpiry` types, are no longer exported. They are internal to the SDK
 - The `brotli-wasm` dependency, which nothing in the SDK used
 
+### Fixed
+- An exclusion in `DEBUG` (`arkiv:*,-arkiv:query:*`) now silences the namespaces it names. It used to do the opposite: it left those enabled and silenced everything else
+
 ## [0.8.1] - 2026-09-08
 
 ### Fixed

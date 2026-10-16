@@ -23,7 +23,8 @@ function getDebugEnv(): string {
   return ""
 }
 
-// Parse debug patterns and check if a namespace matches
+// Check if a namespace matches a single positive pattern. Exclusions ("-pattern") are handled by
+// isEnabled, which strips the "-" and calls this with the rest.
 function matchesPattern(namespace: string, pattern: string): boolean {
   // Exact match
   if (pattern === namespace) return true
@@ -32,12 +33,6 @@ function matchesPattern(namespace: string, pattern: string): boolean {
   if (pattern.endsWith("*")) {
     const prefix = pattern.slice(0, -1)
     return namespace.startsWith(prefix)
-  }
-
-  // Negative match: "-arkiv:query" excludes "arkiv:query"
-  if (pattern.startsWith("-")) {
-    const excludePattern = pattern.slice(1)
-    return !matchesPattern(namespace, excludePattern)
   }
 
   return false
@@ -58,8 +53,8 @@ function isEnabled(namespace: string): boolean {
   let enabled = false
   for (const pattern of patterns) {
     if (pattern.startsWith("-")) {
-      // Exclude pattern - if it matches, disable
-      if (matchesPattern(namespace, pattern)) {
+      // Exclude pattern: "-arkiv:query" disables "arkiv:query" whatever else enables it
+      if (matchesPattern(namespace, pattern.slice(1))) {
         return false
       }
     } else if (matchesPattern(namespace, pattern)) {
