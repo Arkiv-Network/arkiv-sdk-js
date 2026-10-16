@@ -10,7 +10,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - `.from(schema, { onMismatch: "skip" })` leaves entities that do not fit the schema out of the page instead of failing the fetch, and `QueryResult.skipped` reports how many each page left out. `"throw"` is the default
 - `getEntity(key, schema)` reads one entity through a schema
 - `executeBatch()` creates and patches each name their own schema and are typed by it, so one batch can write entities of several schemas
-- `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `FromOptions`, `IndexableTypeTag`, `IndexableValue`, `DynamicSelection`, `PartialRow`, `KnownSystemFields`
+- `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `FromOptions`, `IndexableTypeTag`, `IndexableValue`, `DynamicSelection`, `PartialRow`, `KnownSystemFields`, `SystemField`, `SYSTEM_FIELDS`
 - Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
 
 ### Changed
@@ -19,7 +19,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** `patchEntity(schema, entityKey, { set?, unset? })` takes the schema the changes are typed by. `unset` accepts only optional columns, and a column `set` to `undefined` is left out, as on create. Writing a column whose indexing the schema has changed changes it on the entity too. The changes are typed `PatchEntityChanges`
 - **Breaking:** `CreateEntityParameters` and `PatchEntityParameters` are now the batch-item shapes `{ schema, values, expires, ... }` and `{ schema, entityKey, set?, unset? }`
 - **Breaking:** `executeBatch()` takes `creates: [{ schema, values, expires, ... }]` and `patches: [{ schema, entityKey, set?, unset? }]`
-- **Breaking:** `attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
+- **Breaking:** `$attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
 - **Breaking:** `gt`/`gte`/`lt`/`lte` only accept values of ordered types (`i32`, `u64`, `u256`, `dec`, or a bare number or bigint) at compile time. A predicate on a `bytes` value throws `InvalidPredicateError`
 - **Breaking:** `SelectQueryBuilder`'s type parameters are now the selection and the schema, not the result type. `from()` returns a new builder rather than re-typing the one it was called on
 - **Breaking:** `select()` returns flat rows, with or without a schema: the selection names entity fields and attributes side by side, so `select({ $key: true, title: true })` returns `{ $key, title }`, with `title` an `ArkivValue | undefined` without a schema. Rows are plain objects rather than `Entity` instances. `getEntity(key)` returns the same row as `select("*")`
@@ -29,7 +29,6 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** the `QueryResult` constructor takes the page's `skipped` count after `cursor`, before the next-page callback
 - `ArkivValue` includes `BytesValue`, and `AnyArkivValue` is gone. `UserTypeTag` is now `IndexableTypeTag`
 - `MAX_ATTRIBUTES` also caps the number of columns a schema may declare
-- `SYSTEM_FIELDS` and `SystemField` moved from `@arkiv-network/sdk/schema` to `@arkiv-network/sdk/query`, and hold the `$` names
 
 ### Removed
 - **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead
