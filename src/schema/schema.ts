@@ -31,7 +31,7 @@ export type SystemField = (typeof SYSTEM_FIELDS)[number]
  * Creates write it, and `.from(schema)` filters on it, so a query through a schema only ever sees
  * entities written through it.
  */
-export const SCHEMA_ATTRIBUTE = "schema"
+export const SCHEMA_ATTRIBUTE = "arkiv.schema"
 
 /**
  * Names a schema may not use for a column: the system fields a row carries, the two selection keys
@@ -92,10 +92,10 @@ export class Schema<C extends Columns = Columns> {
  * refined with `.indexed()`, `.optional()` or `.default(...)`. Only indexed columns can be
  * filtered on; the rest are stored and selectable, and do not pay for an index.
  *
- * Give the schema a name to tag its entities: every create then also writes an indexed `schema`
- * attribute holding the name, and `.from(schema)` filters on it — the way a collection keeps one
- * model's documents apart from another's. Without a name, a query through the schema sees every
- * entity its `where` matches, whatever wrote it.
+ * Give the schema a name to tag its entities: every create then also writes an indexed
+ * `arkiv.schema` attribute holding the name, and `.from(schema)` filters on it — the way a
+ * collection keeps one model's documents apart from another's. Without a name, a query through the
+ * schema sees every entity its `where` matches, whatever wrote it.
  *
  * @param name - The name entities are tagged with — a `str`, so at most 128 bytes. Optional.
  * @param columns - The columns, keyed by attribute name.

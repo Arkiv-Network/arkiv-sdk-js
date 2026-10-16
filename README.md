@@ -126,9 +126,9 @@ A schema is an SDK-side convention: the node sees only attributes, each with a t
 flag. The schema is what types your writes and reads, and checks them at runtime.
 
 The name, `"posts"`, is optional but recommended. A named schema tags every entity it creates with
-an indexed `schema` attribute holding its name, and a query through it only matches entities with
+an indexed `arkiv.schema` attribute holding its name, and a query through it only matches entities with
 that tag — the way a collection keeps one model's documents apart from another's. For that reason
-`schema` cannot be used as a column name, along with the entity fields (`key`, `owner`, `creator`,
+`arkiv.schema` cannot be used as a column name, along with the entity fields (`key`, `owner`, `creator`,
 `createdAt`, `updatedAt`, `expiresAt`, `creationFlags`) and `attributes`/`attributeSchema`.
 
 ### Public Client Example (Query Data)

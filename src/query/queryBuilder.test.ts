@@ -636,7 +636,7 @@ describe("through a schema", () => {
     await users.where(eq("category", "people")).fetch()
     await posts.fetch()
     // Each carried what `base` held when it was made, and nothing the other added since.
-    expect(sent(request, 0).query).toBe("schema = str('users') AND category = str('people')")
+    expect(sent(request, 0).query).toBe("arkiv.schema = str('users') AND category = str('people')")
     expect(sent(request, 0).options.limit).toBe("0x5")
     expect(sent(request, 1).query).toBe("category = str('docs')")
     expect(() => base.toString()).toThrow(/at least one filter/)
@@ -677,21 +677,21 @@ describe("through a named schema", () => {
   it("filters on the schema's tag, ahead of everything else", async () => {
     const { client, request } = makeClient()
     await select(client, { key: true }).from(Posts).where(eq("category", "docs")).fetch()
-    expect(sent(request).query).toBe("schema = str('posts') AND category = str('docs')")
+    expect(sent(request).query).toBe("arkiv.schema = str('posts') AND category = str('docs')")
   })
 
   it("needs no other filter, so it can list every entity of the schema", async () => {
     const { client, request } = makeClient()
     await select(client, { key: true }).from(Posts).fetch()
-    expect(sent(request).query).toBe("schema = str('posts')")
+    expect(sent(request).query).toBe("arkiv.schema = str('posts')")
   })
 
   it("checks the caller's filters, not the tag it adds itself", async () => {
     const { client } = makeClient()
     const builder = select(client, { key: true }).from(Posts)
-    // @ts-expect-error - schema is not a column
-    builder.where(eq("schema", "comments"))
-    await expect(builder.fetch()).rejects.toThrow(/"schema" is not a column/)
+    // @ts-expect-error - arkiv.schema is not a column
+    builder.where(eq("arkiv.schema", "comments"))
+    await expect(builder.fetch()).rejects.toThrow(/"arkiv.schema" is not a column/)
   })
 
   it("leaves an unnamed schema's query to its filters alone", async () => {

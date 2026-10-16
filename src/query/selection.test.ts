@@ -228,13 +228,15 @@ describe("a named schema", () => {
   const projection = projectSelection({ key: true, title: true }, Tagged)
 
   it("fetches the tag alongside the columns, even when no column is selected", () => {
-    expect(projection.select.attributes).toEqual({ title: true, schema: true })
-    expect(projectSelection({ key: true }, Tagged).select.attributes).toEqual({ schema: true })
+    expect(projection.select.attributes).toEqual({ title: true, "arkiv.schema": true })
+    expect(projectSelection({ key: true }, Tagged).select.attributes).toEqual({
+      "arkiv.schema": true,
+    })
   })
 
   it("checks the tag, but leaves it out of the row", () => {
     const row = toRow(
-      new Entity({ key: KEY, attributes: { title: str("Hi"), schema: str("posts") } }),
+      new Entity({ key: KEY, attributes: { title: str("Hi"), "arkiv.schema": str("posts") } }),
       projection,
     )
     expect(row).toEqual({ key: KEY, title: str("Hi") })
@@ -243,7 +245,7 @@ describe("a named schema", () => {
   it("rejects an entity tagged by another schema, or not tagged at all", () => {
     const other = () =>
       toRow(
-        new Entity({ key: KEY, attributes: { title: str("Hi"), schema: str("comments") } }),
+        new Entity({ key: KEY, attributes: { title: str("Hi"), "arkiv.schema": str("comments") } }),
         projection,
       )
     expect(other).toThrow(SchemaMismatchError)
@@ -257,10 +259,10 @@ describe("a named schema", () => {
     const whole = projectSelection({ key: true, attributes: true, attributeSchema: true }, Tagged)
     const entity = new Entity({
       key: KEY,
-      attributes: { title: str("Hi"), schema: str("posts") },
+      attributes: { title: str("Hi"), "arkiv.schema": str("posts") },
       attributeSchema: {
         title: { type: "str", indexed: false },
-        schema: { type: "str", indexed: true },
+        "arkiv.schema": { type: "str", indexed: true },
       },
     })
     expect(toRow(entity, whole)).toEqual({
@@ -273,7 +275,7 @@ describe("a named schema", () => {
   it("rejects an entity whose tag is not a str, whatever its type", () => {
     const decode = () =>
       toRow(
-        new Entity({ key: KEY, attributes: { title: str("Hi"), schema: u256(5n) } }),
+        new Entity({ key: KEY, attributes: { title: str("Hi"), "arkiv.schema": u256(5n) } }),
         projection,
       )
     expect(decode).toThrow(SchemaMismatchError)
