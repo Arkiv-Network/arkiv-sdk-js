@@ -118,13 +118,13 @@ export type FromOptions = {
  * const client = createPublicClient({ chain: tiramisu, transport: http() })
  *
  * const page = await client
- *   .select({ key: true, author: true, title: true })
+ *   .select({ $key: true, author: true, title: true })
  *   .from(Posts)
  *   .where(and(eq("category", "docs"), gt("score", dec("4.0"))))
  *   .limit(20)
  *   .fetch()
  *
- * for (const row of page.entities) console.log(row.key, row.title.value)
+ * for (const row of page.entities) console.log(row.$key, row.title.value)
  */
 export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undefined = undefined> {
   private readonly _client: ArkivClient
@@ -171,7 +171,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * @throws If the selection names something that is neither an entity field nor a column.
    *
    * @example
-   * client.select({ key: true, title: true }).from(Posts)    // rows typed { key; title }
+   * client.select({ $key: true, title: true }).from(Posts)   // rows typed { $key; title }
    * client.select().from(Posts)                               // every field and every column
    * client.select().from(Posts, { onMismatch: "skip" })       // leave out entities that do not fit
    */
@@ -320,7 +320,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * @throws {QueryError} If the node rejects the query.
    *
    * @example
-   * const page = await client.select({ key: true }).where(eq("category", "docs")).fetch()
+   * const page = await client.select({ $key: true }).where(eq("category", "docs")).fetch()
    * page.entities        // this page
    * await page.next()    // the next one
    */
@@ -360,8 +360,8 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * Walks every page, yielding one entity at a time.
    *
    * @example
-   * for await (const entity of client.select({ key: true }).where(eq("category", "docs"))) {
-   *   console.log(entity.key)
+   * for await (const entity of client.select({ $key: true }).where(eq("category", "docs"))) {
+   *   console.log(entity.$key)
    * }
    */
   async *[Symbol.asyncIterator](): AsyncGenerator<ResultOf<TSelection, TSchema>> {

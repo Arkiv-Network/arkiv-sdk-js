@@ -25,7 +25,6 @@ export type {
   OptionalColumnName,
   PatchEntityValues,
   Schema,
-  SystemField,
 } from "./schema"
 export {
   defineSchema,
@@ -34,7 +33,6 @@ export {
   lookupColumn,
   MAX_ATTRIBUTES,
   SCHEMA_ATTRIBUTE,
-  SYSTEM_FIELDS,
 } from "./schema"
 export type {
   AddrValue,
