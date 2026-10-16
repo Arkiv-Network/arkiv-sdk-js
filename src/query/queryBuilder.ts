@@ -23,17 +23,12 @@ import {
 } from "./expression"
 import { QueryResult } from "./queryResult"
 import {
-  checkSelection,
-  type DynamicSelection,
-  projectSchema,
+  type Projection,
+  projectSelection,
   type ResultOf,
-  type SchemaProjection,
   type SelectArg,
-  type Selection,
-  type SelectionFields,
   snapshotSelection,
   toRow,
-  toRpcSelect,
   type UnknownSelection,
 } from "./selection"
 
@@ -95,28 +90,17 @@ export type FromOptions = {
 }
 
 /**
- * `fetch()`'s guard against a selection that names columns but never named their schema — the
- * builder itself when that is not the case, and a message no builder satisfies when it is.
- */
-type Fetchable<TSelection, TSchema extends Schema | undefined, TBuilder> = TSchema extends Schema
-  ? TBuilder
-  : TSelection extends "*" | DynamicSelection
-    ? TBuilder
-    : [Exclude<keyof TSelection, keyof SelectionFields>] extends [never]
-      ? TBuilder
-      : "select() names columns; call .from(schema) to say which schema they belong to"
-
-/**
  * Builds and runs a query.
  *
  * The selection is fixed when the builder is created and the filter is added by chaining, so the
  * result type is known before a single predicate is written. Create one with `client.select(...)`
  * rather than constructing it directly — that is what infers the result shape from the selection.
  *
- * Without a schema, the query returns {@link Entity} objects narrowed to the selection. Name a
- * schema with {@link from} to get flat, typed rows instead — and to have `where` checked against
- * it, so that filtering on a column the schema does not index, or comparing one against the wrong
- * type, is a compile error.
+ * The query returns flat rows: the selected entity fields and attributes side by side. Naming a
+ * schema with {@link from} changes what the selection means for nothing but the attributes — they
+ * come back typed and checked as the schema declares — and has `where` checked against it, so that
+ * filtering on a column the schema does not index, or comparing one against the wrong type, is a
+ * compile error.
  *
  * Every filter added with {@link where}, {@link ownedBy} and {@link createdBy} must hold; use
  * {@link or} for alternatives inside one call.
@@ -144,9 +128,9 @@ type Fetchable<TSelection, TSchema extends Schema | undefined, TBuilder> = TSche
  */
 export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undefined = undefined> {
   private readonly _client: ArkivClient
-  private readonly _selection: SelectArg | Selection | undefined
+  private readonly _selection: SelectArg | undefined
   private _schema: Schema | undefined
-  private _projection: SchemaProjection | undefined
+  private _projection: Projection
   private _onMismatch: "throw" | "skip" = "throw"
   private readonly _filters: Expression[] = []
   private _ownedBy: Expression | undefined
@@ -156,20 +140,20 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
   private _atBlock: bigint | undefined
 
   /**
-   * @throws If the selection is not `"*"` or an object, asks for nothing, or — naming only entity
-   * fields — is not a valid entity selection.
+   * @throws If the selection is not `"*"` or an object, asks for nothing, or names an attribute
+   * outside the name grammar.
    */
-  constructor(client: ArkivClient, selection?: SelectArg | Selection) {
-    checkSelection(selection)
+  constructor(client: ArkivClient, selection?: SelectArg) {
     this._client = client
     // A copy: the caller's object may change after this, and the builder is typed for it as it was.
     this._selection = snapshotSelection(selection)
+    this._projection = projectSelection(this._selection)
   }
 
   /**
-   * Runs the query through a schema. The results become flat rows — the selected entity fields
-   * and columns side by side, each column typed as the schema declares — and `where` is checked
-   * against the schema's indexed columns.
+   * Runs the query through a schema. The selection keeps its meaning and the rows their shape;
+   * each selected attribute becomes a column — typed as the schema declares, and checked against
+   * it — and `where` is checked against the schema's indexed columns.
    *
    * A named schema also filters: only entities tagged with its name match, so a query through it
    * sees only entities written through it, and needs no other filter. An unnamed schema types the
@@ -204,7 +188,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
     }
     // Resolved here rather than at fetch time, so a selection naming something that is neither an
     // entity field nor a column fails at the call that made it wrong.
-    const projection = projectSchema(this._selection as Selection | "*" | undefined, schema)
+    const projection = projectSelection(this._selection, schema)
     // A copy, not `this` re-typed: a builder typed for one schema must never be the same object as
     // one typed for another, or `base.from(Posts)` and `base.from(Users)` would share their state.
     const typed = this.copy<S>()
@@ -340,10 +324,8 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * page.entities        // this page
    * await page.next()    // the next one
    */
-  fetch(
-    this: Fetchable<TSelection, TSchema, SelectQueryBuilder<TSelection, TSchema>>,
-  ): Promise<QueryResult<ResultOf<TSelection, TSchema>>> {
-    return (this as SelectQueryBuilder<TSelection, TSchema>).fetchFirstPage()
+  fetch(): Promise<QueryResult<ResultOf<TSelection, TSchema>>> {
+    return this.fetchFirstPage()
   }
 
   // Async so that a builder with no filter rejects like every other failure here, rather than
@@ -355,26 +337,22 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
     const projection = this._projection
     const request = Object.freeze({
       query: this.toString(),
-      select: projection?.select ?? toRpcSelect(this._selection),
+      select: projection.select,
       limit: this._limit,
       atBlock: this._atBlock,
     })
-    // Every row decodes to a full Entity; through a schema it is laid out as a row and checked.
+    // Every entity is laid out as a row of the selection — and, through a schema, checked against it.
     // The static narrowing to the selected fields comes from `client.select()`'s inference and
     // nothing at runtime depends on it.
     const skip = this._onMismatch === "skip"
-    const decode = (
-      projection === undefined
-        ? (entity: Entity) => entity
-        : (entity: Entity) => {
-            try {
-              return toRow(entity, projection)
-            } catch (error) {
-              if (skip && error instanceof SchemaMismatchError) return SKIPPED
-              throw error
-            }
-          }
-    ) as (entity: Entity) => ResultOf<TSelection, TSchema> | typeof SKIPPED
+    const decode = ((entity: Entity) => {
+      try {
+        return toRow(entity, projection)
+      } catch (error) {
+        if (skip && error instanceof SchemaMismatchError) return SKIPPED
+        throw error
+      }
+    }) as (entity: Entity) => ResultOf<TSelection, TSchema> | typeof SKIPPED
     return fetchPage(this._client, request, this._cursor, decode)
   }
 
@@ -386,21 +364,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    *   console.log(entity.key)
    * }
    */
-  [Symbol.asyncIterator](): Fetchable<
-    TSelection,
-    TSchema,
-    AsyncGenerator<ResultOf<TSelection, TSchema>>
-  > {
-    // The same guard as fetch(), on the return type: `for await` does not check a `this` parameter,
-    // but it does need what this returns to be an async iterator.
-    return this.walk() as Fetchable<
-      TSelection,
-      TSchema,
-      AsyncGenerator<ResultOf<TSelection, TSchema>>
-    >
-  }
-
-  private async *walk(): AsyncGenerator<ResultOf<TSelection, TSchema>> {
+  async *[Symbol.asyncIterator](): AsyncGenerator<ResultOf<TSelection, TSchema>> {
     let page: QueryResult<ResultOf<TSelection, TSchema>> | undefined = await this.fetchFirstPage()
     while (page) {
       yield* page.entities

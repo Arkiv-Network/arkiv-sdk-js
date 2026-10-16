@@ -43,16 +43,17 @@ export { QueryResult } from "./queryResult"
 export type {
   ColumnValue,
   DynamicSelection,
-  EntitySelection,
   FullEntity,
   FullRow,
+  NonEmptySelection,
   PartialRow,
-  ProjectedEntity,
+  Projection,
   ResultOf,
   Row,
-  SchemaProjection,
   SelectArg,
+  Selected,
   Selection,
   SelectionFields,
+  SelectionOf,
 } from "./selection"
-export { projectSchema, toRow, toRpcSelect } from "./selection"
+export { projectSelection, toRow, toRpcSelect } from "./selection"

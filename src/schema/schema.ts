@@ -35,7 +35,7 @@ export const SCHEMA_ATTRIBUTE = "schema"
 
 /**
  * Names a schema may not use for a column: the system fields a row carries, the two selection keys
- * that read an entity without a schema, and the schema tag.
+ * that read an entity's attributes as a whole, and the schema tag.
  */
 const RESERVED_COLUMN_NAMES: ReadonlySet<string> = new Set([
   ...SYSTEM_FIELDS,
@@ -165,7 +165,7 @@ function reservedFor(name: string): string {
   if (name === SCHEMA_ATTRIBUTE) return "the attribute a named schema tags its entities with"
   return SYSTEM_FIELDS.includes(name as SystemField)
     ? "an entity field that query rows already carry"
-    : "a selection key that reads an entity without a schema"
+    : "a selection key that reads an entity's attributes as a whole"
 }
 
 /** Whether `input` is a schema built with {@link defineSchema}. */

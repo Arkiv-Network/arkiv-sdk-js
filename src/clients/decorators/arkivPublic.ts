@@ -8,7 +8,12 @@ import {
   type PredictEntityKeysReturnType,
   predictEntityKeys,
 } from "../../actions/public/predictEntityKeys"
-import { type QueryOptions, type QueryReturnType, query } from "../../actions/public/query"
+import {
+  type QueryOptions,
+  type QueryReturnType,
+  type QueryRow,
+  query,
+} from "../../actions/public/query"
 import {
   type WatchEntityEventsParameters,
   watchEntityEvents,
@@ -17,17 +22,14 @@ import type { SaltInput } from "../../entity/key"
 import type { Expression } from "../../query/expression"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type {
-  DynamicSelection,
   FullEntity,
   FullRow,
+  NonEmptySelection,
+  PartialRow,
   SelectArg,
-  Selection,
+  SelectionOf,
 } from "../../query/selection"
 import type { Schema } from "../../schema"
-import type { Entity } from "../../types/entity"
-
-/** Rejects `{}` at compile time — a selection has to ask for something. */
-type NonEmpty<S> = keyof S extends never ? { "select() needs at least one field": true } : unknown
 
 export type PublicArkivActions<
   transport extends Transport = Transport,
@@ -74,11 +76,11 @@ export type PublicArkivActions<
    *   transport: http(),
    * })
    * const entity = await client.getEntity(entityKey)
-   * // Entity {
+   * // {
    * //   key: "0x9f2c…",
    * //   owner: "0xabc…",
-   * //   attributes: { category: { type: "str", value: "docs" } },
    * //   expiresAt: 1_297_000n,
+   * //   attributes: { category: { type: "str", value: "docs" } },
    * //   ...
    * // }
    *
@@ -95,9 +97,10 @@ export type PublicArkivActions<
    * read entities. You declare up front which parts of an entity you want returned, so results
    * always contain exactly the data you asked for.
    *
-   * Chain `.from(schema)` to read through a schema: the selection then names entity fields and
-   * columns side by side, the results are flat rows typed by the schema, and `where` may only
-   * filter on the schema's indexed columns.
+   * The selection names entity fields and attributes side by side, and each result is a flat row.
+   * Chain `.from(schema)` to read through a schema: the selection keeps its meaning, but each
+   * attribute comes back typed and checked as the schema declares, and `where` may only filter on
+   * the schema's indexed columns.
    *
    * - JSON-RPC Methods: `arkiv_query`
    *
@@ -127,8 +130,9 @@ export type PublicArkivActions<
    * // every field and column
    * await client.select().from(Posts).where(eq("category", "docs")).fetch()
    *
-   * // without a schema — entities typed { owner: Hex; attributes: Attributes }
-   * await client.select({ owner: true, attributes: true }).where(eq("category", "docs")).fetch()
+   * // the same selection without a schema — rows typed
+   * // { key: Hex; author: ArkivValue | undefined; title: ArkivValue | undefined }
+   * await client.select({ key: true, author: true, title: true }).where(eq("category", "docs")).fetch()
    */
   select: {
     /**
@@ -140,32 +144,34 @@ export type PublicArkivActions<
      * result is typed to exactly those fields, so reading anything else is a compile error.
      *
      * Entity fields: `key`, `owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt` and
-     * `creationFlags`. Through a schema, any of its columns too. Without one, `attributes` (with
-     * `true` for all, or a map of names for some) and `attributeSchema`.
+     * `creationFlags`. `attributes` reads the attributes as a map — `true` for all, or a map of
+     * names for some — and `attributeSchema` their types and indexing. Any other name is an
+     * attribute, read as a field of its own: untyped without a schema, and through one typed and
+     * checked as the column it must be.
      *
      * Pass the selection inline so its fields stay literal `true`. A selection stored in a `let`/
-     * `const` variable widens to `boolean` and the result type can no longer be narrowed — annotate
-     * it `as const` (e.g. `const sel = { owner: true } as const`) in that case.
+     * `const` variable widens to `boolean`, and one typed {@link SelectArg} is only known at
+     * runtime: which fields come back is then decided at runtime, so every field of the result is
+     * optional — a {@link PartialRow}. Annotate a stored selection `as const` to keep it narrow.
      *
      * @example
-     * client.select({ key: true, title: true }).from(Posts)  // rows typed { key, title }
-     * client.select({ owner: true, attributes: true })        // entities typed { owner, attributes }
+     * client.select({ key: true, title: true })               // { key: Hex; title: ArkivValue | undefined }
+     * client.select({ key: true, title: true }).from(Posts)  // { key: Hex; title: StrValue }
+     * client.select({ owner: true, attributes: true })        // { owner: Hex; attributes: Attributes }
      * client.select({ key: true, attributeSchema: true })     // what shape is the data?
      */
-    <const S extends Selection>(selection: S & NonEmpty<S>): SelectQueryBuilder<S>
-    /**
-     * Dynamic selection: accepts a value typed {@link SelectArg} (e.g. built at runtime). Which
-     * fields come back cannot be known statically, so every field of the result is optional — an
-     * {@link Entity}, or through a schema a row whose fields and columns may each be absent.
-     */
-    (selection: SelectArg): SelectQueryBuilder<DynamicSelection>
+    <const S extends SelectArg>(
+      selection: S & NonEmptySelection<S>,
+    ): SelectQueryBuilder<SelectionOf<S>>
   }
 
   /**
    * Runs one query and returns one page, with no builder in between.
    *
-   * Use {@link PublicArkivActions.select} for anything typed — this returns full {@link Entity} objects whatever the
-   * selection, and takes a raw string as an escape hatch for a query built elsewhere. A raw string
+   * The selection means what it does in {@link PublicArkivActions.select}, and the results are the
+   * same flat rows a query without a schema returns, typed from the selection. Use `select()` to
+   * read through a schema. This also takes a raw string as an escape hatch for a query built
+   * elsewhere. A raw string
    * goes to the node exactly as written, with none of the name, type or operator checks the
    * expression combinators apply.
    *
@@ -185,15 +191,18 @@ export type PublicArkivActions<
    *   transport: http(),
    * })
    * const page = await client.query(and(eq("category", "docs"), gte("level", i32(10))), {
-   *   select: { key: true, attributes: true },
+   *   select: { key: true, title: true },
    *   limit: 100,
    * })
-   * // { entities: [Entity], cursor: "b64:…", blockNumber: 32223n }
+   * // { entities: [{ key: Hex; title: ArkivValue | undefined }], cursor: "b64:…", blockNumber: 32223n }
    *
    * // The raw form, unchecked:
    * await client.query("category = str('docs') AND level >= i32(10)")
    */
-  query: (query: Expression | string, queryOptions?: QueryOptions) => Promise<QueryReturnType>
+  query: <const S extends SelectArg = "*">(
+    query: Expression | string,
+    queryOptions?: QueryOptions<S>,
+  ) => Promise<QueryReturnType<QueryRow<S>>>
 
   /**
    * Returns the total number of entities on the chain.
@@ -338,9 +347,9 @@ export function publicArkivActions<
   return {
     getEntity: ((key: Hex, schema?: Schema) =>
       getEntity(client, key, schema as Schema)) as PublicArkivActions["getEntity"],
-    query: (rawQuery: Expression | string, queryOptions?: QueryOptions) =>
-      query(client, rawQuery, queryOptions),
-    select: ((selection?: SelectArg | Selection) =>
+    query: ((rawQuery: Expression | string, queryOptions?: QueryOptions) =>
+      query(client, rawQuery, queryOptions)) as PublicArkivActions["query"],
+    select: ((selection?: SelectArg) =>
       new SelectQueryBuilder(client, selection)) as PublicArkivActions["select"],
     getBlockTiming: () => getBlockTiming(client),
     getEntityCount: () => getEntityCount(client),
