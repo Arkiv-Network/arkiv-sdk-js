@@ -36,7 +36,7 @@ cd arkiv-sample
 
 Create an empty `read_example.ts` file:
 ```bash
-touch read_example.ts
+touch read_example.ts schema.ts
 ```
 
 Initialize a new JavaScript/TypeScript project:
@@ -90,6 +90,46 @@ This command will update your `package.json` with a section like:
 }
 ```
 It will also create a `node_modules` directory with all dependencies installed.
+
+### Define a Schema
+
+Arkiv stores entities, and an entity is a set of named, typed attributes. You describe them once in a
+schema, much as you would describe a table's columns in SQL, and choose per column whether the node
+indexes it. Only indexed columns can be filtered on; the rest are stored and selectable, and do not
+pay for an index.
+
+Create a `schema.ts` file next to your examples:
+
+```typescript
+import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
+
+// Called with no arguments, a type constructor describes a column.
+export const Posts = defineSchema("posts", {
+  author:    addr().indexed(),
+  category:  str().indexed(),
+  score:     dec().indexed(),
+  title:     str(),                          // stored, not indexed
+  body:      bytes(),                        // a blob; bytes can never be indexed
+  thumbnail: bytes().optional(),             // any number of bytes columns; this one may be absent
+  mimeType:  str().default("text/markdown"), // written on create when left out
+})
+```
+
+The type constructors are `bool`, `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32` and
+`bytes`. Each column may be refined with `.indexed()` (every type but `bytes`), `.optional()` and
+`.default(...)`.
+
+The same constructors, called with a value, make a typed value: `dec("4.1")` is a decimal, the way SQL
+has `DECIMAL` as a type and `DECIMAL '4.1'` as a literal.
+
+A schema is an SDK-side convention: the node sees only attributes, each with a type and an indexed
+flag. The schema is what types your writes and reads, and checks them at runtime.
+
+The name, `"posts"`, is optional but recommended. A named schema tags every entity it creates with
+an indexed `arkiv.schema` attribute holding its name, and a query through it only matches entities with
+that tag — the way a collection keeps one model's documents apart from another's. For that reason
+`arkiv.schema` cannot be used as a column name, along with the entity fields (`key`, `owner`, `creator`,
+`createdAt`, `updatedAt`, `expiresAt`, `creationFlags`) and `attributes`/`attributeSchema`.
 
 ### Public Client Example (Query Data)
 

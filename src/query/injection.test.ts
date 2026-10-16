@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes32, dec, i32, key, str, u256 } from "../attr"
-import { InvalidAttributeNameError, InvalidValueError } from "../attr/errors"
+import { addr, bytes32, dec, i32, key, str, u256 } from "../schema"
+import { InvalidAttributeNameError, InvalidValueError } from "../schema/errors"
 import { and, eq, exists, gt, startsWith } from "./expression"
 import { toRpcSelect } from "./selection"
 

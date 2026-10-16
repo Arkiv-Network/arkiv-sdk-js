@@ -1,3 +1,20 @@
+## [Unreleased]
+
+This release implements user-defined entity columns. An entity is no longer a payload plus indexed attributes: it is any number of named, typed attributes, each of which the writer marks indexed or not. The SDK describes them with schemas. It needs a node that speaks the new protocol (the indexed flag in bit 7 of `typeId`, no `$payload`/`$contentType`), so it does not work against current nodes.
+
+### Added
+- Schemas, exported from `@arkiv-network/sdk/schema`. `defineSchema({ ... })` declares an entity's columns. Each column is a type constructor called with no arguments (`str()`, `dec()`, `bytes()`, ...) and refined with `.indexed()`, `.optional()` and `.default(...)`. Called with a value, the same constructor still makes a typed value: `dec()` is a column, `dec("4.1")` is a value
+- `bytes` is a user type: `bytes()` is a column, `bytes(value)` a value, and a bare `Uint8Array` is taken as one. Bytes are stored but never indexed. An entity may have any number of bytes columns, each up to 128 KiB (`MAX_BYTES_LENGTH`). The bytes columns of one create or patch may hold at most 128 KiB together (`MAX_ENTITY_BYTES`, provisional until the protocol settles a per-entity cap); more throws `EntityTooLargeError`
+- Named schemas: `defineSchema("posts", { ... })` tags every entity it creates with an indexed `arkiv.schema` attribute holding the name, and `.from()` filters on it, so a query through a named schema only sees entities written through it and needs no other filter. Reads check the tag too. `arkiv.schema` is a reserved column name, and the tag counts against `MAX_ATTRIBUTES`
+- `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `IndexableTypeTag`, `IndexableValue`
+- Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
+
+### Changed
+- **Breaking:** `@arkiv-network/sdk/attr` is now `@arkiv-network/sdk/schema`
+- **Breaking:** `attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
+- `ArkivValue` includes `BytesValue`, and `AnyArkivValue` is gone. `UserTypeTag` is now `IndexableTypeTag`
+- `MAX_ATTRIBUTES` also caps the number of columns a schema may declare
+
 ## [0.8.1] - 2026-09-08
 
 ### Fixed

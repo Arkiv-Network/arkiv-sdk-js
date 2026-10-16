@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import type { Hex } from "viem"
 import {
   decodeRpcValue,
+  decodeTypeId,
   decodeValueBytes,
   encodeAbiAttribute,
   encodeTombstone,
@@ -9,13 +10,13 @@ import {
 } from "./codec"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
 import type { ArkivValue } from "./types"
-import { addr, bool, bytes32, dec, i32, key, str, u64, u256 } from "./values"
+import { addr, bool, bytes, bytes32, dec, i32, key, str, u64, u256 } from "./values"
 
 const ZERO = `0x${"00".repeat(32)}` as Hex
 const KEY = `0x${"ab".repeat(32)}` as Hex
 const VITALIK = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
 
-/** One value of every user-settable type, including the awkward edges of each. */
+/** One value of every type, including the awkward edges of each. */
 const SAMPLES: ArkivValue[] = [
   bool(true),
   bool(false),
@@ -37,6 +38,8 @@ const SAMPLES: ArkivValue[] = [
   str(""),
   str("hello"),
   str("é".repeat(64)),
+  bytes(new Uint8Array()),
+  bytes("0xdeadbeef"),
 ]
 
 describe("ABI value encoding", () => {
@@ -50,7 +53,7 @@ describe("ABI value encoding", () => {
 
   it("gives every word type exactly 32 bytes", () => {
     for (const value of SAMPLES) {
-      if (value.type === "str") continue
+      if (value.type === "str" || value.type === "bytes") continue
       expect(encodeValueBytes(value)).toHaveLength(2 + 64)
     }
   })
@@ -83,6 +86,11 @@ describe("ABI value encoding", () => {
     expect(encodeValueBytes(str("é"))).toBe("0xc3a9")
   })
 
+  it("gives bytes their raw bytes, with no padding", () => {
+    expect(encodeValueBytes(bytes("0xdeadbeef"))).toBe("0xdeadbeef")
+    expect(encodeValueBytes(bytes(new Uint8Array()))).toBe("0x")
+  })
+
   it("rejects a word a well-formed encoder would not have produced", () => {
     expect(() => decodeValueBytes("bool", `0x${"00".repeat(31)}02`)).toThrow(/exactly 0 or 1/)
     expect(() => decodeValueBytes("u256", "0x2a")).toThrow(/must be 32 bytes, got 1/)
@@ -97,10 +105,21 @@ describe("ABI value encoding", () => {
 
 describe("encodeAbiAttribute", () => {
   it("packs the name left-aligned into its bytes32 cell", () => {
-    const attribute = encodeAbiAttribute("level", i32(10))
+    const attribute = encodeAbiAttribute("level", i32(10), false)
     // "level" is 6c6576656c, null-padded to 32 bytes.
     expect(attribute.name).toBe(`0x6c6576656c${"00".repeat(27)}`)
     expect(attribute.typeId).toBe(2)
+  })
+
+  it("sets bit 7 of the typeId for an indexed attribute, and only that bit", () => {
+    expect(encodeAbiAttribute("level", i32(10), true).typeId).toBe(0x82)
+    expect(encodeAbiAttribute("tag", str("x"), true).typeId).toBe(0x88)
+    expect(encodeAbiAttribute("tag", str("x"), false).typeId).toBe(0x08)
+  })
+
+  it("refuses to index bytes, which the engine would revert", () => {
+    expect(() => encodeAbiAttribute("body", bytes("0x01"), true)).toThrow(/never indexed/)
+    expect(encodeAbiAttribute("body", bytes("0x01"), false).typeId).toBe(7)
   })
 
   it("encodes a tombstone as a zero-length value under typeId 0", () => {
@@ -109,6 +128,19 @@ describe("encodeAbiAttribute", () => {
       typeId: 0,
       value: "0x",
     })
+  })
+})
+
+describe("decodeTypeId", () => {
+  it("splits the type from the indexed flag", () => {
+    expect(decodeTypeId(0x88)).toEqual({ tag: "str", indexed: true })
+    expect(decodeTypeId(0x07)).toEqual({ tag: "bytes", indexed: false })
+    expect(decodeTypeId(0x87)).toEqual({ tag: "bytes", indexed: true })
+  })
+
+  it("rejects a type it does not know, flagged or not", () => {
+    expect(() => decodeTypeId(0x7f)).toThrow(UnknownAttributeTypeError)
+    expect(() => decodeTypeId(0x80)).toThrow(UnknownAttributeTypeError)
   })
 })
 
@@ -133,7 +165,7 @@ describe("decodeRpcValue", () => {
     expect(decodeRpcValue("i32", "-42").value).toBe(-42)
   })
 
-  it("decodes the system-only bytes type, which only ever arrives as a payload", () => {
+  it("decodes bytes as lowercase hex", () => {
     expect(decodeRpcValue("bytes", "0xDEADBEEF").value).toBe("0xdeadbeef")
   })
 

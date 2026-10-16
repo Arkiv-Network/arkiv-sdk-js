@@ -1,7 +1,14 @@
 import { bytesToString, type Hex, hexToBytes, pad, size, stringToBytes, toHex } from "viem"
 import { unitsToDecimal } from "./decimal"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
-import { type AnyArkivValue, makeValue, type StrValue, TYPE_IDS, type TypeTag } from "./types"
+import {
+  type ArkivValue,
+  INDEXED_FLAG,
+  makeValue,
+  type StrValue,
+  TYPE_IDS,
+  type TypeTag,
+} from "./types"
 import { addr, bool, bytes32, dec, decUnits, i32, key, u64, u256 } from "./values"
 
 function strFromChain(value: string): StrValue {
@@ -17,8 +24,9 @@ export const TOMBSTONE_TYPE_ID = 0
 /**
  * An attribute in its ABI form: `(Ident32 name, uint8 typeId, bytes value)`.
  *
- * The `value` encoding is selected by `typeId`: an exact 32-byte word for the word types, the raw
- * bytes for `str` and `bytes`, and zero-length for a tombstone.
+ * The low seven bits of `typeId` select the type, and bit 7 ({@link INDEXED_FLAG}) says whether
+ * the node indexes the attribute. The `value` encoding is selected by the type: an exact 32-byte
+ * word for the word types, the raw bytes for `str` and `bytes`, and zero-length for a tombstone.
  */
 export type AbiAttribute = {
   name: Hex
@@ -35,7 +43,7 @@ export type AbiAttribute = {
  *   bytes, in the encoding Solidity would use — right-aligned, and sign-extended for `i32`.
  * - `str` becomes its raw UTF-8 bytes, and `bytes` its raw bytes: variable length, no padding.
  */
-export function encodeValueBytes(value: AnyArkivValue): Hex {
+export function encodeValueBytes(value: ArkivValue): Hex {
   switch (value.type) {
     case "bool":
       return pad(value.value ? "0x01" : "0x00", { size: 32 })
@@ -66,7 +74,7 @@ export function encodeValueBytes(value: AnyArkivValue): Hex {
  * 32 bytes, an `i32` that is not sign-extended, a `bool` that is neither 0 nor 1 — rather than
  * silently truncating it.
  */
-export function decodeValueBytes(tag: TypeTag, value: Hex): AnyArkivValue {
+export function decodeValueBytes(tag: TypeTag, value: Hex): ArkivValue {
   if (tag === "str") return strFromChain(bytesToString(hexToBytes(value)))
   if (tag === "bytes") return makeValue("bytes", value.toLowerCase() as Hex)
 
@@ -118,16 +126,37 @@ export function decodeValueBytes(tag: TypeTag, value: Hex): AnyArkivValue {
 /**
  * Encodes a named, typed attribute into its ABI form.
  *
- * @param name - The attribute name. Assumed already validated, or a system (`$`) name the SDK sets
- * itself.
+ * @param name - The attribute name. Assumed already validated.
+ * @param indexed - Whether the node should index it. Never true for `bytes`, which the engine
+ * rejects with the flag set.
+ * @throws {InvalidValueError} If asked to index a `bytes` value.
  */
-export function encodeAbiAttribute(name: string, value: AnyArkivValue): AbiAttribute {
+export function encodeAbiAttribute(
+  name: string,
+  value: ArkivValue,
+  indexed: boolean,
+): AbiAttribute {
+  if (indexed && value.type === "bytes") {
+    throw new InvalidValueError("bytes", `<${name}>`, "bytes are stored, never indexed")
+  }
   return {
     // Ident32 is left-aligned and null-padded, which is what `toHex` does for a string.
     name: toHex(name, { size: 32 }),
-    typeId: TYPE_IDS[value.type],
+    typeId: TYPE_IDS[value.type] | (indexed ? INDEXED_FLAG : 0),
     value: encodeValueBytes(value),
   }
+}
+
+/**
+ * Splits a wire `typeId` into its type and indexed flag.
+ *
+ * @throws {UnknownAttributeTypeError} If the low seven bits name no known type.
+ */
+export function decodeTypeId(typeId: number): { tag: TypeTag; indexed: boolean } {
+  const base = typeId & ~INDEXED_FLAG
+  const tag = (Object.keys(TYPE_IDS) as TypeTag[]).find((candidate) => TYPE_IDS[candidate] === base)
+  if (tag === undefined) throw new UnknownAttributeTypeError(typeId)
+  return { tag, indexed: (typeId & INDEXED_FLAG) !== 0 }
 }
 
 /** Encodes a tombstone — the mutation that unsets `name`. Legal only in a patch. */
@@ -149,7 +178,7 @@ export function encodeTombstone(name: string): AbiAttribute {
  * @throws {UnknownAttributeTypeError} If the tag names no known type.
  * @throws {InvalidValueError} If the value does not parse as that type.
  */
-export function decodeRpcValue(type: string, value: unknown): AnyArkivValue {
+export function decodeRpcValue(type: string, value: unknown): ArkivValue {
   const tag = asTypeTag(type)
   switch (tag) {
     case "bool":

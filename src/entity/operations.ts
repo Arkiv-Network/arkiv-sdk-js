@@ -1,5 +1,5 @@
 import { type Address, encodeAbiParameters, type Hex, parseAbi, parseAbiParameters } from "viem"
-import type { AbiAttribute } from "../attr/codec"
+import type { AbiAttribute } from "../schema/codec"
 import type { EncodedExpiry } from "./expiry"
 import type { predictEntityKey } from "./key"
 import { OperationType } from "./params"

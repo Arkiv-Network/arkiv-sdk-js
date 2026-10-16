@@ -1,4 +1,4 @@
-import type { TypeTag } from "../attr"
+import type { TypeTag } from "../schema"
 
 /**
  * A predicate asked for an operator the query language does not define for that type.
