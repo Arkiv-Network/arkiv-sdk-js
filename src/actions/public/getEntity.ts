@@ -20,6 +20,7 @@ import { isSchema, key, type Schema, SchemaDefinitionError } from "../../schema"
  * @throws {NoEntityFoundError} If no live entity has that key — it never existed, or it was
  * deleted or has expired.
  * @throws {SchemaMismatchError} If, given a schema, the entity does not fit it.
+ * @throws {SchemaDefinitionError} If the schema given was not built with `defineSchema`.
  */
 export async function getEntity(client: ArkivClient, entityKey: Hex): Promise<FullEntity>
 export async function getEntity<S extends Schema>(

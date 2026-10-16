@@ -270,6 +270,15 @@ describe("a named schema", () => {
     })
   })
 
+  it("leaves the tag out of an attributes map that names it", () => {
+    const named = projectSelection({ key: true, attributes: { title: true, schema: true } }, Tagged)
+    const entity = new Entity({
+      key: KEY,
+      attributes: { title: str("Hi"), schema: str("posts") },
+    })
+    expect(toRow(entity, named)).toEqual({ key: KEY, attributes: { title: str("Hi") } })
+  })
+
   it("rejects an entity whose tag is not a str, whatever its type", () => {
     const decode = () =>
       toRow(

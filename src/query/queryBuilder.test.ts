@@ -19,7 +19,7 @@ import {
 import type { RpcEntity } from "../types/rpcSchema"
 import { MAX_LIMIT } from "./engine"
 import { InvalidPredicateError, QueryError } from "./errors"
-import { eq, gte, or } from "./expression"
+import { eq, exists, gte, or } from "./expression"
 import { SelectQueryBuilder } from "./queryBuilder"
 import type { DynamicSelection, SelectArg, Selection } from "./selection"
 
@@ -481,6 +481,9 @@ describe("through a schema", () => {
     const builder = select(client, { key: true }).from(Posts)
     // @ts-expect-error - title is not indexed
     await expect(builder.where(eq("title", "Hello")).fetch()).rejects.toThrow(/not indexed/)
+    const bytesFilter = select(client, { key: true }).from(Posts)
+    // @ts-expect-error - body is bytes, which is never indexed
+    await expect(bytesFilter.where(exists("body")).fetch()).rejects.toThrow(/never indexed/)
     expect(request).not.toHaveBeenCalled()
   })
 

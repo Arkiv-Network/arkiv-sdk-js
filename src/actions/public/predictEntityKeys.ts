@@ -102,7 +102,7 @@ type Repeat<T, TLength extends number, TAcc extends T[] = []> = number extends T
  * const Nodes = defineSchema("nodes", { name: str(), parent: key().indexed().optional() })
  *
  * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
- * await client.executeBatch({
+ * await wallet.executeBatch({
  *   creates: [
  *     { schema: Nodes, values: { name: "root" }, expiration, salt: parent.salt },
  *     {

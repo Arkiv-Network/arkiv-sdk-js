@@ -138,6 +138,8 @@ describe("system attributes", () => {
   it("rejects the ones that are returned but not indexed", () => {
     for (const name of ["$createdAt", "$updatedAt", "$creationFlags"]) {
       expect(() => eq(name, 1)).toThrow(/carries no index, so it cannot be filtered on/)
+      // A selection names the entity field, which has no `$`.
+      expect(() => eq(name, 1)).toThrow(`Select it as \`${name.slice(1)}\``)
     }
   })
 
@@ -302,6 +304,7 @@ describe("checkAgainstSchema", () => {
     category: str().indexed(),
     score: dec().indexed(),
     title: str(),
+    body: bytes(),
   })
 
   it("accepts indexed columns compared against their own type, and system attributes", () => {
@@ -327,6 +330,14 @@ describe("checkAgainstSchema", () => {
     expect(() =>
       checkAgainstSchema(and(eq("category", "docs"), not(exists("title"))), Posts),
     ).toThrow(InvalidPredicateError)
+  })
+
+  it("rejects a bytes column without suggesting it be indexed, which bytes never can be", () => {
+    const check = () => checkAgainstSchema(exists("body"), Posts)
+    expect(check).toThrow(InvalidPredicateError)
+    expect(check).toThrow(/"body" is a bytes column, and bytes are stored but never indexed/)
+    expect(check).toThrow(/Index a str, bytes32 or key derived from it instead/)
+    expect(check).not.toThrow(/\.indexed\(\)/)
   })
 
   it("rejects a name that is not a column", () => {

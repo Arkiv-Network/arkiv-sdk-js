@@ -139,7 +139,8 @@ type ValueRef<N extends string, V> = {
  * The system attributes a query may filter on, and the type each one carries.
  *
  * Every other system attribute (`$createdAt`, `$updatedAt`, `$creationFlags`) is returned in
- * query results but is not indexed, so it cannot appear in a predicate.
+ * query results — selected and read back as `createdAt`, `updatedAt` and `creationFlags` — but is
+ * not indexed, so it cannot appear in a predicate.
  */
 const QUERYABLE_SYSTEM_ATTRIBUTES = {
   $key: "key",
@@ -200,9 +201,11 @@ function resolveReference(name: string): TypeTag | undefined {
   if (system !== undefined) return system
 
   if (RESULT_ONLY_SYSTEM_ATTRIBUTES.includes(name)) {
+    // Selected, and read back, as the entity field of the same name without the `$`.
+    const field = name.slice(1)
     throw new InvalidPredicateError(
       `"${name}" is returned in query results but carries no index, so it cannot be filtered ` +
-        "on. Select it and filter the results in JavaScript instead.",
+        `on. Select it as \`${field}\` and filter the results in JavaScript instead.`,
       name,
     )
   }
@@ -273,8 +276,9 @@ function comparison<R extends AttributeRef>(
  * Bare booleans, numbers, bigints and strings take the same default types they take when written
  * (`number` is an `i32`, `bigint` a `u256`, `string` a `str`); anything else names its type.
  *
- * @throws {InvalidPredicateError} If the name is not a queryable attribute, or a system attribute
- * is compared against the wrong type.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  *
  * @example
  * eq("status", str("open"))     // status = str('open')
@@ -294,6 +298,10 @@ export function eq<N extends string, V extends PredicateValue>(
  * This is typed value-negation, not the complement: an entity that never set the attribute, or set
  * it with another type, does not match. Use `not(eq(...))` for the full complement.
  *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
+ *
  * @example
  * ne("status", str("closed"))          // status != str('closed')
  * not(eq("status", str("closed")))     // NOT status = str('closed') — also matches entities with no status
@@ -308,6 +316,9 @@ export function ne<N extends string, V extends PredicateValue>(
 /**
  * Attribute is greater than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
@@ -324,6 +335,9 @@ export function gt<N extends string, V extends PredicateValue>(
 /**
  * Attribute is greater than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
@@ -339,6 +353,9 @@ export function gte<N extends string, V extends PredicateValue>(
 /**
  * Attribute is less than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
@@ -354,6 +371,9 @@ export function lt<N extends string, V extends PredicateValue>(
 /**
  * Attribute is less than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
  *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
@@ -373,7 +393,9 @@ export function lte<N extends string, V extends PredicateValue>(
  * `startsWith("name", "é")` matches only the same byte sequence, not another normal form of it.
  *
  * @param prefix - The prefix, as a bare string or a `str` value.
- * @throws {InvalidPredicateError} If the name is not a queryable attribute.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute.
  * @throws {UnsupportedOperatorError} If given a value that is not a `str`, or a system attribute
  * (none of which is a `str`).
  *
@@ -408,8 +430,9 @@ export function startsWith<N extends string>(
 /**
  * The attribute is set, with any type.
  *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
  * @throws {InvalidPredicateError} If given a system attribute — every entity has all of them, so
- * the test would be a constant.
+ * the test would be a constant — or a `$` name that is not one.
  *
  * @example
  * exists("reviewedBy")        // EXISTS(reviewedBy)
@@ -436,8 +459,9 @@ export function exists<N extends string>(
  *
  * @param tag - The type tag: `bool`, `i32`, `u64`, `u256`, `dec`, `bytes32`, `str`, `addr` or
  * `key` — any type but `bytes`, which is never indexed.
- * @throws {InvalidPredicateError} If the tag is not an indexable type, or the name is a system
- * attribute (whose type is fixed).
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the tag is not an indexable type, the name is a system
+ * attribute (whose type is fixed), or the name starts with `$` but is not a system attribute.
  *
  * @example
  * hasType("age", "i32") // TYPEOF(age) = i32
@@ -524,7 +548,9 @@ function combine(kind: "and" | "or", expressions: Expression[]): Expression {
   if (expressions.length === 0) {
     throw new InvalidPredicateError(
       `${kind}() needs at least one expression. An empty ${kind === "and" ? "conjunction" : "disjunction"} ` +
-        `has no query-language spelling — leave the ${kind}() out, or omit the filter entirely to match everything.`,
+        `has no query-language spelling — leave the ${kind}() out. A query still needs at least one ` +
+        "filter, so to match broadly narrow by owner or creator, or read through a named schema, " +
+        "whose tag counts as one.",
     )
   }
   // A one-element conjunction *is* its element; keeping the wrapper would only add parentheses.
@@ -568,6 +594,14 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
     )
   }
   if (!column.isIndexed) {
+    if (column.type === "bytes") {
+      throw new InvalidPredicateError(
+        `"${name}" is a bytes column, and bytes are stored but never indexed, so it cannot be ` +
+          "filtered on. Index a str, bytes32 or key derived from it instead, or select it and " +
+          "filter the results in JavaScript.",
+        name,
+      )
+    }
     throw new InvalidPredicateError(
       `"${name}" is not indexed, and only indexed attributes can be filtered on. Declare it ` +
         `${column.type}().indexed() — entities written before that are indexed by their next ` +
