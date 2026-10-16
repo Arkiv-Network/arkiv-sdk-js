@@ -272,11 +272,11 @@ export type PublicArkivActions<
    * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
    * await wallet.executeBatch({
    *   creates: [
-   *     { schema: Nodes, values: { name: "root" }, expires, salt: parent.salt },
+   *     { schema: Nodes, values: { name: "root" }, expiration, salt: parent.salt },
    *     {
    *       schema: Nodes,
    *       values: { name: "leaf", parent: key(parent.key) },
-   *       expires,
+   *       expiration,
    *       salt: child.salt,
    *     },
    *   ],

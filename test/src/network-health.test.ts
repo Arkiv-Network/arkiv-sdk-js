@@ -124,10 +124,10 @@ const Probe = defineSchema({
 async function create<S extends Schema>(
   schema: S,
   values: CreateEntityValues<S>,
-  options: { expires?: Expiry; flags?: CreationFlags } = {},
+  options: { expiration?: Expiry; flags?: CreationFlags } = {},
 ) {
   const created = await walletClient.createEntity(schema, values, {
-    expires: options.expires ?? SHORT,
+    expiration: options.expiration ?? SHORT,
     ...(options.flags ? { flags: options.flags } : {}),
   })
   const receipt = await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -304,7 +304,7 @@ describe(`Network health check (${chain.name})`, () => {
       const { entityKey } = await create(
         Probe,
         { purpose: "ttl_test" },
-        { expires: ExpirationTime.fromBlocks(ttlBlocks) },
+        { expiration: ExpirationTime.fromBlocks(ttlBlocks) },
       )
 
       const entity = await publicClient.getEntity(entityKey)
@@ -332,7 +332,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       const extended = await walletClient.extendEntity({
         entityKey,
-        expires: ExpirationTime.fromHours(2),
+        expiration: ExpirationTime.fromHours(2),
       })
       await publicClient.waitForTransactionReceipt({ hash: extended.txHash })
 
@@ -402,7 +402,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       const extended = await walletClient.extendEntity({
         entityKey,
-        expires: ExpirationTime.fromHours(2),
+        expiration: ExpirationTime.fromHours(2),
       })
       await publicClient.waitForTransactionReceipt({ hash: extended.txHash })
       console.log(`  FLAGS  readonly blocks a patch, still allows an extension`)
@@ -416,7 +416,7 @@ describe(`Network health check (${chain.name})`, () => {
       const { entityKey, expiresAt } = await create(
         Probe,
         { purpose: "permanent_test", body: new Uint8Array() },
-        { expires: ExpirationTime.permanent() },
+        { expiration: ExpirationTime.permanent() },
       )
 
       expect(expiresAt).toBe(2n ** 64n - 1n)
@@ -434,7 +434,7 @@ describe(`Network health check (${chain.name})`, () => {
         creates: (["patch", "delete", "extend", "transfer"] as const).map((purpose) => ({
           schema: Probe,
           values: { tag, purpose: `batch_${purpose}`, body: json({ batch: purpose }) },
-          expires: SHORT,
+          expiration: SHORT,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: pre.txHash })
@@ -451,12 +451,12 @@ describe(`Network health check (${chain.name})`, () => {
           {
             schema: Probe,
             values: { tag, purpose: "batch_created", body: json({ batch: "created" }) },
-            expires: SHORT,
+            expiration: SHORT,
           },
         ],
         patches: [{ schema: Probe, entityKey: toPatch, set: { purpose: "batch_patched" } }],
         deletes: [{ entityKey: toDelete }],
-        extensions: [{ entityKey: toExtend, expires: ExpirationTime.fromHours(2) }],
+        extensions: [{ entityKey: toExtend, expiration: ExpirationTime.fromHours(2) }],
         ownershipChanges: [{ entityKey: toTransfer, newOwner }],
       })
       await publicClient.waitForTransactionReceipt({ hash: result.txHash })
@@ -495,11 +495,11 @@ describe(`Network health check (${chain.name})`, () => {
       // reason to predict one.
       const batch = await walletClient.executeBatch({
         creates: [
-          { schema: Tree, values: { tag, role: "parent" }, expires: SHORT, salt: parent.salt },
+          { schema: Tree, values: { tag, role: "parent" }, expiration: SHORT, salt: parent.salt },
           {
             schema: Tree,
             values: { tag, role: "child", parent: key(parent.key) },
-            expires: SHORT,
+            expiration: SHORT,
             salt: child.salt,
           },
         ],
@@ -535,7 +535,7 @@ describe(`Network health check (${chain.name})`, () => {
         creates: [10, 20, 30, 40, 50].map((score) => ({
           schema: Scores,
           values: { group, score: i32(score) },
-          expires: SHORT,
+          expiration: SHORT,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -638,7 +638,7 @@ describe(`Network health check (${chain.name})`, () => {
         creates: Array.from({ length: 8 }, (_, index) => ({
           schema: Paged,
           values: { group, index },
-          expires: SHORT,
+          expiration: SHORT,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -854,7 +854,7 @@ describe(`Network health check (${chain.name})`, () => {
 
         const extend = await walletClient.extendEntity({
           entityKey,
-          expires: ExpirationTime.fromHours(2),
+          expiration: ExpirationTime.fromHours(2),
         })
         await publicClient.waitForTransactionReceipt({ hash: extend.txHash })
 
@@ -899,7 +899,7 @@ describe(`Network health check (${chain.name})`, () => {
         creates: ["alpha-one", "alpha-two", "beta-one"].map((label) => ({
           schema: Labels,
           values: { group, label },
-          expires: SHORT,
+          expiration: SHORT,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -927,8 +927,8 @@ describe(`Network health check (${chain.name})`, () => {
       const Reviews = defineSchema({ group: str().indexed(), reviewed: str().indexed().optional() })
       const created = await walletClient.executeBatch({
         creates: [
-          { schema: Reviews, values: { group, reviewed: "yes" }, expires: SHORT },
-          { schema: Reviews, values: { group }, expires: SHORT },
+          { schema: Reviews, values: { group, reviewed: "yes" }, expiration: SHORT },
+          { schema: Reviews, values: { group }, expiration: SHORT },
         ],
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -956,8 +956,8 @@ describe(`Network health check (${chain.name})`, () => {
       const Textual = defineSchema({ group: str().indexed(), reading: str().indexed() })
       const created = await walletClient.executeBatch({
         creates: [
-          { schema: Numeric, values: { group, reading: i32(1) }, expires: SHORT },
-          { schema: Textual, values: { group, reading: str("1") }, expires: SHORT },
+          { schema: Numeric, values: { group, reading: i32(1) }, expiration: SHORT },
+          { schema: Textual, values: { group, reading: str("1") }, expiration: SHORT },
         ],
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -1027,7 +1027,7 @@ describe(`Network health check (${chain.name})`, () => {
       const group = `errors-${Date.now()}`
       const Grouped = defineSchema({ group: str().indexed() })
       const created = await walletClient.executeBatch({
-        creates: [1, 2].map(() => ({ schema: Grouped, values: { group }, expires: SHORT })),
+        creates: [1, 2].map(() => ({ schema: Grouped, values: { group }, expiration: SHORT })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
@@ -1084,7 +1084,7 @@ describe(`Network health check (${chain.name})`, () => {
       // transaction lands in, so this is its judgement, not the SDK's.
       const { entityKey: liveKey } = await create(Probe, { purpose: "shorten_test" })
       await expect(
-        walletClient.extendEntity({ entityKey: liveKey, expires: ExpirationTime.fromBlocks(1) }),
+        walletClient.extendEntity({ entityKey: liveKey, expiration: ExpirationTime.fromBlocks(1) }),
       ).rejects.toThrow()
       console.log(`  REVERTS  missing entity, wrong owner and a shortened expiry all refused`)
     },
@@ -1200,7 +1200,7 @@ describe(`Network health check (${chain.name})`, () => {
       })
 
       try {
-        const base = { schema: Probe, expires: SHORT }
+        const base = { schema: Probe, expiration: SHORT }
         const created = await walletClient.executeBatch({
           creates: [
             { ...base, values: { purpose: "handler_test", body: json({ role: "mutated" }) } },
@@ -1217,7 +1217,7 @@ describe(`Network health check (${chain.name})`, () => {
         await publicClient.waitForTransactionReceipt({ hash: patch.txHash })
         const extend = await walletClient.extendEntity({
           entityKey: mutated,
-          expires: ExpirationTime.fromHours(2),
+          expiration: ExpirationTime.fromHours(2),
         })
         await publicClient.waitForTransactionReceipt({ hash: extend.txHash })
 
@@ -1328,7 +1328,7 @@ describe(`Network health check (${chain.name})`, () => {
         creates: rows.map((row) => ({
           schema: Rows,
           values: { group, ...row },
-          expires: SHORT,
+          expiration: SHORT,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })

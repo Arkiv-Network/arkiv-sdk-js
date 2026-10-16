@@ -21,13 +21,13 @@ const logger = getLogger("actions:wallet:extend-entity")
  * less than it already has left is an error rather than a silent shortening.
  *
  * @example
- * await client.extendEntity({ entityKey, expires: ExpirationTime.fromDays(30) })
- * await client.extendEntity({ entityKey, expires: ExpirationTime.atBlock(1_200_000n) })
+ * await client.extendEntity({ entityKey, expiration: ExpirationTime.fromDays(30) })
+ * await client.extendEntity({ entityKey, expiration: ExpirationTime.atBlock(1_200_000n) })
  */
 export type ExtendEntityParameters = {
   entityKey: Hex
   /** The entity's new lifetime, built with {@link ExpirationTime}. */
-  expires: Expiry
+  expiration: Expiry
 }
 
 /**

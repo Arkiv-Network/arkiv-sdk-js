@@ -85,7 +85,7 @@ export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedE
 
   if (typeof expiry?.minLifetime !== "bigint" || expiry.expiresAt === undefined) {
     throw new InvalidExpiryError(
-      "expires must be built with ExpirationTime, e.g. ExpirationTime.fromDays(30) or " +
+      "expiration must be built with ExpirationTime, e.g. ExpirationTime.fromDays(30) or " +
         "ExpirationTime.atBlock(1_200_000n)",
     )
   }

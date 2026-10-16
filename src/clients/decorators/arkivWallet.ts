@@ -100,7 +100,7 @@ export type WalletArkivActions<
      *     title: "Cells, not entities",
      *     body: new TextEncoder().encode("# Hello"),
      *   },
-     *   { expires: ExpirationTime.fromDays(30) },
+     *   { expiration: ExpirationTime.fromDays(30) },
      * )
      */
     createEntity: <S extends Schema>(
@@ -199,7 +199,7 @@ export type WalletArkivActions<
      * })
      * const { txHash, expiresAt } = await client.extendEntity({
      *   entityKey,
-     *   expires: ExpirationTime.fromDays(30),
+     *   expiration: ExpirationTime.fromDays(30),
      * })
      */
     extendEntity: (
@@ -256,13 +256,13 @@ export type WalletArkivActions<
      *   creates: [{
      *     schema: Posts,
      *     values: { author, category: "docs", score: dec("4.1"), title: "Hi", body: new Uint8Array() },
-     *     expires: ExpirationTime.fromDays(30),
+     *     expiration: ExpirationTime.fromDays(30),
      *   }],
      *   patches: [{ schema: Posts, entityKey: keyToRevise, set: { category: "archive" } }],
      *   deletes: [{ entityKey: staleKey }],
      *   extensions: [{
      *     entityKey: keyToKeepAlive,
-     *     expires: ExpirationTime.atBlock(1_200_000n),
+     *     expiration: ExpirationTime.atBlock(1_200_000n),
      *   }],
      *   ownershipChanges: [{ entityKey: keyToHandOver, newOwner }],
      * })

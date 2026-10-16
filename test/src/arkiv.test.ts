@@ -190,7 +190,7 @@ describe("Arkiv Integration Tests for public client", () => {
     const { entityKey } = await clients(transport).write.createEntity(
       Notes,
       { body: stringToBytes("Hello world") },
-      { expires: LIFETIME },
+      { expiration: LIFETIME },
     )
 
     return entityKey
@@ -201,11 +201,11 @@ describe("Arkiv Integration Tests for public client", () => {
     transport: TransportName,
     schema: S,
     values: CreateEntityValues<S>,
-    options: { flags?: CreationFlags; expires?: Expiry } = {},
+    options: { flags?: CreationFlags; expiration?: Expiry } = {},
   ) {
     const { read, write } = clients(transport)
     const created = await write.createEntity(schema, values, {
-      expires: options.expires ?? LIFETIME,
+      expiration: options.expiration ?? LIFETIME,
       ...(options.flags ? { flags: options.flags } : {}),
     })
     const receipt = await read.waitForTransactionReceipt({ hash: created.txHash })
@@ -298,7 +298,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const { entityKey, txHash, expiresAt } = await write.createEntity(
         Lifecycle,
         { testkey: "testValue", keeper: i32(7), body, mimeType: "application/json" },
-        { expires: LIFETIME },
+        { expiration: LIFETIME },
       )
       await read.waitForTransactionReceipt({ hash: txHash })
 
@@ -342,7 +342,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const { txHash: extendedTx, expiresAt: extendedExpiresAt } = await write.extendEntity({
         entityKey,
-        expires: ExpirationTime.fromBlocks(20_000),
+        expiration: ExpirationTime.fromBlocks(20_000),
       })
       await read.waitForTransactionReceipt({ hash: extendedTx })
       expect(extendedExpiresAt).toBeGreaterThan(expiresAt)
@@ -401,7 +401,7 @@ describe("Arkiv Integration Tests for public client", () => {
       ).rejects.toThrow(/readonly/)
       const { txHash } = await walletClient.extendEntity({
         entityKey,
-        expires: ExpirationTime.fromBlocks(20_000),
+        expiration: ExpirationTime.fromBlocks(20_000),
       })
       await publicClient.waitForTransactionReceipt({ hash: txHash })
     },
@@ -415,7 +415,7 @@ describe("Arkiv Integration Tests for public client", () => {
         "http",
         Notes,
         { body: stringToBytes("forever") },
-        { expires: ExpirationTime.permanent() },
+        { expiration: ExpirationTime.permanent() },
       )
 
       expect((await publicClient.getEntity(entityKey)).$expiresAt).toBe(MAX_EXPIRES_AT)
@@ -435,7 +435,7 @@ describe("Arkiv Integration Tests for public client", () => {
         creates: Array.from({ length: 5 }, () => ({
           schema: Notes,
           values: { tag: "testValue" },
-          expires: LIFETIME,
+          expiration: LIFETIME,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: seed.txHash })
@@ -446,7 +446,7 @@ describe("Arkiv Integration Tests for public client", () => {
       }
 
       const result = await walletClient.executeBatch({
-        creates: [{ schema: Notes, values: { tag: "testValue" }, expires: LIFETIME }],
+        creates: [{ schema: Notes, values: { tag: "testValue" }, expiration: LIFETIME }],
         patches: [
           {
             schema: Notes,
@@ -455,7 +455,7 @@ describe("Arkiv Integration Tests for public client", () => {
           },
         ],
         deletes: [{ entityKey: toDeleteA }, { entityKey: toDeleteB }],
-        extensions: [{ entityKey: toExtend, expires: ExpirationTime.fromBlocks(20_000) }],
+        extensions: [{ entityKey: toExtend, expiration: ExpirationTime.fromBlocks(20_000) }],
         ownershipChanges: [{ entityKey: toTransfer, newOwner: SOMEONE_ELSE }],
       })
       await publicClient.waitForTransactionReceipt({ hash: result.txHash })
@@ -491,11 +491,11 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const batch = await walletClient.executeBatch({
         creates: [
-          { schema: Authors, values: { group, name: "Ursula" }, expires: LIFETIME },
+          { schema: Authors, values: { group, name: "Ursula" }, expiration: LIFETIME },
           {
             schema: Books,
             values: { group, title: "The Dispossessed", pages: 387 },
-            expires: LIFETIME,
+            expiration: LIFETIME,
           },
         ],
       })
@@ -553,7 +553,7 @@ describe("Arkiv Integration Tests for public client", () => {
             {
               schema: Notes,
               values: { tag: marker, body: stringToBytes("should never exist") },
-              expires: LIFETIME,
+              expiration: LIFETIME,
             },
           ],
           deletes: [{ entityKey: ghost }],
@@ -578,7 +578,7 @@ describe("Arkiv Integration Tests for public client", () => {
       for (const operation of [
         () => walletClient.patchEntity(Notes, ghost, { set: { tag: str("x") } }),
         () => walletClient.deleteEntity({ entityKey: ghost }),
-        () => walletClient.extendEntity({ entityKey: ghost, expires: LIFETIME }),
+        () => walletClient.extendEntity({ entityKey: ghost, expiration: LIFETIME }),
       ]) {
         await expect(operation()).rejects.toThrow(/no entity 0x11111111/)
       }
@@ -586,7 +586,7 @@ describe("Arkiv Integration Tests for public client", () => {
       // An extension that would shorten the entity's life is refused by the node
       const { entityKey } = await create("http", Notes, { tag: str("no") })
       const soon = ExpirationTime.atBlock((await publicClient.getBlockNumber()) + 5n)
-      await expect(walletClient.extendEntity({ entityKey, expires: soon })).rejects.toThrow(
+      await expect(walletClient.extendEntity({ entityKey, expiration: soon })).rejects.toThrow(
         EntityMutationError,
       )
     },
@@ -755,7 +755,7 @@ describe("Arkiv Integration Tests for public client", () => {
         creates: [100, 200, 300, 400, 500].map((score) => ({
           schema: Ranges,
           values: { rangegroup: group, rangescore: i32(score), label: str(`score-${score}`) },
-          expires: LIFETIME,
+          expiration: LIFETIME,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -795,7 +795,7 @@ describe("Arkiv Integration Tests for public client", () => {
         creates: Array.from({ length: 10 }, () => ({
           schema: Notes,
           values: { tag: value },
-          expires: LIFETIME,
+          expiration: LIFETIME,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -944,7 +944,7 @@ describe("Arkiv Integration Tests for public client", () => {
           keyattr: key(entityKey),
           blobattr: new Uint8Array([0, 1, 2, 255]),
         },
-        { expires: LIFETIME },
+        { expiration: LIFETIME },
       )
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
@@ -1015,7 +1015,7 @@ describe("Arkiv Integration Tests for public client", () => {
         creates: Array.from({ length: 3 }, () => ({
           schema: Notes,
           values: { body: stringToBytes("counted") },
-          expires: LIFETIME,
+          expiration: LIFETIME,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
@@ -1129,8 +1129,8 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const batch = await walletClient.executeBatch({
         creates: [
-          { schema: Docs, values: { group }, expires: LIFETIME },
-          { schema: Docs, values: { group, mimeType: "text/html", version: 3 }, expires: LIFETIME },
+          { schema: Docs, values: { group }, expiration: LIFETIME },
+          { schema: Docs, values: { group, mimeType: "text/html", version: 3 }, expiration: LIFETIME },
         ],
       })
       await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
@@ -1255,11 +1255,11 @@ describe("Arkiv Integration Tests for public client", () => {
       // A write that does not fit its schema never leaves the SDK.
       await expect(
         // @ts-expect-error a bare string is a str, not a dec
-        walletClient.createEntity(Strict, { group, score: "4.1" }, { expires: LIFETIME }),
+        walletClient.createEntity(Strict, { group, score: "4.1" }, { expiration: LIFETIME }),
       ).rejects.toThrow(SchemaMismatchError)
       await expect(
         // @ts-expect-error score is required
-        walletClient.createEntity(Strict, { group }, { expires: LIFETIME }),
+        walletClient.createEntity(Strict, { group }, { expiration: LIFETIME }),
       ).rejects.toThrow(SchemaMismatchError)
 
       // An entity read through a schema it does not fit is reported, not silently mistyped.
@@ -1285,7 +1285,7 @@ describe("Arkiv Integration Tests for public client", () => {
         creates: Array.from({ length: 3 }, () => ({
           schema: Notes,
           values: { body: stringToBytes("seed") },
-          expires: LIFETIME,
+          expiration: LIFETIME,
         })),
       })
       await read.waitForTransactionReceipt({ hash: seed.txHash })
@@ -1310,12 +1310,12 @@ describe("Arkiv Integration Tests for public client", () => {
             {
               schema: Notes,
               values: { body: stringToBytes("created under watch") },
-              expires: LIFETIME,
+              expiration: LIFETIME,
             },
           ],
           patches: [{ schema: Notes, entityKey: toPatch, set: { tag: str("watched") } }],
           deletes: [{ entityKey: toDelete }],
-          extensions: [{ entityKey: toPatch, expires: ExpirationTime.fromBlocks(20_000) }],
+          extensions: [{ entityKey: toPatch, expiration: ExpirationTime.fromBlocks(20_000) }],
           ownershipChanges: [{ entityKey: toTransfer, newOwner: SOMEONE_ELSE }],
         })
         const receipt = await read.waitForTransactionReceipt({ hash: batch.txHash })
@@ -1398,7 +1398,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const { entityKey, txHash } = await newcomerClient.createEntity(
         Notes,
         { body: stringToBytes("first") },
-        { expires: LIFETIME, salt: 42n },
+        { expiration: LIFETIME, salt: 42n },
       )
       await publicClient.waitForTransactionReceipt({ hash: txHash })
 
@@ -1439,13 +1439,13 @@ describe("Arkiv Integration Tests for public client", () => {
           {
             schema: Tree,
             values: { predictgroup: str(group), role: str("parent") },
-            expires: LIFETIME,
+            expiration: LIFETIME,
             salt: parent.salt,
           },
           {
             schema: Tree,
             values: { predictgroup: str(group), role: str("child"), parent: key(parent.key) },
-            expires: LIFETIME,
+            expiration: LIFETIME,
             salt: child.salt,
           },
         ],
@@ -1481,7 +1481,7 @@ describe("Arkiv Integration Tests for public client", () => {
         "http",
         Notes,
         { tag: str(value) },
-        { expires: ExpirationTime.fromBlocks(20) },
+        { expiration: ExpirationTime.fromBlocks(20) },
       )
 
       expect(expiresAt).toBeGreaterThan(blockNumber)

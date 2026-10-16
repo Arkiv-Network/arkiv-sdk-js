@@ -171,7 +171,7 @@ const Docs = defineSchema({
 const CONTENTS = { schema: Docs, values: { category: "docs" } }
 
 const DAY = ExpirationTime.fromDays(1) // 86400s -> 43200 blocks at 2s
-const validCreate = { ...CONTENTS, expires: DAY }
+const validCreate = { ...CONTENTS, expiration: DAY }
 
 const name = (n: string) => toHex(n, { size: 32 })
 
@@ -189,7 +189,7 @@ describe("create expiry", () => {
       creates: [
         {
           ...CONTENTS,
-          expires: ExpirationTime.atBlock(5_000n, { atLeast: ExpirationTime.fromSeconds(200) }),
+          expiration: ExpirationTime.atBlock(5_000n, { atLeast: ExpirationTime.fromSeconds(200) }),
         },
       ],
     })
@@ -201,19 +201,21 @@ describe("create expiry", () => {
   it("reports the block the entity will actually expire at", async () => {
     const { client } = makeClient()
     const relative = await sendArkivTransaction(client, {
-      creates: [{ ...CONTENTS, expires: DAY }],
+      creates: [{ ...CONTENTS, expiration: DAY }],
     })
     expect(relative.createdExpiries[0]).toBe(CURRENT_BLOCK + 43_200n)
 
     const { client: client2 } = makeClient()
     const absolute = await sendArkivTransaction(client2, {
-      creates: [{ ...CONTENTS, expires: ExpirationTime.atBlock(5_000n) }],
+      creates: [{ ...CONTENTS, expiration: ExpirationTime.atBlock(5_000n) }],
     })
     expect(absolute.createdExpiries[0]).toBe(5_000n)
 
     const { client: client3 } = makeClient()
     const dated = await sendArkivTransaction(client3, {
-      creates: [{ ...CONTENTS, expires: ExpirationTime.atDate(new Date(Date.now() + 3600_000)) }],
+      creates: [
+        { ...CONTENTS, expiration: ExpirationTime.atDate(new Date(Date.now() + 3600_000)) },
+      ],
     })
     // An hour at 2s/block, counted from the block the transaction was built on.
     expect(dated.createdExpiries[0]).toBe(CURRENT_BLOCK + 1800n)
@@ -230,7 +232,7 @@ describe("create expiry", () => {
     const { client, writeContract } = makeClient()
     await expect(
       sendArkivTransaction(client, {
-        creates: [{ ...CONTENTS, expires: ExpirationTime.atBlock(CURRENT_BLOCK - 1n) }],
+        creates: [{ ...CONTENTS, expiration: ExpirationTime.atBlock(CURRENT_BLOCK - 1n) }],
       }),
     ).rejects.toThrow(/dead on arrival/)
     expect(writeContract).not.toHaveBeenCalled()
@@ -249,7 +251,7 @@ describe("extend expiry", () => {
   it("resolves an extension exactly like a create, both forms", async () => {
     const { client, writeContract } = makeClient()
     const relative = await sendArkivTransaction(client, {
-      extensions: [{ entityKey: ENTITY_KEY, expires: DAY }],
+      extensions: [{ entityKey: ENTITY_KEY, expiration: DAY }],
     })
     const extension = sentExtension(writeContract)
     expect(extension.entityKey).toBe(ENTITY_KEY)
@@ -260,7 +262,7 @@ describe("extend expiry", () => {
 
     const { client: client2, writeContract: writeContract2 } = makeClient()
     const absolute = await sendArkivTransaction(client2, {
-      extensions: [{ entityKey: ENTITY_KEY, expires: ExpirationTime.atBlock(5_000n) }],
+      extensions: [{ entityKey: ENTITY_KEY, expiration: ExpirationTime.atBlock(5_000n) }],
     })
     expect(sentExtension(writeContract2).expiresAt).toBe(5_000n)
     expect(absolute.extendedExpiries[0]).toBe(5_000n)
@@ -270,7 +272,7 @@ describe("extend expiry", () => {
     const { client, writeContract } = makeClient()
     const tooFar = ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n)
     await expect(
-      sendArkivTransaction(client, { extensions: [{ entityKey: ENTITY_KEY, expires: tooFar }] }),
+      sendArkivTransaction(client, { extensions: [{ entityKey: ENTITY_KEY, expiration: tooFar }] }),
     ).rejects.toThrow(/does not fit the uint64/)
     expect(writeContract).not.toHaveBeenCalled()
   })
@@ -286,7 +288,10 @@ describe("extend expiry", () => {
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
       extensions: [
-        { entityKey: ENTITY_KEY, expires: ExpirationTime.atDate(new Date(Date.now() + 3600_000)) },
+        {
+          entityKey: ENTITY_KEY,
+          expiration: ExpirationTime.atDate(new Date(Date.now() + 3600_000)),
+        },
       ],
     })
     // A Date can only be placed once the current block is known, so it must have been fetched even
@@ -427,7 +432,7 @@ describe("create through a schema", () => {
     const { client } = makeClient()
     const schema = defineSchema({ n: i32() })
     await expect(
-      sendArkivTransaction(client, { creates: [{ schema, values: { n: 1.5 }, expires: DAY }] }),
+      sendArkivTransaction(client, { creates: [{ schema, values: { n: 1.5 }, expiration: DAY }] }),
     ).rejects.toThrow(InvalidValueError)
   })
 
@@ -488,7 +493,7 @@ describe("create through a schema", () => {
     const schema = defineSchema({ score: dec() })
     await expect(
       sendArkivTransaction(client, {
-        creates: [{ schema, values: { score: "4.1" }, expires: DAY }],
+        creates: [{ schema, values: { score: "4.1" }, expiration: DAY }],
       }),
     ).rejects.toThrow(/a dec column, but the value is a str/)
   })
@@ -503,7 +508,7 @@ describe("create through a schema", () => {
     const schema = defineSchema({ category: str(), mimeType: str().default("text/markdown") })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      creates: [{ schema, values: { category: "docs" }, expires: DAY }],
+      creates: [{ schema, values: { category: "docs" }, expiration: DAY }],
     })
     expect(sentCells(writeContract)[name("mimeType")]).toMatchObject({
       typeId: 8,
@@ -513,7 +518,7 @@ describe("create through a schema", () => {
     // ...and the value given, when it is given.
     const { client: c2, writeContract: w2 } = makeClient()
     await sendArkivTransaction(c2, {
-      creates: [{ schema, values: { category: "docs", mimeType: "text/plain" }, expires: DAY }],
+      creates: [{ schema, values: { category: "docs", mimeType: "text/plain" }, expiration: DAY }],
     })
     expect(sentCells(w2)[name("mimeType")].value).toBe(toHex("text/plain"))
   })
@@ -538,7 +543,7 @@ describe("create through a schema", () => {
             author: addr("0x1111111111111111111111111111111111111111"),
             title: "Cells",
           },
-          expires: DAY,
+          expiration: DAY,
         },
       ],
     })
@@ -564,7 +569,7 @@ describe("create through a schema", () => {
             thumbnail: bytes("0xDEAD"),
             empty: new Uint8Array(),
           },
-          expires: DAY,
+          expiration: DAY,
         },
       ],
     })
@@ -579,14 +584,16 @@ describe("create through a schema", () => {
     const schema = defineSchema({ body: bytes(), thumbnail: bytes().optional() })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      creates: [{ schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH) }, expires: DAY }],
+      creates: [{ schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH) }, expiration: DAY }],
     })
     expect(writeContract).toHaveBeenCalledTimes(1)
 
     const { client: c2 } = makeClient()
     await expect(
       sendArkivTransaction(c2, {
-        creates: [{ schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH + 1) }, expires: DAY }],
+        creates: [
+          { schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH + 1) }, expiration: DAY },
+        ],
       }),
     ).rejects.toThrow(InvalidValueError)
   })
@@ -596,7 +603,7 @@ describe("create through a schema", () => {
     const half = new Uint8Array(MAX_ENTITY_BYTES / 2)
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      creates: [{ schema, values: { body: half, thumbnail: half }, expires: DAY }],
+      creates: [{ schema, values: { body: half, thumbnail: half }, expiration: DAY }],
     })
     expect(writeContract).toHaveBeenCalledTimes(1)
 
@@ -607,7 +614,7 @@ describe("create through a schema", () => {
           {
             schema,
             values: { body: half, thumbnail: new Uint8Array(MAX_ENTITY_BYTES / 2 + 1) },
-            expires: DAY,
+            expiration: DAY,
           },
         ],
       }),
@@ -618,7 +625,7 @@ describe("create through a schema", () => {
   it("carries no cells for a schema with no columns", async () => {
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      creates: [{ schema: defineSchema({}), values: {}, expires: DAY }],
+      creates: [{ schema: defineSchema({}), values: {}, expiration: DAY }],
     })
     expect(sentCreate(writeContract).attributes).toEqual([])
   })
@@ -627,7 +634,7 @@ describe("create through a schema", () => {
     const schema = defineSchema({ tag: str(), status: str().indexed(), score: i32() })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      creates: [{ schema, values: { tag: "zz", status: "active", score: 30 }, expires: DAY }],
+      creates: [{ schema, values: { tag: "zz", status: "active", score: 30 }, expiration: DAY }],
     })
     expect(sentCreate(writeContract).attributes.map((a) => a.name)).toEqual([
       name("score"),
@@ -642,7 +649,7 @@ describe("create through a schema", () => {
     const result = await sendArkivTransaction(client, {
       creates: [
         validCreate,
-        { schema: Files, values: { path: "/a", body: new Uint8Array([7]) }, expires: DAY },
+        { schema: Files, values: { path: "/a", body: new Uint8Array([7]) }, expiration: DAY },
       ],
     })
     const [docs, files] = sentOperations(writeContract).map(

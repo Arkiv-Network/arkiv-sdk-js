@@ -23,7 +23,7 @@ function deadlineOf(expiresAt: bigint | Date, options?: DeadlineOptions): Expiry
 }
 
 /**
- * Builds the `expires` of a create or an extension.
+ * Builds the `expiration` of a create or an extension.
  *
  * Every helper returns the `{ minLifetime, expiresAt }` pair the ABI carries, so what you write is
  * what goes on the wire. The `from*` helpers fill `minLifetime` and leave `expiresAt` at `0n`;
@@ -34,14 +34,14 @@ function deadlineOf(expiresAt: bigint | Date, options?: DeadlineOptions): Expiry
  * object.
  *
  * @example The 90% case: a duration, and nothing else to think about.
- * await client.createEntity(Posts, values, { expires: ExpirationTime.fromDays(30) })
+ * await client.createEntity(Posts, values, { expiration: ExpirationTime.fromDays(30) })
  *
  * @example An exact block, or a wall-clock date.
- * expires: ExpirationTime.atBlock(1_200_000n)
- * expires: ExpirationTime.atDate(new Date("2027-01-01"))
+ * expiration: ExpirationTime.atBlock(1_200_000n)
+ * expiration: ExpirationTime.atDate(new Date("2027-01-01"))
  *
  * @example A deadline that still guarantees a minimum life.
- * expires: ExpirationTime.atBlock(1_200_000n, { atLeast: ExpirationTime.fromDays(1) })
+ * expiration: ExpirationTime.atBlock(1_200_000n, { atLeast: ExpirationTime.fromDays(1) })
  */
 export const ExpirationTime = {
   /**
