@@ -10,7 +10,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - `.from(schema, { onMismatch: "skip" })` leaves entities that do not fit the schema out of the page instead of failing the fetch, and `QueryResult.skipped` reports how many each page left out. `"throw"` is the default
 - `getEntity(key, schema)` reads one entity through a schema
 - `executeBatch()` creates and patches each name their own schema and are typed by it, so one batch can write entities of several schemas
-- `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `FromOptions`, `IndexableTypeTag`, `IndexableValue`, `DynamicSelection`, `PartialRow`
+- `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `FromOptions`, `IndexableTypeTag`, `IndexableValue`, `DynamicSelection`, `PartialRow`, `KnownSystemFields`
 - Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
 
 ### Changed
@@ -22,12 +22,14 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** `attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
 - **Breaking:** `gt`/`gte`/`lt`/`lte` only accept values of ordered types (`i32`, `u64`, `u256`, `dec`, or a bare number or bigint) at compile time. A predicate on a `bytes` value throws `InvalidPredicateError`
 - **Breaking:** `SelectQueryBuilder`'s type parameters are now the selection and the schema, not the result type. `from()` returns a new builder rather than re-typing the one it was called on
-- **Breaking:** `select()` returns flat rows, with or without a schema: the selection names entity fields and attributes side by side, so `select({ key: true, title: true })` returns `{ key, title }`, with `title` an `ArkivValue | undefined` without a schema. Rows are plain objects rather than `Entity` instances. `attributes` (all attributes as a map) and `attributeSchema` can be selected with or without a schema, and `getEntity(key)` returns the same row as `select("*")`
+- **Breaking:** `select()` returns flat rows, with or without a schema: the selection names entity fields and attributes side by side, so `select({ $key: true, title: true })` returns `{ $key, title }`, with `title` an `ArkivValue | undefined` without a schema. Rows are plain objects rather than `Entity` instances. `getEntity(key)` returns the same row as `select("*")`
+- **Breaking:** entity fields are selected and read with a `$` prefix, as `where` already filters on them: `$key`, `$owner`, `$creator`, `$createdAt`, `$updatedAt`, `$expiresAt` and `$creationFlags`. An attribute name cannot start with `$`, so no attribute collides with them, and an attribute named `owner` is selected as `owner`. `$attributes` (every attribute as a map) and `$attributeSchema` replace `attributes` and `attributeSchema`, with or without a schema. `$attributes` takes only `true`: the map of names for a subset is gone, since attributes are selected by name. A `$` name that is not an entity field is a compile error and throws
 - **Breaking:** `query()` takes the same selection as `select()` and returns the same flat rows, typed from the selection, instead of `Entity` objects. `QueryOptions` and `QueryReturnType` take the selection and row type as type parameters
-- **Breaking:** a selection only known at runtime — typed `SelectArg`, or with a field typed `boolean` — types its results with every field optional (`PartialRow`) instead of claiming every field is present. A field set to `undefined` is not selected, and a selection that asks for nothing (`{}`, every field `false`, an empty `attributes` map) is a compile error
+- **Breaking:** a selection only known at runtime — typed `SelectArg`, or with a field typed `boolean` — types its results with every field optional (`PartialRow`) instead of claiming every field is present. A field set to `undefined` is not selected, and a selection that asks for nothing (`{}`, or every field `false`) is a compile error
 - **Breaking:** the `QueryResult` constructor takes the page's `skipped` count after `cursor`, before the next-page callback
 - `ArkivValue` includes `BytesValue`, and `AnyArkivValue` is gone. `UserTypeTag` is now `IndexableTypeTag`
 - `MAX_ATTRIBUTES` also caps the number of columns a schema may declare
+- `SYSTEM_FIELDS` and `SystemField` moved from `@arkiv-network/sdk/schema` to `@arkiv-network/sdk/query`, and hold the `$` names
 
 ### Removed
 - **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead

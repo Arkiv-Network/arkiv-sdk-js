@@ -138,14 +138,8 @@ describe("the assembled query", () => {
 
 describe("the selection", () => {
   it("checks named attributes rather than forwarding them", () => {
-    expect(() => toRpcSelect({ key: true, attributes: { "a' OR '1": true } })).toThrow(
-      InvalidAttributeNameError,
-    )
-    expect(() => toRpcSelect({ key: true, attributes: { "a--b": true } })).toThrow(
-      InvalidAttributeNameError,
-    )
-    expect(toRpcSelect({ key: true, attributes: { ok: true } })).toMatchObject({
-      attributes: { ok: true },
-    })
+    expect(() => toRpcSelect({ $key: true, "a' OR '1": true })).toThrow(InvalidAttributeNameError)
+    expect(() => toRpcSelect({ $key: true, "a--b": true })).toThrow(InvalidAttributeNameError)
+    expect(toRpcSelect({ $key: true, ok: true })).toMatchObject({ attributes: { ok: true } })
   })
 })

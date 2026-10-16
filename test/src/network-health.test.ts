@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
 import type {
+  CreateEntityValues,
   CreationFlags,
   Expiry,
-  CreateEntityValues,
   PublicArkivClient,
   Schema,
   WalletArkivClient,
@@ -182,21 +182,21 @@ describe(`Network health check (${chain.name})`, () => {
 
       const entity = await publicClient.getEntity(entityKey, Health)
 
-      expect(entity.key).toBe(entityKey)
+      expect(entity.$key).toBe(entityKey)
       expect(entity.body).toEqual(bytes(body))
       expect(JSON.parse(hexToString(entity.body.value))).toMatchObject({ healthCheck: true, tag })
       expect(entity.mimeType).toEqual(str("application/json"))
-      expect(entity.owner).toBe(account.address)
-      expect(entity.creator).toBe(account.address)
-      expect(entity.expiresAt).toBe(expiresAt)
-      expect(entity.createdAt).toBeGreaterThan(0n)
+      expect(entity.$owner).toBe(account.address)
+      expect(entity.$creator).toBe(account.address)
+      expect(entity.$expiresAt).toBe(expiresAt)
+      expect(entity.$createdAt).toBeGreaterThan(0n)
 
       expect(entity.tag).toEqual(str(tag))
       expect(entity.healthy).toEqual(bool(true))
       expect(entity.level).toEqual(i32(42))
       expect(entity.height).toEqual(u64(1_200_000n))
 
-      expect(entity.creationFlags).toEqual({
+      expect(entity.$creationFlags).toEqual({
         readonly: false,
         permissionlessExtension: false,
         raw: 0,
@@ -215,20 +215,20 @@ describe(`Network health check (${chain.name})`, () => {
       const { entityKey } = await create(Docs, { tag, category: "docs", level: i32(7) })
 
       const found = await publicClient
-        .select({ key: true, category: true, level: true })
+        .select({ $key: true, category: true, level: true })
         .from(Docs)
         .where(eq("tag", str(tag)))
         .ownedBy(account.address)
         .fetch()
 
       expect(found.entities).toHaveLength(1)
-      expect(found.entities[0]?.key).toBe(entityKey)
+      expect(found.entities[0]?.$key).toBe(entityKey)
       expect(found.entities[0]?.category).toEqual(str("docs"))
       expect(found.entities[0]?.level).toEqual(i32(7))
 
       // Something that does not match must not come back.
       const missing = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .from(Docs)
         .where(eq("tag", str(tag)), eq("category", str("nope")))
         .fetch()
@@ -273,7 +273,7 @@ describe(`Network health check (${chain.name})`, () => {
       // What it never mentioned, untouched.
       expect(patched.keep).toEqual(str("original"))
       expect(patched.tag).toEqual(str(tag))
-      expect(patched.updatedAt).toBeGreaterThanOrEqual(patched.createdAt)
+      expect(patched.$updatedAt).toBeGreaterThanOrEqual(patched.$createdAt)
       console.log(`  PATCH  merged, tombstoned, and left the rest alone`)
     },
     { timeout: 120_000 },
@@ -286,7 +286,7 @@ describe(`Network health check (${chain.name})`, () => {
         purpose: "delete_me",
         body: json({ doomed: true }),
       })
-      expect((await publicClient.getEntity(entityKey)).key).toBe(entityKey)
+      expect((await publicClient.getEntity(entityKey)).$key).toBe(entityKey)
 
       const removed = await walletClient.deleteEntity({ entityKey })
       await publicClient.waitForTransactionReceipt({ hash: removed.txHash })
@@ -308,7 +308,7 @@ describe(`Network health check (${chain.name})`, () => {
       )
 
       const entity = await publicClient.getEntity(entityKey)
-      const expiresAt = entity.expiresAt
+      const expiresAt = entity.$expiresAt
       console.log(`  EXPIRY  waiting for block ${expiresAt}`)
 
       const deadline = Date.now() + 120_000
@@ -337,9 +337,9 @@ describe(`Network health check (${chain.name})`, () => {
       await publicClient.waitForTransactionReceipt({ hash: extended.txHash })
 
       const after = await publicClient.getEntity(entityKey)
-      expect(after.expiresAt).toBeGreaterThan(before.expiresAt)
-      expect(after.expiresAt).toBe(extended.expiresAt)
-      console.log(`  EXTEND  ${before.expiresAt} → ${after.expiresAt}`)
+      expect(after.$expiresAt).toBeGreaterThan(before.$expiresAt)
+      expect(after.$expiresAt).toBe(extended.expiresAt)
+      console.log(`  EXTEND  ${before.$expiresAt} → ${after.$expiresAt}`)
     },
     { timeout: 120_000 },
   )
@@ -356,23 +356,23 @@ describe(`Network health check (${chain.name})`, () => {
       await publicClient.waitForTransactionReceipt({ hash: transfer.txHash })
 
       const after = await publicClient.getEntity(entityKey)
-      expect(after.owner).toBe(getAddress(newOwner))
-      expect(after.creator).toBe(account.address)
+      expect(after.$owner).toBe(getAddress(newOwner))
+      expect(after.$creator).toBe(account.address)
 
       const byTag = eq("tag", str(tag))
       const keys = (builder: { fetch(): Promise<{ entities: readonly unknown[] }> }) =>
         builder.fetch().then((page) => page.entities)
       expect(
-        await keys(publicClient.select({ key: true }).from(Probe).where(byTag).ownedBy(newOwner)),
+        await keys(publicClient.select({ $key: true }).from(Probe).where(byTag).ownedBy(newOwner)),
       ).toHaveLength(1)
       expect(
         await keys(
-          publicClient.select({ key: true }).from(Probe).where(byTag).ownedBy(account.address),
+          publicClient.select({ $key: true }).from(Probe).where(byTag).ownedBy(account.address),
         ),
       ).toHaveLength(0)
       expect(
         await keys(
-          publicClient.select({ key: true }).from(Probe).where(byTag).createdBy(account.address),
+          publicClient.select({ $key: true }).from(Probe).where(byTag).createdBy(account.address),
         ),
       ).toHaveLength(1)
       console.log(`  OWNER  ownedBy follows the transfer, createdBy does not`)
@@ -390,7 +390,7 @@ describe(`Network health check (${chain.name})`, () => {
       )
 
       const entity = await publicClient.getEntity(entityKey)
-      expect(entity.creationFlags).toEqual({
+      expect(entity.$creationFlags).toEqual({
         readonly: true,
         permissionlessExtension: false,
         raw: 0b01,
@@ -420,7 +420,7 @@ describe(`Network health check (${chain.name})`, () => {
       )
 
       expect(expiresAt).toBe(2n ** 64n - 1n)
-      expect((await publicClient.getEntity(entityKey)).expiresAt).toBe(2n ** 64n - 1n)
+      expect((await publicClient.getEntity(entityKey)).$expiresAt).toBe(2n ** 64n - 1n)
       console.log(`  EXPIRY  permanent entity stored at ${expiresAt}`)
     },
     { timeout: 120_000 },
@@ -443,7 +443,7 @@ describe(`Network health check (${chain.name})`, () => {
       if (!toPatch || !toDelete || !toExtend || !toTransfer) {
         throw new Error(`expected 4 pre-created keys, got ${pre.createdEntities.length}`)
       }
-      const expiryBefore = (await publicClient.getEntity(toExtend)).expiresAt
+      const expiryBefore = (await publicClient.getEntity(toExtend)).$expiresAt
 
       const newOwner = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd" as Hex
       const result = await walletClient.executeBatch({
@@ -466,8 +466,8 @@ describe(`Network health check (${chain.name})`, () => {
       expect((await publicClient.getEntity(created, Probe)).purpose).toEqual(str("batch_created"))
       expect((await publicClient.getEntity(toPatch, Probe)).purpose).toEqual(str("batch_patched"))
       await expect(publicClient.getEntity(toDelete)).rejects.toThrow(NoEntityFoundError)
-      expect((await publicClient.getEntity(toExtend)).expiresAt).toBeGreaterThan(expiryBefore)
-      expect((await publicClient.getEntity(toTransfer)).owner).toBe(getAddress(newOwner))
+      expect((await publicClient.getEntity(toExtend)).$expiresAt).toBeGreaterThan(expiryBefore)
+      expect((await publicClient.getEntity(toTransfer)).$owner).toBe(getAddress(newOwner))
       console.log(`  BATCH  all five kinds applied in one transaction`)
     },
     { timeout: 240_000 },
@@ -512,7 +512,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       // And the pointer the child was created with resolves to a real entity.
       const children = await publicClient
-        .select({ key: true, parent: true })
+        .select({ $key: true, parent: true })
         .from(Tree)
         .where(and(eq("tag", str(tag)), eq("role", str("child"))))
         .fetch()
@@ -544,7 +544,7 @@ describe(`Network health check (${chain.name})`, () => {
       const count = async (...predicates: Expression[]) =>
         (
           await publicClient
-            .select({ key: true })
+            .select({ $key: true })
             .where(and(...predicates))
             .fetch()
         ).entities.length
@@ -571,12 +571,12 @@ describe(`Network health check (${chain.name})`, () => {
       await create(Colored, { tag, color: "blue", body: json({ projection: true, tag }) })
       const where = eq("tag", str(tag))
 
-      const keyOnly = await publicClient.select({ key: true }).where(where).fetch()
-      expect(keyOnly.entities[0]?.key).toBeDefined()
+      const keyOnly = await publicClient.select({ $key: true }).where(where).fetch()
+      expect(keyOnly.entities[0]?.$key).toBeDefined()
       // @ts-expect-error owner was not selected
-      expect(keyOnly.entities[0]?.owner).toBeUndefined()
+      expect(keyOnly.entities[0]?.$owner).toBeUndefined()
       // @ts-expect-error attributes were not selected
-      expect(keyOnly.entities[0]?.attributes).toBeUndefined()
+      expect(keyOnly.entities[0]?.$attributes).toBeUndefined()
 
       const bodyOnly = await publicClient.select({ body: true }).from(Colored).where(where).fetch()
       const body = bodyOnly.entities[0]?.body
@@ -586,44 +586,44 @@ describe(`Network health check (${chain.name})`, () => {
 
       const metadata = await publicClient
         .select({
-          owner: true,
-          creator: true,
-          createdAt: true,
-          updatedAt: true,
-          expiresAt: true,
-          creationFlags: true,
+          $owner: true,
+          $creator: true,
+          $createdAt: true,
+          $updatedAt: true,
+          $expiresAt: true,
+          $creationFlags: true,
         })
         .where(where)
         .fetch()
       const meta = metadata.entities[0]
       if (!meta) throw new Error("no entity returned for metadata projection")
-      expect(meta.owner).toBeDefined()
-      expect(meta.creator).toBeDefined()
-      expect(meta.createdAt).toBeGreaterThan(0n)
-      expect(meta.updatedAt).toBeGreaterThan(0n)
-      expect(meta.expiresAt).toBeGreaterThan(0n)
-      expect(meta.creationFlags.readonly).toBe(false)
+      expect(meta.$owner).toBeDefined()
+      expect(meta.$creator).toBeDefined()
+      expect(meta.$createdAt).toBeGreaterThan(0n)
+      expect(meta.$updatedAt).toBeGreaterThan(0n)
+      expect(meta.$expiresAt).toBeGreaterThan(0n)
+      expect(meta.$creationFlags.readonly).toBe(false)
       // @ts-expect-error attributes were not selected
-      expect(meta.attributes).toBeUndefined()
+      expect(meta.$attributes).toBeUndefined()
 
-      const schema = await publicClient.select({ attributeSchema: true }).where(where).fetch()
-      expect(schema.entities[0]?.attributeSchema).toEqual({
+      const schema = await publicClient.select({ $attributeSchema: true }).where(where).fetch()
+      expect(schema.entities[0]?.$attributeSchema).toEqual({
         tag: { type: "str", indexed: true },
         color: { type: "str", indexed: false },
         body: { type: "bytes", indexed: false },
       })
 
       const oneAttribute = await publicClient
-        .select({ key: true, attributes: { color: true } })
+        .select({ $key: true, color: true })
         .where(where)
         .fetch()
-      expect(oneAttribute.entities[0]?.attributes.color).toEqual(str("blue"))
-      expect(oneAttribute.entities[0]?.attributes.tag).toBeUndefined()
+      expect(oneAttribute.entities[0]?.color).toEqual(str("blue"))
+      expect(oneAttribute.entities[0]).not.toHaveProperty("tag")
 
       const everything = await publicClient.select("*").from(Colored).where(where).fetch()
       expect(everything.entities[0]?.color).toEqual(str("blue"))
       expect(everything.entities[0]?.tag).toEqual(str(tag))
-      expect(everything.entities[0]?.owner).toBe(account.address)
+      expect(everything.entities[0]?.$owner).toBe(account.address)
       console.log(`  SELECT  projections returned exactly what was asked for`)
     },
     { timeout: 180_000 },
@@ -644,7 +644,7 @@ describe(`Network health check (${chain.name})`, () => {
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
       const page1 = await publicClient
-        .select({ key: true, index: true })
+        .select({ $key: true, index: true })
         .from(Paged)
         .where(eq("group", str(group)))
         .limit(3)
@@ -664,7 +664,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(page3.blockNumber).toBe(page1.blockNumber)
 
       const rows = [...page1.entities, ...page2.entities, ...page3.entities]
-      expect(new Set(rows.map((row) => row.key)).size).toBe(8)
+      expect(new Set(rows.map((row) => row.$key)).size).toBe(8)
       expect(rows.map((row) => row.index.value).sort((a, b) => a - b)).toEqual([
         0, 1, 2, 3, 4, 5, 6, 7,
       ])
@@ -726,7 +726,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(entity.parent).toEqual(key(dangling))
       expect(entity.blob).toEqual(bytes("0x010203"))
 
-      expect((await publicClient.getEntity(entityKey)).attributeSchema).toMatchObject({
+      expect((await publicClient.getEntity(entityKey)).$attributeSchema).toMatchObject({
         text: { type: "str", indexed: true },
         count: { type: "i32", indexed: true },
         big: { type: "u64", indexed: true },
@@ -741,7 +741,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       const byTag = eq("tag", str(tag))
       const matches = async (predicate: Expression) =>
-        (await publicClient.select({ key: true }).where(byTag, predicate).fetch()).entities.length
+        (await publicClient.select({ $key: true }).where(byTag, predicate).fetch()).entities.length
 
       expect(await matches(eq("count", i32(42)))).toBe(1)
       expect(await matches(eq("big", u64(BigInt(Number.MAX_SAFE_INTEGER))))).toBe(1)
@@ -782,13 +782,13 @@ describe(`Network health check (${chain.name})`, () => {
 
       const row = (
         await publicClient
-          .select({ key: true, title: true, thumbnail: true, lang: true })
+          .select({ $key: true, title: true, thumbnail: true, lang: true })
           .from(Articles)
           .where(eq("tag", tag))
           .fetch()
       ).entities[0]
       expect(row).toEqual({
-        key: entityKey,
+        $key: entityKey,
         title: str("Cells, not entities"),
         thumbnail: bytes("0x0909"),
         lang: str("en"),
@@ -797,9 +797,9 @@ describe(`Network health check (${chain.name})`, () => {
       // There is no index to answer a filter on `title` from: the node refuses it or finds nothing.
       const byTitle = await publicClient
         .query(`tag = str('${tag}') AND title = str('Cells, not entities')`, {
-          select: { key: true },
+          select: { $key: true },
         })
-        .then((page) => page.entities.map((entity) => entity.key))
+        .then((page) => page.entities.map((entity) => entity.$key))
         .catch(() => [])
       expect(byTitle).not.toContain(entityKey)
       console.log(`  COLUMNS  unindexed columns and two blobs stored, read back, never matched`)
@@ -819,15 +819,15 @@ describe(`Network health check (${chain.name})`, () => {
       })
 
       const result = await publicClient.query(`tag = str('${tag}') AND status = str('active')`, {
-        select: { key: true, attributes: { body: true } },
+        select: { $key: true, body: true },
       })
       expect(result.entities).toHaveLength(1)
-      expect(result.entities[0]?.key).toBe(entityKey)
-      expect(result.entities[0]?.attributes?.body?.type).toBe("bytes")
+      expect(result.entities[0]?.$key).toBe(entityKey)
+      expect(result.entities[0]?.body?.type).toBe("bytes")
 
       const negated = await publicClient.query(
         `tag = str('${tag}') AND NOT (status = str('active'))`,
-        { select: { key: true } },
+        { select: { $key: true } },
       )
       expect(negated.entities).toHaveLength(0)
       console.log(`  RAW  raw query matched, and NOT excluded it`)
@@ -906,7 +906,8 @@ describe(`Network health check (${chain.name})`, () => {
 
       const inGroup = eq("group", str(group))
       const count = async (predicate: Expression) =>
-        (await publicClient.select({ key: true }).where(inGroup, predicate).fetch()).entities.length
+        (await publicClient.select({ $key: true }).where(inGroup, predicate).fetch()).entities
+          .length
 
       expect(await count(startsWith("label", "alpha"))).toBe(2)
       expect(await count(startsWith("label", "alpha-o"))).toBe(1)
@@ -934,7 +935,8 @@ describe(`Network health check (${chain.name})`, () => {
 
       const inGroup = eq("group", str(group))
       const count = async (predicate: Expression) =>
-        (await publicClient.select({ key: true }).where(inGroup, predicate).fetch()).entities.length
+        (await publicClient.select({ $key: true }).where(inGroup, predicate).fetch()).entities
+          .length
 
       expect(await count(exists("reviewed"))).toBe(1)
       expect(await count(not(exists("reviewed")))).toBe(1)
@@ -962,7 +964,8 @@ describe(`Network health check (${chain.name})`, () => {
 
       const inGroup = eq("group", str(group))
       const count = async (predicate: Expression) =>
-        (await publicClient.select({ key: true }).where(inGroup, predicate).fetch()).entities.length
+        (await publicClient.select({ $key: true }).where(inGroup, predicate).fetch()).entities
+          .length
 
       expect(await count(hasType("reading", "i32"))).toBe(1)
       expect(await count(hasType("reading", "str"))).toBe(1)
@@ -980,11 +983,11 @@ describe(`Network health check (${chain.name})`, () => {
       const tag = `sys-${Date.now()}`
       const { entityKey } = await create(Probe, { tag })
 
-      const { expiresAt } = await publicClient.getEntity(entityKey)
+      const { $expiresAt: expiresAt } = await publicClient.getEntity(entityKey)
 
       const byTag = eq("tag", str(tag))
       const count = async (predicate: Expression) =>
-        (await publicClient.select({ key: true }).where(byTag, predicate).fetch()).entities.length
+        (await publicClient.select({ $key: true }).where(byTag, predicate).fetch()).entities.length
 
       expect(await count(eq("$key", key(entityKey)))).toBe(1)
       expect(await count(eq("$key", key(`0x${"77".repeat(32)}`)))).toBe(0)
@@ -1008,7 +1011,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       const where = eq("tag", str(tag))
       const at = async (block: bigint) =>
-        (await publicClient.select({ key: true }).where(where).atBlock(block).fetch()).entities
+        (await publicClient.select({ $key: true }).where(where).atBlock(block).fetch()).entities
           .length
 
       expect(await at(blockNumber)).toBe(1)
@@ -1030,7 +1033,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       const kindOf = async (query: string, options?: { cursor?: string; atBlock?: bigint }) => {
         try {
-          await publicClient.query(query, { select: { key: true }, ...options })
+          await publicClient.query(query, { select: { $key: true }, ...options })
           return "accepted"
         } catch (error) {
           return error instanceof QueryError ? error.kind : `not a QueryError: ${String(error)}`
@@ -1044,7 +1047,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(await kindOf(`group > str('${group}')`)).toBe("type")
 
       const firstPage = await publicClient.query(`group = str('${group}')`, {
-        select: { key: true },
+        select: { $key: true },
         limit: 1,
       })
       expect(firstPage.cursor).toBeDefined()
@@ -1122,7 +1125,7 @@ describe(`Network health check (${chain.name})`, () => {
         level: i32(2),
       })
 
-      const { attributes } = await publicClient.getEntity(entityKey)
+      const { $attributes: attributes } = await publicClient.getEntity(entityKey)
       expect(attributes.lowercase).toEqual(str("a"))
       expect(attributes.Uppercase).toEqual(str("b"))
       expect(attributes.MiXeDcAsE).toEqual(str("c"))
@@ -1136,7 +1139,7 @@ describe(`Network health check (${chain.name})`, () => {
 
       const byTag = eq("tag", str(tag))
       const count = async (predicate: Expression) =>
-        (await publicClient.select({ key: true }).where(byTag, predicate).fetch()).entities.length
+        (await publicClient.select({ $key: true }).where(byTag, predicate).fetch()).entities.length
 
       expect(await count(eq("Uppercase", str("b")))).toBe(1)
       expect(await count(eq("MiXeDcAsE", str("c")))).toBe(1)

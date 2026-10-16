@@ -24,6 +24,7 @@ import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type {
   FullEntity,
   FullRow,
+  KnownSystemFields,
   NonEmptySelection,
   PartialRow,
   SelectArg,
@@ -77,15 +78,15 @@ export type PublicArkivActions<
    * })
    * const entity = await client.getEntity(entityKey)
    * // {
-   * //   key: "0x9f2c…",
-   * //   owner: "0xabc…",
-   * //   expiresAt: 1_297_000n,
-   * //   attributes: { category: { type: "str", value: "docs" } },
+   * //   $key: "0x9f2c…",
+   * //   $owner: "0xabc…",
+   * //   $expiresAt: 1_297_000n,
+   * //   $attributes: { category: { type: "str", value: "docs" } },
    * //   ...
    * // }
    *
    * const post = await client.getEntity(entityKey, Posts)
-   * // { key: "0x9f2c…", owner: "0xabc…", ..., category: { type: "str", value: "docs" }, ... }
+   * // { $key: "0x9f2c…", $owner: "0xabc…", ..., category: { type: "str", value: "docs" }, ... }
    */
   getEntity: {
     (key: Hex): Promise<FullEntity>
@@ -106,7 +107,7 @@ export type PublicArkivActions<
    *
    * @param selection - What to include in the results. Omit it (or pass `"*"`) to select everything,
    *   or pass an object to select specific parts (at least one field is required). Every part is
-   *   opt-in, including the `key`. The selection is flat — each field maps to a field of the result.
+   *   opt-in, including the `$key`. The selection is flat — each field maps to a field of the result.
    *   {@link SelectArg}
    * @returns A SelectQueryBuilder instance for building and executing queries. {@link SelectQueryBuilder}
    *
@@ -121,9 +122,9 @@ export type PublicArkivActions<
    *   chain: tiramisu,
    *   transport: http(),
    * })
-   * // through a schema — rows typed { key: Hex; author: AddrValue; title: StrValue }
+   * // through a schema — rows typed { $key: Hex; author: AddrValue; title: StrValue }
    * await client
-   *   .select({ key: true, author: true, title: true })
+   *   .select({ $key: true, author: true, title: true })
    *   .from(Posts)
    *   .where(and(eq("category", "docs"), gt("score", dec("4.0"))))
    *   .fetch()
@@ -131,8 +132,8 @@ export type PublicArkivActions<
    * await client.select().from(Posts).where(eq("category", "docs")).fetch()
    *
    * // the same selection without a schema — rows typed
-   * // { key: Hex; author: ArkivValue | undefined; title: ArkivValue | undefined }
-   * await client.select({ key: true, author: true, title: true }).where(eq("category", "docs")).fetch()
+   * // { $key: Hex; author: ArkivValue | undefined; title: ArkivValue | undefined }
+   * await client.select({ $key: true, author: true, title: true }).where(eq("category", "docs")).fetch()
    */
   select: {
     /**
@@ -143,11 +144,11 @@ export type PublicArkivActions<
      * Pick the fields to return. Set the ones you want to `true` (at least one is required); the
      * result is typed to exactly those fields, so reading anything else is a compile error.
      *
-     * Entity fields: `key`, `owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt` and
-     * `creationFlags`. `attributes` reads the attributes as a map — `true` for all, or a map of
-     * names for some — and `attributeSchema` their types and indexing. Any other name is an
-     * attribute, read as a field of its own: untyped without a schema, and through one typed and
-     * checked as the column it must be.
+     * Entity fields start with `$`: `$key`, `$owner`, `$creator`, `$createdAt`, `$updatedAt`,
+     * `$expiresAt` and `$creationFlags`. `$attributes` reads every attribute as a map, and
+     * `$attributeSchema` their types and indexing. Any other name is an attribute, read as a field
+     * of its own: untyped without a schema, and through one typed and checked as the column it
+     * must be. An attribute name cannot start with `$`, so the two never collide.
      *
      * Pass the selection inline so its fields stay literal `true`. A selection stored in a `let`/
      * `const` variable widens to `boolean`, and one typed {@link SelectArg} is only known at
@@ -155,13 +156,13 @@ export type PublicArkivActions<
      * optional — a {@link PartialRow}. Annotate a stored selection `as const` to keep it narrow.
      *
      * @example
-     * client.select({ key: true, title: true })               // { key: Hex; title: ArkivValue | undefined }
-     * client.select({ key: true, title: true }).from(Posts)  // { key: Hex; title: StrValue }
-     * client.select({ owner: true, attributes: true })        // { owner: Hex; attributes: Attributes }
-     * client.select({ key: true, attributeSchema: true })     // what shape is the data?
+     * client.select({ $key: true, title: true })               // { $key: Hex; title: ArkivValue | undefined }
+     * client.select({ $key: true, title: true }).from(Posts)  // { $key: Hex; title: StrValue }
+     * client.select({ $owner: true, $attributes: true })      // { $owner: Hex; $attributes: Attributes }
+     * client.select({ $key: true, $attributeSchema: true })   // what shape is the data?
      */
     <const S extends SelectArg>(
-      selection: S & NonEmptySelection<S>,
+      selection: S & NonEmptySelection<S> & KnownSystemFields<S>,
     ): SelectQueryBuilder<SelectionOf<S>>
   }
 
@@ -191,10 +192,10 @@ export type PublicArkivActions<
    *   transport: http(),
    * })
    * const page = await client.query(and(eq("category", "docs"), gte("level", i32(10))), {
-   *   select: { key: true, title: true },
+   *   select: { $key: true, title: true },
    *   limit: 100,
    * })
-   * // { entities: [{ key: Hex; title: ArkivValue | undefined }], cursor: "b64:…", blockNumber: 32223n }
+   * // { entities: [{ $key: Hex; title: ArkivValue | undefined }], cursor: "b64:…", blockNumber: 32223n }
    *
    * // The raw form, unchecked:
    * await client.query("category = str('docs') AND level >= i32(10)")
