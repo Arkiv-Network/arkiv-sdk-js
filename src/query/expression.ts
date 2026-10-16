@@ -141,7 +141,7 @@ type ValueRef<N extends string, V> = {
  * Every other system attribute (`$createdAt`, `$updatedAt`, `$creationFlags`) is returned in
  * query results but is not indexed, so it cannot appear in a predicate.
  */
-export const QUERYABLE_SYSTEM_ATTRIBUTES = {
+const QUERYABLE_SYSTEM_ATTRIBUTES = {
   $key: "key",
   $owner: "addr",
   $creator: "addr",

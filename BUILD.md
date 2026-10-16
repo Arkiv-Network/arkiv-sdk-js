@@ -23,7 +23,6 @@ The build uses **tsdown** configured in `tsdown.config.ts`:
 - **Type declarations** - Automatically generates `.d.ts` (ESM) and `.d.cts` (CommonJS) files
 - **Source maps** - Includes `.js.map` and `.d.ts.map` files for debugging
 - **Platform neutral** - Supports both browser and Node.js environments
-- **External dependencies** - Properly handles external packages like `brotli-wasm`
 
 ## Scripts
 

@@ -39,7 +39,7 @@ import { describeEntityRevert } from "./revert"
 
 const logger = getLogger("utils:arkiv-transactions")
 
-export const ENTITY_ERRORS_ABI = parseAbi([
+const ENTITY_ERRORS_ABI = parseAbi([
   // Batch and operation framing.
   "error EmptyBatch()",
   "error InvalidOpType(uint8 operation)",

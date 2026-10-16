@@ -1,4 +1,4 @@
-import type { Hex, PublicRpcSchema } from "viem"
+import type { Hex } from "viem"
 
 /**
  * An attribute as the node renders it: the name, the type **tag** (not the wire typeId), and the
@@ -107,5 +107,3 @@ export type ArkivRpcSchema = [
     ReturnType: number
   },
 ]
-
-export type PublicArkivRpcSchema = [...PublicRpcSchema, ...ArkivRpcSchema]

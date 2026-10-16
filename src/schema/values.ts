@@ -602,7 +602,7 @@ export function toValue(input: ValueInput, attributeName?: string): ArkivValue {
  *
  * @throws {InvalidValueError} If the input does not make a valid value of type `tag`.
  */
-export function toTypedValue(tag: TypeTag, input: unknown): ArkivValue {
+function toTypedValue(tag: TypeTag, input: unknown): ArkivValue {
   if (isArkivValue(input)) {
     const value = revalidate(input)
     if (value.type !== tag) {
