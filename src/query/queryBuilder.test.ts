@@ -4,6 +4,7 @@ import type { ArkivClient } from "../clients/baseClient"
 import { NoMoreResultsError } from "../errors"
 import {
   type AddrValue,
+  type ArkivValue,
   type Attributes,
   addr,
   type BytesValue,
@@ -524,20 +525,25 @@ describe("through a schema", () => {
     expect(options).toMatchObject({ limit: "0x5", cursor: "0xc0", atBlock: "0x7" })
   })
 
-  it("will not iterate a column selection that never names its schema", () => {
-    const { client } = makeClient()
-    const iterate = async () => {
-      // @ts-expect-error - the selection names columns, so from() is required
-      for await (const entry of select(client, { title: true }).where(eq("a", 1))) void entry
-    }
-    expect(iterate).toBeFunction()
-  })
+  it("reads the same selection without a schema, untyped and unchecked", async () => {
+    const misfit = { key: KEY, attributes: [{ name: "title", type: "i32", value: 7 }] }
+    const { client, request } = makeClient({ blockNumber: "0x1", data: [row, misfit] })
+    const page = await select(client, { key: true, title: true, body: true })
+      .where(eq("category", "docs"))
+      .fetch()
 
-  it("rejects a column selection that never names its schema", async () => {
-    const { client } = makeClient()
-    const builder = select(client, { key: true, title: true }).where(eq("category", "docs"))
-    // @ts-expect-error - the selection names columns, so from() is required
-    await expect(builder.fetch()).rejects.toThrow(/\.from\(schema\)/)
+    expect(sent(request).options.select).toMatchObject({
+      key: true,
+      attributes: { title: true, body: true },
+    })
+    // The same flat rows as through a schema; without one, nothing is checked, so the misfit
+    // comes back as it is and a missing attribute as undefined.
+    expect(page.entities).toEqual([
+      { key: KEY, title: str("Hello"), body: bytes("0x2348") },
+      { key: KEY, title: i32(7), body: undefined },
+    ])
+    const title: ArkivValue | undefined = page.entities[0]?.title
+    expect(title).toEqual(str("Hello"))
   })
 
   it("throws on a mismatch by default, and skips it with onMismatch: skip", async () => {
