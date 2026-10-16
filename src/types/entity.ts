@@ -25,14 +25,13 @@ export type EntityFields = {
 }
 
 /**
- * An entity as it comes back from a query run without a schema.
+ * An entity as the node returns it, decoded: the fields a query selected, with its attributes as a
+ * map keyed by name. Which fields are populated is decided by the selection, so each may be
+ * `undefined`.
  *
- * Which fields are populated is decided by the query's selection — `select({ key: true })` gives
- * back an entity carrying only its key. The static type of a `select()` result is narrowed to
- * exactly the selected fields, so in typed code the `undefined`s here are not reachable.
- *
- * A query run through a schema — `select(...).from(schema)` — returns flat rows instead, with each
- * column a field of its own.
+ * Queries do not return these: `select()`, `query()` and `getEntity()` lay each one out as a flat
+ * row — the selected entity fields and attributes side by side, typed by the selection and, through
+ * a schema, by its columns.
  */
 export class Entity implements EntityFields {
   key: Hex | undefined

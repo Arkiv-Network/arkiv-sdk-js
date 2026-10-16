@@ -45,7 +45,7 @@ const unwatch = publicClient.watchEntityEvents({
 // see created:
 //
 //   const expiringSoon = await publicClient
-//     .select({ key: true, expiresAt: true })
+//     .select({ $key: true, $expiresAt: true })
 //     .where(lt("$expiresAt", u64(await publicClient.getBlockNumber() + 1000n)))
 //     .fetch()
 

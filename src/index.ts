@@ -17,14 +17,26 @@ export * from "./errors"
 // types referenced by the public client, must be reachable from the package root
 // see #106
 export type {
-  EntitySelection,
+  AttributeRef,
+  DynamicSelection,
   Expression,
+  FromOptions,
   FullEntity,
-  ProjectedEntity,
+  FullRow,
+  KnownSystemFields,
+  NonEmptySelection,
+  PartialRow,
   QueryResult,
+  ResultOf,
+  Row,
+  SchemaRef,
   SelectArg,
+  Selected,
+  Selection,
+  SelectionOf,
+  SystemField,
 } from "./query"
-export { SelectQueryBuilder } from "./query"
+export { SelectQueryBuilder, SYSTEM_FIELDS } from "./query"
 // schemas and the attribute type system
 export * from "./schema"
 // re-export arkiv types in main index file

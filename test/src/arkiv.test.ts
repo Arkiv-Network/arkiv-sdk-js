@@ -1,20 +1,61 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test"
-import type { EntityEvent, PublicArkivClient, WalletArkivClient } from "@arkiv-network/sdk"
+import type {
+  CreateEntityValues,
+  CreationFlags,
+  EntityEvent,
+  Expiry,
+  PublicArkivClient,
+  Schema,
+  WalletArkivClient,
+} from "@arkiv-network/sdk"
 import {
   createPublicClient,
   createWalletClient,
   EntityMutationError,
   ExpirationTime,
-  jsonToPayload,
   MAX_EXPIRES_AT,
   NoEntityFoundError,
   predictEntityKey,
-  stringToPayload,
+  SchemaMismatchError,
 } from "@arkiv-network/sdk"
-import { addr, bool, bytes32, i32, key, str, u64 } from "@arkiv-network/sdk/attr"
-import { and, eq, gt, gte, lt, lte, not, or, startsWith } from "@arkiv-network/sdk/query"
+import {
+  and,
+  type Expression,
+  eq,
+  exists,
+  gt,
+  gte,
+  InvalidPredicateError,
+  lt,
+  lte,
+  not,
+  or,
+  type SchemaRef,
+  startsWith,
+} from "@arkiv-network/sdk/query"
+import {
+  addr,
+  bool,
+  bytes,
+  bytes32,
+  dec,
+  defineSchema,
+  i32,
+  key,
+  str,
+  u64,
+  u256,
+} from "@arkiv-network/sdk/schema"
 import type { StartedTestContainer } from "testcontainers"
-import { checksumAddress, type Hex, http, parseEther, toBytes, webSocket } from "viem"
+import {
+  checksumAddress,
+  type Hex,
+  hexToString,
+  http,
+  parseEther,
+  stringToBytes,
+  webSocket,
+} from "viem"
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts"
 import { execCommand, launchLocalArkivNode } from "./utils.js"
 
@@ -29,6 +70,16 @@ const transports: TransportName[] = ["http", "webSocket"]
 const LIFETIME = ExpirationTime.fromBlocks(10_000)
 
 const SOMEONE_ELSE = checksumAddress("0x1231231231231231231231231231231231231231")
+
+/**
+ * The general-purpose schema most tests write through: an indexed tag to find an entity by, and an
+ * unindexed body and content type standing in for what used to be the payload.
+ */
+const Notes = defineSchema({
+  tag: str().indexed().optional(),
+  body: bytes().optional(),
+  mimeType: str().default("text/plain"),
+})
 
 describe("Arkiv Integration Tests for public client", () => {
   let arkivNode: StartedTestContainer | undefined
@@ -109,29 +160,22 @@ describe("Arkiv Integration Tests for public client", () => {
     }
   })
 
-  async function createEntityForTest(
-    transport: TransportName,
-    options: { payload?: string; attribute?: { name: string; value: string } } = {},
-  ) {
-    const payload = options.payload ?? "Hello world"
-
+  async function createEntityForTest(transport: TransportName) {
     if (arkivNode) {
+      // TODO: the CLI in the dev image still speaks payload/content-type. Switch this to its
+      // column syntax once the node ships user-defined columns.
       const command = [
         "arkiv-cli",
         "--private-key",
         privateKey,
         "create",
         "--payload",
-        payload,
+        "Hello world",
         "--content-type",
         "text/plain",
         "--min-lifetime",
         "10000",
       ]
-
-      if (options.attribute) {
-        command.push("--attributes", `${options.attribute.name}:string=${options.attribute.value}`)
-      }
 
       const result = await execCommand(arkivNode, command)
       const match = result.match(/entity_key:(.*)/)
@@ -143,28 +187,25 @@ describe("Arkiv Integration Tests for public client", () => {
       return match[1].trim() as Hex
     }
 
-    const { entityKey } = await clients(transport).write.createEntity({
-      payload: toBytes(payload),
-      contentType: "text/plain",
-      attributes: options.attribute ? { [options.attribute.name]: options.attribute.value } : {},
-      expires: LIFETIME,
-    })
+    const { entityKey } = await clients(transport).write.createEntity(
+      Notes,
+      { body: stringToBytes("Hello world") },
+      { expires: LIFETIME },
+    )
 
     return entityKey
   }
 
   /** Creates one entity through the SDK and waits for it to land. */
-  async function create(
+  async function create<S extends Schema>(
     transport: TransportName,
-    attributes: Parameters<WalletArkivClient["createEntity"]>[0]["attributes"],
-    options: { payload?: Uint8Array; flags?: { readonly?: boolean } } = {},
+    schema: S,
+    values: CreateEntityValues<S>,
+    options: { flags?: CreationFlags; expires?: Expiry } = {},
   ) {
     const { read, write } = clients(transport)
-    const created = await write.createEntity({
-      payload: options.payload ?? jsonToPayload({ entity: { entityType: "test" } }),
-      contentType: "application/json",
-      attributes,
-      expires: LIFETIME,
+    const created = await write.createEntity(schema, values, {
+      expires: options.expires ?? LIFETIME,
       ...(options.flags ? { flags: options.flags } : {}),
     })
     const receipt = await read.waitForTransactionReceipt({ hash: created.txHash })
@@ -212,16 +253,14 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const entity = await read.getEntity(testKey)
 
-      expect(entity.key).toBe(testKey)
-      expect(entity.toText()).toBe("Hello world")
-      expect(entity.contentType).toBe("text/plain")
-      expect(entity.attributes).toBeDefined()
-      expect(entity.owner).toBe(account.address)
-      expect(entity.creator).toBe(account.address)
-      expect(entity.expiresAt).toBeGreaterThan(entity.createdAt)
-      expect(entity.createdAt).toBeGreaterThan(0n)
-      expect(entity.updatedAt).toBe(entity.createdAt)
-      expect(entity.creationFlags).toEqual({
+      expect(entity.$key).toBe(testKey)
+      expect(entity.$attributes).toBeDefined()
+      expect(entity.$owner).toBe(account.address)
+      expect(entity.$creator).toBe(account.address)
+      expect(entity.$expiresAt).toBeGreaterThan(entity.$createdAt)
+      expect(entity.$createdAt).toBeGreaterThan(0n)
+      expect(entity.$updatedAt).toBe(entity.$createdAt)
+      expect(entity.$creationFlags).toEqual({
         readonly: false,
         permissionlessExtension: false,
         raw: 0,
@@ -234,6 +273,7 @@ describe("Arkiv Integration Tests for public client", () => {
     const nonExistentKey = "0x567b6b2dfe0d9f87f054b9e3282a579630cab0b011643c4912f3b8b172b14fb7"
 
     await expect(read.getEntity(nonExistentKey)).rejects.toThrow(NoEntityFoundError)
+    await expect(read.getEntity(nonExistentKey, Notes)).rejects.toThrow(NoEntityFoundError)
   })
 
   // ---------------------------------------------------------------------------------------------
@@ -244,38 +284,61 @@ describe("Arkiv Integration Tests for public client", () => {
     "an entity is created, patched, extended and deleted over %s",
     async (transport) => {
       const { read, write } = clients(transport)
-
-      const payload = jsonToPayload({ entity: { entityType: "test", entityId: "test" } })
-      const { entityKey, txHash, expiresAt } = await write.createEntity({
-        payload,
-        contentType: "application/json",
-        attributes: { testkey: "testValue", keeper: i32(7) },
-        expires: LIFETIME,
+      const Lifecycle = defineSchema({
+        testkey: str().indexed().optional(),
+        keeper: i32().indexed(),
+        added: str().indexed().optional(),
+        body: bytes(),
+        mimeType: str(),
       })
+
+      const body = stringToBytes(
+        JSON.stringify({ entity: { entityType: "test", entityId: "test" } }),
+      )
+      const { entityKey, txHash, expiresAt } = await write.createEntity(
+        Lifecycle,
+        { testkey: "testValue", keeper: i32(7), body, mimeType: "application/json" },
+        { expires: LIFETIME },
+      )
       await read.waitForTransactionReceipt({ hash: txHash })
 
-      const entity = await read.getEntity(entityKey)
-      expect(entity.payload).toEqual(payload)
-      expect(entity.attributes.testkey).toEqual(str("testValue"))
-      expect(entity.expiresAt).toBe(expiresAt)
-
-      // Patch: new contents, one attribute set, one unset — and `keeper` left alone
-      const updatedPayload = jsonToPayload({ entity: { entityType: "test2", entityId: "test2" } })
-      const { entityKey: patchedKey, txHash: patchedTx } = await write.patchEntity({
-        entityKey,
-        payload: updatedPayload,
-        contentType: "text/plain",
-        set: { added: str("new") },
-        unset: ["testkey"],
+      const entity = await read.getEntity(entityKey, Lifecycle)
+      expect(entity.body).toEqual(bytes(body))
+      expect(JSON.parse(hexToString(entity.body.value))).toMatchObject({
+        entity: { entityType: "test" },
       })
+      expect(entity.testkey).toEqual(str("testValue"))
+      expect(entity.added).toBeUndefined()
+      expect(entity.$expiresAt).toBe(expiresAt)
+
+      // Patch: new contents, one column set, one unset — and `keeper` left alone
+      const updatedBody = stringToBytes("plain text now")
+      const { entityKey: patchedKey, txHash: patchedTx } = await write.patchEntity(
+        Lifecycle,
+        entityKey,
+        {
+          set: { body: updatedBody, mimeType: "text/plain", added: str("new") },
+          unset: ["testkey"],
+        },
+      )
       await read.waitForTransactionReceipt({ hash: patchedTx })
       expect(patchedKey).toBe(entityKey)
 
-      const patched = await read.getEntity(entityKey)
-      expect(patched.payload).toEqual(updatedPayload)
-      expect(patched.contentType).toBe("text/plain")
-      expect(patched.attributes).toEqual({ added: str("new"), keeper: i32(7) })
-      expect(patched.updatedAt).toBeGreaterThan(patched.createdAt)
+      const patched = await read.getEntity(entityKey, Lifecycle)
+      expect(hexToString(patched.body.value)).toBe("plain text now")
+      expect(patched.mimeType).toEqual(str("text/plain"))
+      expect(patched.added).toEqual(str("new"))
+      expect(patched.keeper).toEqual(i32(7))
+      expect(patched.testkey).toBeUndefined()
+      expect(patched.$updatedAt).toBeGreaterThan(patched.$createdAt)
+
+      // The same entity, read without a schema, holds exactly those attributes.
+      expect((await read.getEntity(entityKey)).$attributes).toEqual({
+        added: str("new"),
+        keeper: i32(7),
+        body: bytes(updatedBody),
+        mimeType: str("text/plain"),
+      })
 
       const { txHash: extendedTx, expiresAt: extendedExpiresAt } = await write.extendEntity({
         entityKey,
@@ -283,7 +346,7 @@ describe("Arkiv Integration Tests for public client", () => {
       })
       await read.waitForTransactionReceipt({ hash: extendedTx })
       expect(extendedExpiresAt).toBeGreaterThan(expiresAt)
-      expect((await read.getEntity(entityKey)).expiresAt).toBe(extendedExpiresAt)
+      expect((await read.getEntity(entityKey)).$expiresAt).toBe(extendedExpiresAt)
 
       // Delete.
       const { txHash: deletedTx } = await write.deleteEntity({ entityKey })
@@ -296,7 +359,7 @@ describe("Arkiv Integration Tests for public client", () => {
   test(
     "transferring an entity moves it to the new owner and keeps its creator",
     async () => {
-      const { entityKey } = await create("http", { testkey: "testValue" })
+      const { entityKey } = await create("http", Notes, { tag: "testValue" })
 
       const { entityKey: changedKey, txHash } = await walletClient.changeOwnership({
         entityKey,
@@ -306,9 +369,9 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(changedKey).toBe(entityKey)
 
       const entity = await publicClient.getEntity(entityKey)
-      expect(entity.owner).toBe(SOMEONE_ELSE)
+      expect(entity.$owner).toBe(SOMEONE_ELSE)
       // The creator is fixed at creation and survives a transfer.
-      expect(entity.creator).toBe(account.address)
+      expect(entity.$creator).toBe(account.address)
 
       // And the entity is no longer ours to change.
       await expect(walletClient.deleteEntity({ entityKey })).rejects.toThrow(EntityMutationError)
@@ -321,19 +384,20 @@ describe("Arkiv Integration Tests for public client", () => {
     async () => {
       const { entityKey } = await create(
         "http",
-        { flagged: str("yes") },
+        Notes,
+        { tag: str("yes") },
         { flags: { readonly: true } },
       )
 
       const entity = await publicClient.getEntity(entityKey)
-      expect(entity.creationFlags).toEqual({
+      expect(entity.$creationFlags).toEqual({
         readonly: true,
         permissionlessExtension: false,
         raw: 1,
       })
 
       await expect(
-        walletClient.patchEntity({ entityKey, set: { flagged: str("no") } }),
+        walletClient.patchEntity(Notes, entityKey, { set: { tag: str("no") } }),
       ).rejects.toThrow(/readonly/)
       const { txHash } = await walletClient.extendEntity({
         entityKey,
@@ -347,14 +411,14 @@ describe("Arkiv Integration Tests for public client", () => {
   test(
     "a permanent entity expires at a block no chain will reach",
     async () => {
-      const { entityKey, txHash } = await walletClient.createEntity({
-        payload: stringToPayload("forever"),
-        contentType: "text/plain",
-        expires: ExpirationTime.permanent(),
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const { entityKey } = await create(
+        "http",
+        Notes,
+        { body: stringToBytes("forever") },
+        { expires: ExpirationTime.permanent() },
+      )
 
-      expect((await publicClient.getEntity(entityKey)).expiresAt).toBe(MAX_EXPIRES_AT)
+      expect((await publicClient.getEntity(entityKey)).$expiresAt).toBe(MAX_EXPIRES_AT)
     },
     { timeout: 20000 },
   )
@@ -369,9 +433,8 @@ describe("Arkiv Integration Tests for public client", () => {
       // Five entities to operate on, created in one batch rather than five transactions.
       const seed = await walletClient.executeBatch({
         creates: Array.from({ length: 5 }, () => ({
-          payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
-          contentType: "application/json" as const,
-          attributes: { testkey: "testValue" },
+          schema: Notes,
+          values: { tag: "testValue" },
           expires: LIFETIME,
         })),
       })
@@ -383,20 +446,12 @@ describe("Arkiv Integration Tests for public client", () => {
       }
 
       const result = await walletClient.executeBatch({
-        creates: [
-          {
-            payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
-            contentType: "application/json",
-            attributes: { testkey: "testValue" },
-            expires: LIFETIME,
-          },
-        ],
+        creates: [{ schema: Notes, values: { tag: "testValue" }, expires: LIFETIME }],
         patches: [
           {
+            schema: Notes,
             entityKey: toPatch,
-            payload: jsonToPayload({ entity: { entityType: "test", entityId: "patched" } }),
-            contentType: "application/json",
-            set: { testkey: "patchedValue" },
+            set: { tag: "patchedValue", body: stringToBytes("patched") },
           },
         ],
         deletes: [{ entityKey: toDeleteA }, { entityKey: toDeleteB }],
@@ -412,14 +467,77 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(result.ownershipChanges).toEqual([toTransfer])
 
       // The returned lists say what was asked for; the chain says what happened.
-      expect((await publicClient.getEntity(toPatch)).attributes.testkey).toEqual(
-        str("patchedValue"),
-      )
+      const patched = await publicClient.getEntity(toPatch, Notes)
+      expect(patched.tag).toEqual(str("patchedValue"))
+      expect(patched.body).toEqual(bytes(stringToBytes("patched")))
       await expect(publicClient.getEntity(toDeleteA)).rejects.toThrow(NoEntityFoundError)
       await expect(publicClient.getEntity(toDeleteB)).rejects.toThrow(NoEntityFoundError)
-      expect((await publicClient.getEntity(toTransfer)).owner).toBe(SOMEONE_ELSE)
+      expect((await publicClient.getEntity(toTransfer)).$owner).toBe(SOMEONE_ELSE)
     },
     { timeout: 60000 },
+  )
+
+  test(
+    "a batch can write entities of several schemas at once",
+    async () => {
+      const group = `mixed-${crypto.randomUUID()}`
+      // Named, so each tags its entities and a query through it sees only its own.
+      const Authors = defineSchema("authors", { group: str().indexed(), name: str() })
+      const Books = defineSchema("books", {
+        group: str().indexed(),
+        title: str(),
+        pages: i32().indexed(),
+      })
+
+      const batch = await walletClient.executeBatch({
+        creates: [
+          { schema: Authors, values: { group, name: "Ursula" }, expires: LIFETIME },
+          {
+            schema: Books,
+            values: { group, title: "The Dispossessed", pages: 387 },
+            expires: LIFETIME,
+          },
+        ],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      const [author, book] = batch.createdEntities as [Hex, Hex]
+
+      expect((await publicClient.getEntity(author, Authors)).name).toEqual(str("Ursula"))
+      expect((await publicClient.getEntity(book, Books)).pages).toEqual(i32(387))
+      // Read by key through the wrong schema, the tag gives the entity away.
+      await expect(publicClient.getEntity(author, Books)).rejects.toThrow(SchemaMismatchError)
+
+      // Both entities carry `group`, but the tag filter keeps the author out of a Books query.
+      const books = await publicClient
+        .select({ $key: true, title: true })
+        .from(Books)
+        .where(eq("group", group))
+        .fetch()
+      expect(books.entities.map((row) => row.$key)).toEqual([book])
+      // A named schema needs no other filter to list its entities.
+      const everyBook = await publicClient.select({ $key: true }).from(Books).fetch()
+      expect(everyBook.entities.map((row) => row.$key)).toContain(book)
+      expect(everyBook.entities.map((row) => row.$key)).not.toContain(author)
+
+      // An unnamed schema types a query without filtering it: the author matches `group` too,
+      // and does not fit — which fails the fetch by default, or is skipped on request.
+      const UntaggedBooks = defineSchema({ group: str().indexed(), title: str() })
+      await expect(
+        publicClient
+          .select({ $key: true, title: true })
+          .from(UntaggedBooks)
+          .where(eq("group", group))
+          .fetch(),
+      ).rejects.toThrow(SchemaMismatchError)
+      const skipped = await publicClient
+        .select({ $key: true, title: true })
+        .from(UntaggedBooks, { onMismatch: "skip" })
+        .where(eq("group", group))
+        .fetch()
+      expect(skipped.entities.map((row) => row.$key)).toEqual([book])
+      expect(skipped.skipped).toBe(1)
+    },
+    { timeout: 30000 },
   )
 
   test(
@@ -433,9 +551,8 @@ describe("Arkiv Integration Tests for public client", () => {
         walletClient.executeBatch({
           creates: [
             {
-              payload: stringToPayload("should never exist"),
-              contentType: "text/plain",
-              attributes: { atomicmarker: marker },
+              schema: Notes,
+              values: { tag: marker, body: stringToBytes("should never exist") },
               expires: LIFETIME,
             },
           ],
@@ -444,8 +561,9 @@ describe("Arkiv Integration Tests for public client", () => {
       ).rejects.toThrow(EntityMutationError)
 
       const survivors = await publicClient
-        .select({ key: true })
-        .where(eq("atomicmarker", str(marker)))
+        .select({ $key: true })
+        .from(Notes)
+        .where(eq("tag", str(marker)))
         .fetch()
       expect(survivors.entities).toHaveLength(0)
     },
@@ -458,7 +576,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const ghost = "0x1111111111111111111111111111111111111111111111111111111111111111" as Hex
 
       for (const operation of [
-        () => walletClient.patchEntity({ entityKey: ghost, set: { a: str("x") } }),
+        () => walletClient.patchEntity(Notes, ghost, { set: { tag: str("x") } }),
         () => walletClient.deleteEntity({ entityKey: ghost }),
         () => walletClient.extendEntity({ entityKey: ghost, expires: LIFETIME }),
       ]) {
@@ -466,7 +584,7 @@ describe("Arkiv Integration Tests for public client", () => {
       }
 
       // An extension that would shorten the entity's life is refused by the node
-      const { entityKey } = await create("http", { shortener: str("no") })
+      const { entityKey } = await create("http", Notes, { tag: str("no") })
       const soon = ExpirationTime.atBlock((await publicClient.getBlockNumber()) + 5n)
       await expect(walletClient.extendEntity({ entityKey, expires: soon })).rejects.toThrow(
         EntityMutationError,
@@ -483,28 +601,32 @@ describe("Arkiv Integration Tests for public client", () => {
     "a query finds entities by attribute, owner and creator",
     async () => {
       const value = `query-${crypto.randomUUID()}`
-      const { entityKey } = await create("http", { name: str(value) })
-      const matches = eq("name", str(value))
+      const { entityKey } = await create("http", Notes, { tag: str(value) })
+      const matches = eq("tag", str(value))
 
-      const byAttribute = await publicClient.select({ key: true }).where(matches).fetch()
-      expect(byAttribute.entities.map((e) => e.key)).toEqual([entityKey])
+      const byAttribute = await publicClient
+        .select({ $key: true })
+        .from(Notes)
+        .where(matches)
+        .fetch()
+      expect(byAttribute.entities.map((e) => e.$key)).toEqual([entityKey])
 
       const byOwner = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .ownedBy(account.address)
         .fetch()
       expect(byOwner.entities).toHaveLength(1)
 
       const byCreator = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .createdBy(account.address)
         .fetch()
       expect(byCreator.entities).toHaveLength(1)
 
       const byBoth = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .ownedBy(account.address)
         .createdBy(account.address)
@@ -512,17 +634,17 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(byBoth.entities).toHaveLength(1)
 
       const byStranger = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(matches)
         .createdBy("0x0000000000000000000000000000000000000000")
         .fetch()
       expect(byStranger.entities).toHaveLength(0)
 
       const byKey = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
         .where(eq("$key", key(entityKey)))
         .fetch()
-      expect(byKey.entities.map((e) => e.key)).toEqual([entityKey])
+      expect(byKey.entities.map((e) => e.$key)).toEqual([entityKey])
     },
     { timeout: 30000 },
   )
@@ -531,77 +653,91 @@ describe("Arkiv Integration Tests for public client", () => {
     "a projection returns exactly the fields it asked for",
     async () => {
       const value = `projection-${crypto.randomUUID()}`
-      await create("http", { testkey: str(value) })
-      const where = eq("testkey", str(value))
+      const body = stringToBytes(JSON.stringify({ entity: { entityType: "test" } }))
+      await create("http", Notes, { tag: str(value), body, mimeType: "application/json" })
+      const where = eq("tag", str(value))
 
       // key only — the result type is narrowed to exactly { key }, and the RPC must actually omit
       // the rest rather than merely typing it away. That over-fetch guarantee is what select()
       // exists for, so it is asserted at runtime too.
-      const keyOnly = await publicClient.select({ key: true }).where(where).fetch()
-      expect(keyOnly.entities[0]?.key).toBeDefined()
+      const keyOnly = await publicClient.select({ $key: true }).where(where).fetch()
+      expect(keyOnly.entities[0]?.$key).toBeDefined()
       // @ts-expect-error owner was not selected
-      expect(keyOnly.entities[0]?.owner).toBeUndefined()
+      expect(keyOnly.entities[0]?.$owner).toBeUndefined()
       // @ts-expect-error attributes were not selected
-      expect(keyOnly.entities[0]?.attributes).toBeUndefined()
-      // @ts-expect-error payload was not selected
-      expect(keyOnly.entities[0]?.payload).toBeUndefined()
-      // @ts-expect-error contentType was not selected
-      expect(keyOnly.entities[0]?.contentType).toBeUndefined()
+      expect(keyOnly.entities[0]?.$attributes).toBeUndefined()
       // @ts-expect-error creator was not selected
-      expect(keyOnly.entities[0]?.creator).toBeUndefined()
+      expect(keyOnly.entities[0]?.$creator).toBeUndefined()
       // @ts-expect-error expiresAt was not selected
-      expect(keyOnly.entities[0]?.expiresAt).toBeUndefined()
+      expect(keyOnly.entities[0]?.$expiresAt).toBeUndefined()
       // @ts-expect-error createdAt was not selected
-      expect(keyOnly.entities[0]?.createdAt).toBeUndefined()
+      expect(keyOnly.entities[0]?.$createdAt).toBeUndefined()
       // @ts-expect-error updatedAt was not selected
-      expect(keyOnly.entities[0]?.updatedAt).toBeUndefined()
+      expect(keyOnly.entities[0]?.$updatedAt).toBeUndefined()
 
-      // payload only — toText()/toJson() appear on the type only when payload was selected
-      const payloadOnly = await publicClient.select({ payload: true }).where(where).fetch()
-      expect(payloadOnly.entities[0]?.payload.length).toBeGreaterThan(0)
-      expect(payloadOnly.entities[0]?.toJson()).toMatchObject({ entity: { entityType: "test" } })
-
-      const metadataOnly = await publicClient.select({
-        owner: true,
-        creator: true,
-        contentType: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true,
-        creationFlags: true,
-      }).where(where).fetch()
-      expect(metadataOnly.entities[0]?.owner).toBe(account.address)
-      expect(metadataOnly.entities[0]?.creator).toBe(account.address)
-      expect(metadataOnly.entities[0]?.contentType).toBe("application/json")
-      expect(metadataOnly.entities[0]?.expiresAt).toBeGreaterThan(0n)
-      expect(metadataOnly.entities[0]?.createdAt).toBeGreaterThan(0n)
-      expect(metadataOnly.entities[0]?.updatedAt).toBeGreaterThan(0n)
-      expect(metadataOnly.entities[0]?.creationFlags.raw).toBe(0)
-      // @ts-expect-error attributes were not selected
-      expect(metadataOnly.entities[0]?.attributes).toBeUndefined()
-
-      const attributesOnly = await publicClient.select({ attributes: true }).where(where).fetch()
-      expect(attributesOnly.entities[0]?.attributes.testkey).toEqual(str(value))
-      // @ts-expect-error key was not selected
-      expect(attributesOnly.entities[0]?.key).toBeUndefined()
-
-      // The schema projection names the types without paying for the values.
-      const schemaOnly = await publicClient.select({ attributeSchema: true }).where(where).fetch()
-      expect(schemaOnly.entities[0]?.attributeSchema).toEqual({ testkey: "str" })
-
-      // Attributes can be narrowed to just the names you want.
-      const oneAttribute = await publicClient
-        .select({ key: true, attributes: { testkey: true } })
+      const metadataOnly = await publicClient
+        .select({
+          $owner: true,
+          $creator: true,
+          $expiresAt: true,
+          $createdAt: true,
+          $updatedAt: true,
+          $creationFlags: true,
+        })
         .where(where)
         .fetch()
-      expect(oneAttribute.entities[0]?.attributes).toEqual({ testkey: str(value) })
+      expect(metadataOnly.entities[0]?.$owner).toBe(account.address)
+      expect(metadataOnly.entities[0]?.$creator).toBe(account.address)
+      expect(metadataOnly.entities[0]?.$expiresAt).toBeGreaterThan(0n)
+      expect(metadataOnly.entities[0]?.$createdAt).toBeGreaterThan(0n)
+      expect(metadataOnly.entities[0]?.$updatedAt).toBeGreaterThan(0n)
+      expect(metadataOnly.entities[0]?.$creationFlags.raw).toBe(0)
+      // @ts-expect-error attributes were not selected
+      expect(metadataOnly.entities[0]?.$attributes).toBeUndefined()
+
+      const attributesOnly = await publicClient.select({ $attributes: true }).where(where).fetch()
+      expect(attributesOnly.entities[0]?.$attributes.tag).toEqual(str(value))
+      // @ts-expect-error key was not selected
+      expect(attributesOnly.entities[0]?.$key).toBeUndefined()
+
+      // The schema projection names the types and indexing without paying for the values.
+      const schemaOnly = await publicClient.select({ $attributeSchema: true }).where(where).fetch()
+      expect(schemaOnly.entities[0]?.$attributeSchema).toEqual({
+        tag: { type: "str", indexed: true },
+        body: { type: "bytes", indexed: false },
+        mimeType: { type: "str", indexed: false },
+      })
+
+      // Attributes are selected by name, each as a field of its own.
+      const oneAttribute = await publicClient.select({ $key: true, tag: true }).where(where).fetch()
+      expect(oneAttribute.entities[0]?.tag).toEqual(str(value))
+      expect(oneAttribute.entities[0]).not.toHaveProperty("$attributes")
 
       // No selection at all is every field.
       const everything = await publicClient.select().where(where).fetch()
-      expect(everything.entities[0]?.key).toBeDefined()
-      expect(everything.entities[0]?.owner).toBe(account.address)
-      expect(everything.entities[0]?.attributes.testkey).toEqual(str(value))
-      expect(everything.entities[0]?.payload.length).toBeGreaterThan(0)
+      expect(everything.entities[0]?.$key).toBeDefined()
+      expect(everything.entities[0]?.$owner).toBe(account.address)
+      expect(everything.entities[0]?.$attributes.tag).toEqual(str(value))
+      expect(everything.entities[0]?.$attributes.body).toEqual(bytes(body))
+
+      // Through the schema, entity fields and columns sit side by side in one flat row.
+      const rows = await publicClient
+        .select({ $key: true, $owner: true, body: true })
+        .from(Notes)
+        .where(where)
+        .fetch()
+      const row = rows.entities[0]
+      if (!row) throw new Error("no row returned through the schema")
+      expect(row.$owner).toBe(account.address)
+      expect(row.body).toEqual(bytes(body))
+      // @ts-expect-error mimeType was not selected
+      expect(row.mimeType).toBeUndefined()
+
+      // And everything through the schema is every field and every column.
+      const fullRow = (await publicClient.select().from(Notes).where(where).fetch()).entities[0]
+      expect(fullRow?.mimeType).toEqual(str("application/json"))
+      expect(fullRow?.tag).toEqual(str(value))
+      expect(fullRow?.$creator).toBe(account.address)
     },
     { timeout: 30000 },
   )
@@ -610,25 +746,28 @@ describe("Arkiv Integration Tests for public client", () => {
     "the operators the engine supports filter as written",
     async () => {
       const group = `operators-${crypto.randomUUID()}`
+      const Ranges = defineSchema({
+        rangegroup: str().indexed(),
+        rangescore: i32().indexed(),
+        label: str().indexed(),
+      })
       const created = await walletClient.executeBatch({
         creates: [100, 200, 300, 400, 500].map((score) => ({
-          payload: jsonToPayload({ entity: { entityType: "rangetest", entityId: `s-${score}` } }),
-          contentType: "application/json" as const,
-          attributes: { rangegroup: group, rangescore: i32(score), label: str(`score-${score}`) },
+          schema: Ranges,
+          values: { rangegroup: group, rangescore: i32(score), label: str(`score-${score}`) },
           expires: LIFETIME,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
       const inGroup = eq("rangegroup", str(group))
-      const scores = async (predicate: Parameters<typeof and>[0]) => {
+      const scores = async (predicate: Expression<SchemaRef<typeof Ranges>>) => {
         const page = await publicClient
-          .select({ attributes: { rangescore: true } })
+          .select({ rangescore: true })
+          .from(Ranges)
           .where(and(inGroup, predicate))
           .fetch()
-        return page.entities
-          .map((e) => Number(e.attributes.rangescore?.value))
-          .sort((a, b) => a - b)
+        return page.entities.map((row) => row.rangescore.value).sort((a, b) => a - b)
       }
 
       expect(await scores(eq("rangescore", i32(300)))).toEqual([300])
@@ -654,18 +793,22 @@ describe("Arkiv Integration Tests for public client", () => {
       const value = `paging-${crypto.randomUUID()}`
       const created = await walletClient.executeBatch({
         creates: Array.from({ length: 10 }, () => ({
-          payload: jsonToPayload({ entity: { entityType: "test", entityId: "test" } }),
-          contentType: "application/json" as const,
-          attributes: { testkey: value },
+          schema: Notes,
+          values: { tag: value },
           expires: LIFETIME,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
-      const where = eq("testkey", str(value))
+      const where = eq("tag", str(value))
 
       // 6 then 4. `next()` returns a new page rather than mutating this one.
-      const page1 = await publicClient.select({ key: true }).where(where).limit(6).fetch()
+      const page1 = await publicClient
+        .select({ $key: true })
+        .from(Notes)
+        .where(where)
+        .limit(6)
+        .fetch()
       expect(page1.entities).toHaveLength(6)
       expect(page1.hasNextPage()).toBe(true)
 
@@ -676,7 +819,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // 5 then 5 — a full final page is still reported as the last one, because the node omits
       // the cursor rather than leaving it to be guessed from a short page.
-      const evenPage1 = await publicClient.select({ key: true }).where(where).limit(5).fetch()
+      const evenPage1 = await publicClient.select({ $key: true }).where(where).limit(5).fetch()
       expect(evenPage1.entities).toHaveLength(5)
       expect(evenPage1.hasNextPage()).toBe(true)
 
@@ -684,24 +827,24 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(evenPage2.entities).toHaveLength(5)
       expect(evenPage2.hasNextPage()).toBe(false)
 
-      const keys = [...evenPage1.entities, ...evenPage2.entities].map((e) => e.key)
+      const keys = [...evenPage1.entities, ...evenPage2.entities].map((e) => e.$key)
       expect(new Set(keys).size).toBe(10)
 
       // The same walk through the raw form, which takes the cursor by hand.
-      const raw1 = await publicClient.query(`testkey = str('${value}')`, {
-        select: { key: true },
+      const raw1 = await publicClient.query(`tag = str('${value}')`, {
+        select: { $key: true },
         limit: 6,
       })
       expect(raw1.entities).toHaveLength(6)
       expect(raw1.cursor).toBeDefined()
-      const raw2 = await publicClient.query(`testkey = str('${value}')`, {
-        select: { key: true },
+      const raw2 = await publicClient.query(`tag = str('${value}')`, {
+        select: { $key: true },
         limit: 6,
         cursor: raw1.cursor,
       })
       expect(raw2.entities).toHaveLength(4)
       expect(raw2.cursor).toBeUndefined()
-      expect(new Set([...raw1.entities, ...raw2.entities].map((e) => e.key)).size).toBe(10)
+      expect(new Set([...raw1.entities, ...raw2.entities].map((e) => e.$key)).size).toBe(10)
     },
     { timeout: 60000 },
   )
@@ -710,22 +853,19 @@ describe("Arkiv Integration Tests for public client", () => {
     "a raw query string goes to the node as written",
     async () => {
       const value = `raw-${crypto.randomUUID()}`
-      const { entityKey } = await create("http", { name: str(value) })
-      const queryString = `name = str('${value}') AND $owner = addr(${account.address})`
+      const { entityKey } = await create("http", Notes, { tag: str(value) })
+      const queryString = `tag = str('${value}') AND $owner = addr(${account.address})`
 
       // No selection: full entities.
       const full = await publicClient.query(queryString)
-      expect(full.entities.map((e) => e.key)).toEqual([entityKey])
-      expect(full.entities[0]?.owner).toBe(account.address)
+      expect(full.entities.map((e) => e.$key)).toEqual([entityKey])
+      expect(full.entities[0]?.$owner).toBe(account.address)
       expect(full.blockNumber).toBeGreaterThan(0n)
       expect(full.cursor).toBeUndefined()
 
       // A selection narrows what the node sends back, raw query or not.
-      const projected = await publicClient.query(queryString, { select: { key: true } })
-      expect(projected.entities[0]?.key).toBe(entityKey)
-      expect(projected.entities[0]?.owner).toBeUndefined()
-      expect(projected.entities[0]?.payload).toBeUndefined()
-      expect(projected.entities[0]?.contentType).toBeUndefined()
+      const projected = await publicClient.query(queryString, { select: { $key: true, tag: true } })
+      expect(projected.entities).toEqual([{ $key: entityKey, tag: str(value) }])
     },
     { timeout: 30000 },
   )
@@ -734,13 +874,13 @@ describe("Arkiv Integration Tests for public client", () => {
     "a query reads the state a past block had",
     async () => {
       const value = `history-${crypto.randomUUID()}`
-      const { entityKey, blockNumber: createdAt } = await create("http", {
+      const History = defineSchema({ historygroup: str().indexed(), version: i32().indexed() })
+      const { entityKey, blockNumber: createdAt } = await create("http", History, {
         historygroup: str(value),
         version: i32(1),
       })
 
-      const { txHash } = await walletClient.patchEntity({
-        entityKey,
+      const { txHash } = await walletClient.patchEntity(History, entityKey, {
         set: { version: i32(2) },
       })
       const { blockNumber: patchedAt } = await publicClient.waitForTransactionReceipt({
@@ -749,11 +889,12 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const at = async (block: bigint) => {
         const page = await publicClient
-          .select({ attributes: { version: true } })
+          .select({ version: true })
+          .from(History)
           .where(eq("historygroup", str(value)))
           .atBlock(block)
           .fetch()
-        return { block: page.blockNumber, versions: page.entities.map((e) => e.attributes.version) }
+        return { block: page.blockNumber, versions: page.entities.map((row) => row.version) }
       }
 
       // Before the entity existed, at the block it was created in, and after the patch.
@@ -774,46 +915,67 @@ describe("Arkiv Integration Tests for public client", () => {
       const digest = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hex
       const someone = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
       const entityKey = "0x9f2c000000000000000000000000000000000000000000000000000000000001" as Hex
+      const AllTypes = defineSchema({
+        digestattr: bytes32().indexed(),
+        numattr: i32().indexed(),
+        zeroattr: i32().indexed(),
+        bigattr: u64().indexed(),
+        amountattr: u256().indexed(),
+        decattr: dec().indexed(),
+        strattr: str().indexed(),
+        boolattr: bool().indexed(),
+        addrattr: addr().indexed(),
+        keyattr: key().indexed(),
+        blobattr: bytes(),
+      })
 
-      const created = await walletClient.createEntity({
-        payload: jsonToPayload({ test: "all-attr-types" }),
-        contentType: "application/json",
-        attributes: {
+      const created = await walletClient.createEntity(
+        AllTypes,
+        {
           digestattr: bytes32(digest),
           numattr: i32(42),
-          zeroattr: i32(0),
+          zeroattr: 0,
           bigattr: u64(1_200_000n),
+          amountattr: 2n ** 200n,
+          decattr: dec("-3.25"),
           strattr: "hello-world",
           boolattr: true,
           addrattr: addr(someone),
           keyattr: key(entityKey),
+          blobattr: new Uint8Array([0, 1, 2, 255]),
         },
-        expires: LIFETIME,
-      })
+        { expires: LIFETIME },
+      )
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
-      const entity = await publicClient.getEntity(created.entityKey)
-
-      expect(entity.attributes).toEqual({
+      const expected = {
         digestattr: bytes32(digest),
         numattr: i32(42),
         zeroattr: i32(0),
         bigattr: u64(1_200_000n),
+        amountattr: u256(2n ** 200n),
+        decattr: dec("-3.25"),
         strattr: str("hello-world"),
         boolattr: bool(true),
         addrattr: addr(someone),
         keyattr: key(entityKey),
-      })
+        blobattr: bytes("0x000102ff"),
+      }
+      expect((await publicClient.getEntity(created.entityKey)).$attributes).toEqual(expected)
+      expect(await publicClient.getEntity(created.entityKey, AllTypes)).toMatchObject(expected)
 
-      // And each one is queryable by the value it holds.
+      // And each indexed one is queryable by the value it holds.
       const found = await publicClient
-        .select({ key: true })
+        .select({ $key: true })
+        .from(AllTypes)
         .where(
           and(
             eq("digestattr", bytes32(digest)),
             eq("numattr", i32(42)),
             eq("zeroattr", i32(0)),
             eq("bigattr", u64(1_200_000n)),
+            eq("amountattr", u256(2n ** 200n)),
+            lt("decattr", dec("-3.2")),
             eq("strattr", str("hello-world")),
             eq("boolattr", true),
             eq("addrattr", addr(someone)),
@@ -821,7 +983,7 @@ describe("Arkiv Integration Tests for public client", () => {
           ),
         )
         .fetch()
-      expect(found.entities.map((e) => e.key)).toEqual([created.entityKey])
+      expect(found.entities.map((e) => e.$key)).toEqual([created.entityKey])
     },
     { timeout: 30000 },
   )
@@ -831,17 +993,12 @@ describe("Arkiv Integration Tests for public client", () => {
     async () => {
       const uniqueId = crypto.randomUUID()
 
-      const { txHash } = await walletClient.createEntity({
-        payload: jsonToPayload({ entity: { entityType: "dedupetest", entityId: uniqueId } }),
-        contentType: "application/json",
-        attributes: { dedupeid: uniqueId },
-        expires: LIFETIME,
-      })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await create("http", Notes, { tag: uniqueId })
 
       const result = await publicClient
-        .select({ key: true })
-        .where(eq("dedupeid", str(uniqueId)))
+        .select({ $key: true })
+        .from(Notes)
+        .where(eq("tag", str(uniqueId)))
         .fetch()
 
       expect(result.entities).toHaveLength(1)
@@ -856,14 +1013,261 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const created = await walletClient.executeBatch({
         creates: Array.from({ length: 3 }, () => ({
-          payload: stringToPayload("counted"),
-          contentType: "text/plain" as const,
+          schema: Notes,
+          values: { body: stringToBytes("counted") },
           expires: LIFETIME,
         })),
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
       expect(await publicClient.getEntityCount()).toBe(before + 3)
+    },
+    { timeout: 30000 },
+  )
+
+  // ---------------------------------------------------------------------------------------------
+  // User-defined columns
+  // ---------------------------------------------------------------------------------------------
+
+  test(
+    "an unindexed column can be selected but not filtered on",
+    async () => {
+      const group = `unindexed-${crypto.randomUUID()}`
+      const Articles = defineSchema({ group: str().indexed(), title: str(), summary: str() })
+      const { entityKey } = await create("http", Articles, {
+        group,
+        title: "Cells, not entities",
+        summary: "stored, never indexed",
+      })
+
+      const rows = await publicClient
+        .select({ $key: true, title: true, summary: true })
+        .from(Articles)
+        .where(eq("group", group))
+        .fetch()
+      expect(rows.entities).toEqual([
+        {
+          $key: entityKey,
+          title: str("Cells, not entities"),
+          summary: str("stored, never indexed"),
+        },
+      ])
+
+      // The schema refuses the filter at compile time, and the SDK before the request goes out.
+      const byTitle = publicClient.select({ $key: true }).from(Articles)
+      // @ts-expect-error title is not indexed
+      await expect(byTitle.where(eq("title", "Cells, not entities")).fetch()).rejects.toThrow(
+        InvalidPredicateError,
+      )
+
+      // A raw query has no schema to stop it. The node has no index to answer it from, so it
+      // either refuses the predicate or finds nothing — it never finds the entity.
+      const raw = await publicClient
+        .query(`group = str('${group}') AND title = str('Cells, not entities')`, {
+          select: { $key: true },
+        })
+        .then((page) => page.entities.map((e) => e.$key))
+        .catch(() => [])
+      expect(raw).not.toContain(entityKey)
+
+      // And the node reports the attributes as unindexed.
+      expect((await publicClient.getEntity(entityKey)).$attributeSchema).toEqual({
+        group: { type: "str", indexed: true },
+        title: { type: "str", indexed: false },
+        summary: { type: "str", indexed: false },
+      })
+    },
+    { timeout: 30000 },
+  )
+
+  test(
+    "an entity can carry several bytes columns, empty ones included",
+    async () => {
+      const Media = defineSchema({
+        name: str().indexed(),
+        cover: bytes(),
+        thumbnail: bytes(),
+        empty: bytes(),
+        raw: bytes().optional(),
+      })
+      const cover = new Uint8Array(64 * 1024).map((_, index) => index % 251)
+      const name = `media-${crypto.randomUUID()}`
+      const { entityKey } = await create("http", Media, {
+        name,
+        cover,
+        thumbnail: bytes("0xcafebabe"),
+        empty: new Uint8Array(),
+      })
+
+      const media = await publicClient.getEntity(entityKey, Media)
+      expect(media.cover).toEqual(bytes(cover))
+      expect(media.thumbnail).toEqual(bytes("0xcafebabe"))
+      expect(media.empty).toEqual(bytes("0x"))
+      expect(media.raw).toBeUndefined()
+
+      // Patching one blob leaves the others alone.
+      const { txHash } = await walletClient.patchEntity(Media, entityKey, {
+        set: { raw: stringToBytes("raw bytes") },
+      })
+      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const patched = await publicClient.getEntity(entityKey, Media)
+      expect(patched.cover).toEqual(bytes(cover))
+      expect(patched.raw && hexToString(patched.raw.value)).toBe("raw bytes")
+    },
+    { timeout: 30000 },
+  )
+
+  test(
+    "a default is written on create when the column is left out, and only then",
+    async () => {
+      const group = `defaults-${crypto.randomUUID()}`
+      const Docs = defineSchema({
+        group: str().indexed(),
+        mimeType: str().indexed().default("text/markdown"),
+        version: i32().default(1),
+      })
+
+      const batch = await walletClient.executeBatch({
+        creates: [
+          { schema: Docs, values: { group }, expires: LIFETIME },
+          { schema: Docs, values: { group, mimeType: "text/html", version: 3 }, expires: LIFETIME },
+        ],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      const [defaulted, explicit] = batch.createdEntities as [Hex, Hex]
+
+      expect(await publicClient.getEntity(defaulted, Docs)).toMatchObject({
+        mimeType: str("text/markdown"),
+        version: i32(1),
+      })
+      expect(await publicClient.getEntity(explicit, Docs)).toMatchObject({
+        mimeType: str("text/html"),
+        version: i32(3),
+      })
+
+      // The default is a real, indexed attribute on the node, not something the SDK fills in on read.
+      const markdown = await publicClient
+        .select({ $key: true })
+        .from(Docs)
+        .where(eq("group", group), eq("mimeType", "text/markdown"))
+        .fetch()
+      expect(markdown.entities.map((row) => row.$key)).toEqual([defaulted])
+    },
+    { timeout: 30000 },
+  )
+
+  test(
+    "an optional column may be left out, set later, and unset again",
+    async () => {
+      const group = `optional-${crypto.randomUUID()}`
+      const Tasks = defineSchema({
+        group: str().indexed(),
+        title: str(),
+        closedAt: u64().indexed().optional(),
+        note: str().optional(),
+      })
+      const { entityKey } = await create("http", Tasks, { group, title: "write the SDK side" })
+
+      const open = await publicClient.getEntity(entityKey, Tasks)
+      expect(open.closedAt).toBeUndefined()
+      expect(open.note).toBeUndefined()
+      expect(Object.keys((await publicClient.getEntity(entityKey)).$attributes).sort()).toEqual([
+        "group",
+        "title",
+      ])
+
+      const openOnes = async () =>
+        (
+          await publicClient
+            .select({ $key: true })
+            .from(Tasks)
+            .where(eq("group", group), not(exists("closedAt")))
+            .fetch()
+        ).entities.map((row) => row.$key)
+      expect(await openOnes()).toEqual([entityKey])
+
+      const close = await walletClient.patchEntity(Tasks, entityKey, {
+        set: { closedAt: u64(await publicClient.getBlockNumber()), note: "done" },
+      })
+      await publicClient.waitForTransactionReceipt({ hash: close.txHash })
+      const closed = await publicClient.getEntity(entityKey, Tasks)
+      expect(closed.closedAt?.type).toBe("u64")
+      expect(closed.note).toEqual(str("done"))
+      expect(await openOnes()).toEqual([])
+
+      const reopen = await walletClient.patchEntity(Tasks, entityKey, {
+        unset: ["closedAt", "note"],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: reopen.txHash })
+      const reopened = await publicClient.getEntity(entityKey, Tasks)
+      expect(reopened.closedAt).toBeUndefined()
+      expect(reopened.note).toBeUndefined()
+      expect(reopened.title).toEqual(str("write the SDK side"))
+      expect(await openOnes()).toEqual([entityKey])
+    },
+    { timeout: 30000 },
+  )
+
+  test(
+    "a patch can flip a column between indexed and unindexed",
+    async () => {
+      const group = `flip-${crypto.randomUUID()}`
+      // Two versions of one schema: `rank` starts out stored only, and the second version indexes it.
+      const RankedV1 = defineSchema({ group: str().indexed(), rank: i32() })
+      const RankedV2 = defineSchema({ group: str().indexed(), rank: i32().indexed() })
+      const { entityKey } = await create("http", RankedV1, { group, rank: 1 })
+
+      const byRank = async () =>
+        await publicClient
+          .select({ $key: true })
+          .from(RankedV2)
+          .where(eq("group", group), eq("rank", 1))
+          .fetch()
+          .then((page) => page.entities.map((row) => row.$key))
+          .catch(() => [])
+      expect(await byRank()).not.toContain(entityKey)
+
+      // Writing the column through the new version writes it with the indexed flag.
+      const { txHash } = await walletClient.patchEntity(RankedV2, entityKey, { set: { rank: 1 } })
+      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      expect(await byRank()).toEqual([entityKey])
+      expect((await publicClient.getEntity(entityKey)).$attributeSchema.rank).toEqual({
+        type: "i32",
+        indexed: true,
+      })
+
+      // And back: the old version writes it unindexed again.
+      const { txHash: back } = await walletClient.patchEntity(RankedV1, entityKey, {
+        set: { rank: 1 },
+      })
+      await publicClient.waitForTransactionReceipt({ hash: back })
+      expect(await byRank()).not.toContain(entityKey)
+    },
+    { timeout: 30000 },
+  )
+
+  test(
+    "the SDK holds writes and reads to their schema",
+    async () => {
+      const group = `checks-${crypto.randomUUID()}`
+      const Strict = defineSchema({ group: str().indexed(), score: dec().indexed() })
+
+      // A write that does not fit its schema never leaves the SDK.
+      await expect(
+        // @ts-expect-error a bare string is a str, not a dec
+        walletClient.createEntity(Strict, { group, score: "4.1" }, { expires: LIFETIME }),
+      ).rejects.toThrow(SchemaMismatchError)
+      await expect(
+        // @ts-expect-error score is required
+        walletClient.createEntity(Strict, { group }, { expires: LIFETIME }),
+      ).rejects.toThrow(SchemaMismatchError)
+
+      // An entity read through a schema it does not fit is reported, not silently mistyped.
+      const { entityKey } = await create("http", Strict, { group, score: dec("4.1") })
+      const Mistyped = defineSchema({ group: str().indexed(), score: i32().indexed() })
+      await expect(publicClient.getEntity(entityKey, Mistyped)).rejects.toThrow(SchemaMismatchError)
+      const Wider = defineSchema({ group: str().indexed(), score: dec(), extra: str() })
+      await expect(publicClient.getEntity(entityKey, Wider)).rejects.toThrow(SchemaMismatchError)
     },
     { timeout: 30000 },
   )
@@ -879,8 +1283,8 @@ describe("Arkiv Integration Tests for public client", () => {
 
       const seed = await write.executeBatch({
         creates: Array.from({ length: 3 }, () => ({
-          payload: stringToPayload("seed"),
-          contentType: "text/plain" as const,
+          schema: Notes,
+          values: { body: stringToBytes("seed") },
           expires: LIFETIME,
         })),
       })
@@ -904,12 +1308,12 @@ describe("Arkiv Integration Tests for public client", () => {
         const batch = await write.executeBatch({
           creates: [
             {
-              payload: stringToPayload("created under watch"),
-              contentType: "text/plain",
+              schema: Notes,
+              values: { body: stringToBytes("created under watch") },
               expires: LIFETIME,
             },
           ],
-          patches: [{ entityKey: toPatch, set: { watched: str("yes") } }],
+          patches: [{ schema: Notes, entityKey: toPatch, set: { tag: str("watched") } }],
           deletes: [{ entityKey: toDelete }],
           extensions: [{ entityKey: toPatch, expires: ExpirationTime.fromBlocks(20_000) }],
           ownershipChanges: [{ entityKey: toTransfer, newOwner: SOMEONE_ELSE }],
@@ -991,19 +1395,18 @@ describe("Arkiv Integration Tests for public client", () => {
         account: newcomer,
       })
 
-      const { entityKey, txHash } = await newcomerClient.createEntity({
-        payload: stringToPayload("first"),
-        contentType: "text/plain",
-        expires: LIFETIME,
-        salt: 42n,
-      })
+      const { entityKey, txHash } = await newcomerClient.createEntity(
+        Notes,
+        { body: stringToBytes("first") },
+        { expires: LIFETIME, salt: 42n },
+      )
       await publicClient.waitForTransactionReceipt({ hash: txHash })
 
       expect(entityKey).toBe(
         predictEntityKey({ owner: newcomer.address, nonce: 0n, salt: 42n, chainId }),
       )
       // And the entity is really there under that key.
-      expect((await publicClient.getEntity(entityKey)).owner).toBe(newcomer.address)
+      expect((await publicClient.getEntity(entityKey)).$owner).toBe(newcomer.address)
 
       // The nonce the engine keeps for it moved by exactly that one create.
       expect(await publicClient.getEntityNonce(newcomer.address)).toBe(1n)
@@ -1017,6 +1420,11 @@ describe("Arkiv Integration Tests for public client", () => {
     "the keys a batch will mint can be worked out before it is sent",
     async () => {
       const group = `predicted-${crypto.randomUUID()}`
+      const Tree = defineSchema({
+        predictgroup: str().indexed(),
+        role: str().indexed(),
+        parent: key().indexed().optional(),
+      })
       const nonceBefore = await publicClient.getEntityNonce(account.address)
       expect(nonceBefore).toBeGreaterThan(0n)
 
@@ -1029,20 +1437,14 @@ describe("Arkiv Integration Tests for public client", () => {
       const batch = await walletClient.executeBatch({
         creates: [
           {
-            payload: stringToPayload("parent"),
-            contentType: "text/plain",
-            attributes: { predictgroup: str(group), role: str("parent") },
+            schema: Tree,
+            values: { predictgroup: str(group), role: str("parent") },
             expires: LIFETIME,
             salt: parent.salt,
           },
           {
-            payload: stringToPayload("child"),
-            contentType: "text/plain",
-            attributes: {
-              predictgroup: str(group),
-              role: str("child"),
-              parent: key(parent.key),
-            },
+            schema: Tree,
+            values: { predictgroup: str(group), role: str("child"), parent: key(parent.key) },
             expires: LIFETIME,
             salt: child.salt,
           },
@@ -1051,14 +1453,15 @@ describe("Arkiv Integration Tests for public client", () => {
       await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
 
       expect(batch.createdEntities).toEqual([parent.key, child.key])
-      expect((await publicClient.getEntity(parent.key)).attributes.role).toEqual(str("parent"))
+      expect((await publicClient.getEntity(parent.key, Tree)).role).toEqual(str("parent"))
 
       const children = await publicClient
-        .select({ key: true, attributes: { parent: true } })
+        .select({ $key: true, parent: true })
+        .from(Tree)
         .where(and(eq("predictgroup", str(group)), eq("role", str("child"))))
         .fetch()
-      expect(children.entities.map((entity) => entity.key)).toEqual([child.key])
-      expect(children.entities.map((entity) => entity.attributes.parent)).toEqual([key(parent.key)])
+      expect(children.entities.map((row) => row.$key)).toEqual([child.key])
+      expect(children.entities.map((row) => row.parent)).toEqual([key(parent.key)])
 
       // Two creates, two nonces.
       expect(await publicClient.getEntityNonce(account.address)).toBe(nonceBefore + 2n)
@@ -1074,16 +1477,12 @@ describe("Arkiv Integration Tests for public client", () => {
     "an entity stops existing when its expiry block arrives",
     async () => {
       const value = `expiry-${crypto.randomUUID()}`
-      const { entityKey, expiresAt, blockNumber } = await (async () => {
-        const created = await walletClient.createEntity({
-          payload: stringToPayload("brief"),
-          contentType: "text/plain",
-          attributes: { expirygroup: str(value) },
-          expires: ExpirationTime.fromBlocks(20),
-        })
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: created.txHash })
-        return { ...created, blockNumber: receipt.blockNumber }
-      })()
+      const { entityKey, expiresAt, blockNumber } = await create(
+        "http",
+        Notes,
+        { tag: str(value) },
+        { expires: ExpirationTime.fromBlocks(20) },
+      )
 
       expect(expiresAt).toBeGreaterThan(blockNumber)
 
@@ -1096,16 +1495,18 @@ describe("Arkiv Integration Tests for public client", () => {
 
       await expect(publicClient.getEntity(entityKey)).rejects.toThrow(NoEntityFoundError)
       const live = await publicClient
-        .select({ key: true })
-        .where(eq("expirygroup", str(value)))
+        .select({ $key: true })
+        .from(Notes)
+        .where(eq("tag", str(value)))
         .fetch()
       expect(live.entities).toHaveLength(0)
 
       const at = async (block: bigint) =>
         (
           await publicClient
-            .select({ key: true })
-            .where(eq("expirygroup", str(value)))
+            .select({ $key: true })
+            .from(Notes)
+            .where(eq("tag", str(value)))
             .atBlock(block)
             .fetch()
         ).entities.length
