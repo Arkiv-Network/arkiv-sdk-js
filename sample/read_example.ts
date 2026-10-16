@@ -26,7 +26,7 @@ const publicClient = createPublicClient({
 const chainId = await publicClient.getChainId()
 console.log("Chain ID:", chainId)
 
-// Get entity by key — untyped, with every attribute in `attributes`
+// Get entity by key — untyped, with every attribute in `$attributes`
 const entity = await publicClient.getEntity(
   "0x5107170ed413324eba80a55d378a412e7ac4b067de3e2727a6783ed044cecd23",
 )
@@ -36,7 +36,7 @@ console.log("Entity:", entity)
 // result rows are typed to exactly those. where() may only filter on indexed columns, compared
 // against values of their type — eq("title", ...) would not compile, since title is not indexed.
 const result = await publicClient
-  .select({ key: true, author: true, title: true, body: true })
+  .select({ $key: true, author: true, title: true, body: true })
   .from(Posts)
   .where(and(eq("category", "documentation"), gt("score", dec("4.0"))))
   .ownedBy("0xF46E23f6a6F6336D4C64D5D1c95599bF77a536f0")
@@ -44,7 +44,7 @@ const result = await publicClient
   .fetch()
 
 for (const row of result.entities) {
-  console.log(row.key, row.author.value, row.title.value, hexToString(row.body.value))
+  console.log(row.$key, row.author.value, row.title.value, hexToString(row.body.value))
 }
 
 // Pagination
@@ -55,8 +55,8 @@ if (result.hasNextPage()) {
 
 // Or walk every page, one row at a time
 for await (const row of publicClient
-  .select({ key: true, title: true })
+  .select({ $key: true, title: true })
   .from(Posts)
   .where(eq("category", "documentation"))) {
-  console.log(row.key, row.title.value)
+  console.log(row.$key, row.title.value)
 }

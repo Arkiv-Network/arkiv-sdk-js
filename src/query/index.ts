@@ -45,6 +45,7 @@ export type {
   DynamicSelection,
   FullEntity,
   FullRow,
+  KnownSystemFields,
   NonEmptySelection,
   PartialRow,
   Projection,
@@ -55,5 +56,6 @@ export type {
   Selection,
   SelectionFields,
   SelectionOf,
+  SystemField,
 } from "./selection"
-export { projectSelection, toRow, toRpcSelect } from "./selection"
+export { projectSelection, SYSTEM_FIELDS, toRow, toRpcSelect } from "./selection"
