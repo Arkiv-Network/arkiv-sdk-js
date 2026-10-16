@@ -1,9 +1,17 @@
 import { describe, expect, it, vi } from "bun:test"
+import { decodeAbiParameters, parseAbiParameters, toHex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
+import { OperationType } from "../../entity/params"
+import { bytes, defineSchema, i32, str } from "../../schema"
 import { executeBatch } from "./executeBatch"
 
 const ENTITY_KEY = `0x${"ab".repeat(32)}` as const
+const OTHER_KEY = `0x${"cd".repeat(32)}` as const
 const NEW_OWNER = "0x2222222222222222222222222222222222222222"
+
+const PATCH_PARAMS = parseAbiParameters(
+  "(bytes32 entityKey, (bytes32 name, uint8 typeId, bytes value)[] mutations)",
+)
 
 function makeClient() {
   const writeContract = vi.fn().mockResolvedValue("0xdeadbeef")
@@ -72,5 +80,35 @@ describe("the empty-batch guard", () => {
     expect(result.patchedEntities).toEqual([])
     // Only the delete reached the wire, and the report says so.
     expect(writeContract.mock.calls[0][0].args[0]).toHaveLength(1)
+  })
+})
+
+describe("schemas in a batch", () => {
+  it("types each patch by its own schema", async () => {
+    const Posts = defineSchema({ title: str(), score: i32().indexed() })
+    const Files = defineSchema({ path: str().indexed(), body: bytes().optional() })
+    const { client, writeContract } = makeClient()
+
+    const result = await executeBatch(client, {
+      patches: [
+        { schema: Posts, entityKey: ENTITY_KEY, set: { score: 5 } },
+        { schema: Files, entityKey: OTHER_KEY, set: { path: "/a" }, unset: ["body"] },
+      ],
+    })
+
+    expect(result.patchedEntities).toEqual([ENTITY_KEY, OTHER_KEY])
+    const ops = writeContract.mock.calls[0][0].args[0] as {
+      operation: number
+      operationData: `0x${string}`
+    }[]
+    expect(ops.map((op) => op.operation)).toEqual([OperationType.Patch, OperationType.Patch])
+    const [posts, files] = ops.map((op) => decodeAbiParameters(PATCH_PARAMS, op.operationData)[0])
+    expect(posts.mutations.map((m) => [m.name, m.typeId])).toEqual([
+      [toHex("score", { size: 32 }), 0x80 | 2],
+    ])
+    expect(files.mutations.map((m) => [m.name, m.typeId])).toEqual([
+      [toHex("body", { size: 32 }), 0],
+      [toHex("path", { size: 32 }), 0x80 | 8],
+    ])
   })
 })

@@ -31,7 +31,7 @@ export type EntityCreatedEvent = EntityEventContext & {
 }
 
 /**
- * An entity's attributes or payload changed.
+ * An entity's attributes changed.
  *
  * The event says *that* it changed, not what to — read the entity to see the new state.
  */

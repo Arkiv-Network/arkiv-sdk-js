@@ -11,22 +11,29 @@ import {
   parseAbiParameters,
   toHex,
 } from "viem"
-import {
-  type AttributeInputs,
-  ConflictingMutationError,
-  dec,
-  InvalidAttributeNameError,
-  InvalidValueError,
-  i32,
-  MissingValueError,
-  u256,
-} from "../attr"
 import type { ArkivClient } from "../clients/baseClient"
 import { ARKIV_ADDRESS } from "../consts"
 import { InvalidExpiryError, NO_SALT } from "../entity"
 import { ENTITY_EVENTS_ABI, type EntityEventName } from "../entity/events"
 import { MAX_EXPIRES_AT, OperationType } from "../entity/params"
 import { EmptyPatchError, EntityMutationError } from "../errors"
+import {
+  addr,
+  bytes,
+  ConflictingMutationError,
+  dec,
+  defineSchema,
+  EntityTooLargeError,
+  InvalidAttributeNameError,
+  InvalidValueError,
+  i32,
+  MAX_BYTES_LENGTH,
+  MAX_ENTITY_BYTES,
+  MissingValueError,
+  SchemaMismatchError,
+  str,
+  u256,
+} from "../schema"
 import { sendArkivTransaction } from "./arkivTransactions"
 import { ExpirationTime } from "./expirationTime"
 
@@ -151,13 +158,22 @@ function sentExtension(writeContract: ReturnType<typeof vi.fn>) {
   return decodeAbiParameters(EXTEND_PARAMS, op.operationData)[0]
 }
 
-const CONTENTS = {
-  payload: new Uint8Array([1, 2, 3]),
-  contentType: "application/octet-stream",
-}
+/** The typeId bit that asks the node to index an attribute. */
+const INDEXED = 0x80
+
+const Docs = defineSchema({
+  category: str().indexed(),
+  level: i32().indexed().optional(),
+  title: str().optional(),
+})
+
+/** A minimal valid create's schema and values, without its expiry. */
+const CONTENTS = { schema: Docs, values: { category: "docs" } }
 
 const DAY = ExpirationTime.fromDays(1) // 86400s -> 43200 blocks at 2s
 const validCreate = { ...CONTENTS, expires: DAY }
+
+const name = (n: string) => toHex(n, { size: 32 })
 
 describe("create expiry", () => {
   it("sends a create for a valid expiry", async () => {
@@ -401,106 +417,245 @@ describe("entity keys", () => {
   })
 })
 
-describe("attribute typing through the write path", () => {
+describe("create through a schema", () => {
+  /** The create's attributes, keyed by their bytes32 name. */
+  function sentCells(writeContract: ReturnType<typeof vi.fn>) {
+    return Object.fromEntries(sentCreate(writeContract).attributes.map((a) => [a.name, a]))
+  }
+
   it("rejects a value that does not fit the type it defaults to", async () => {
     const { client } = makeClient()
+    const schema = defineSchema({ n: i32() })
     await expect(
-      sendArkivTransaction(client, { creates: [{ ...validCreate, attributes: { n: 1.5 } }] }),
+      sendArkivTransaction(client, { creates: [{ schema, values: { n: 1.5 }, expires: DAY }] }),
     ).rejects.toThrow(InvalidValueError)
   })
 
-  it("rejects an attribute name outside the grammar", async () => {
-    const { client } = makeClient()
-    await expect(
-      sendArkivTransaction(client, { creates: [{ ...validCreate, attributes: { "1bad": 1 } }] }),
-    ).rejects.toThrow(InvalidAttributeNameError)
+  it("rejects a column name outside the grammar before anything is written", () => {
+    expect(() => defineSchema({ "1bad": i32() })).toThrow(InvalidAttributeNameError)
   })
 
-  it("rejects an attribute whose value is absent, rather than writing a typeless one", async () => {
-    const { client } = makeClient()
+  it("rejects a null value, rather than writing a typeless one", async () => {
+    const { client, writeContract } = makeClient()
     await expect(
       sendArkivTransaction(client, {
-        creates: [
-          {
-            ...validCreate,
-            // What a spread of an optional-shaped object produces at runtime.
-            attributes: { category: "docs", score: undefined } as unknown as AttributeInputs,
-          },
-        ],
+        creates: [{ ...validCreate, values: { category: "docs", title: null as never } }],
       }),
     ).rejects.toThrow(MissingValueError)
+    expect(writeContract).not.toHaveBeenCalled()
   })
 
-  it("carries only the system cells when there are no user attributes", async () => {
+  it("rejects a create that leaves out a required column", async () => {
+    const { client, writeContract } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { creates: [{ ...validCreate, values: {} }] }),
+    ).rejects.toThrow(SchemaMismatchError)
+    // Explicitly undefined is the same as left out.
+    await expect(
+      sendArkivTransaction(client, {
+        creates: [{ ...validCreate, values: { category: undefined } as never }],
+      }),
+    ).rejects.toThrow(/required str column/)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("checks the schema before any network call, so a transport failure cannot mask it", async () => {
+    const { client } = makeClient()
+    const getBlockNumber = (client as unknown as { getBlockNumber: ReturnType<typeof vi.fn> })
+      .getBlockNumber
+    getBlockNumber.mockRejectedValue(new Error("fetch failed"))
+    await expect(
+      sendArkivTransaction(client, { creates: [{ ...validCreate, values: {} }] }),
+    ).rejects.toThrow(SchemaMismatchError)
+    expect(getBlockNumber).not.toHaveBeenCalled()
+  })
+
+  it("rejects a column the schema does not have", async () => {
+    const { client } = makeClient()
+    const failure = await sendArkivTransaction(client, {
+      creates: [{ ...validCreate, values: { category: "docs", nope: 1 } }],
+    }).catch((error: Error) => error)
+    expect(failure).toBeInstanceOf(SchemaMismatchError)
+    expect((failure as SchemaMismatchError).columnName).toBe("nope")
+  })
+
+  it("rejects a value whose type is not its column's", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, { creates: [{ ...validCreate, values: { category: i32(1) } }] }),
+    ).rejects.toThrow(SchemaMismatchError)
+    // A bare string is a str, never coerced into the column's type.
+    const schema = defineSchema({ score: dec() })
+    await expect(
+      sendArkivTransaction(client, {
+        creates: [{ schema, values: { score: "4.1" }, expires: DAY }],
+      }),
+    ).rejects.toThrow(/a dec column, but the value is a str/)
+  })
+
+  it("lets an optional column be left out entirely", async () => {
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, { creates: [validCreate] })
-    expect(sentCreate(writeContract).attributes.map((a) => a.name)).toEqual([
-      toHex("$contentType", { size: 32 }),
-      toHex("$payload", { size: 32 }),
-    ])
+    expect(sentCreate(writeContract).attributes.map((a) => a.name)).toEqual([name("category")])
   })
 
-  it("writes an empty payload rather than dropping it", async () => {
+  it("writes a defaulted column's default when the create leaves it out", async () => {
+    const schema = defineSchema({ category: str(), mimeType: str().default("text/markdown") })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      creates: [{ ...validCreate, payload: new Uint8Array() }],
+      creates: [{ schema, values: { category: "docs" }, expires: DAY }],
     })
-    const byName = Object.fromEntries(sentCreate(writeContract).attributes.map((a) => [a.name, a]))
-    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 7, value: "0x" })
+    expect(sentCells(writeContract)[name("mimeType")]).toMatchObject({
+      typeId: 8,
+      value: toHex("text/markdown"),
+    })
+
+    // ...and the value given, when it is given.
+    const { client: c2, writeContract: w2 } = makeClient()
+    await sendArkivTransaction(c2, {
+      creates: [{ schema, values: { category: "docs", mimeType: "text/plain" }, expires: DAY }],
+    })
+    expect(sentCells(w2)[name("mimeType")].value).toBe(toHex("text/plain"))
   })
 
-  it("carries the protocol typeId of whichever type the value names", async () => {
-    const { client, writeContract } = makeClient()
-    await sendArkivTransaction(client, {
-      creates: [
-        { ...validCreate, attributes: { count: 42, balance: u256(1n), score: dec("3.5") } },
-      ],
+  it("flags indexed columns in bit 7 of the typeId, and leaves the rest unindexed", async () => {
+    const schema = defineSchema({
+      count: i32().indexed(),
+      balance: u256().indexed(),
+      score: dec().indexed(),
+      author: addr(),
+      title: str(),
     })
-    const byName = Object.fromEntries(
-      sentCreate(writeContract).attributes.map((a) => [a.name, a.typeId]),
-    )
-    expect(byName[toHex("count", { size: 32 })]).toBe(2)
-    expect(byName[toHex("balance", { size: 32 })]).toBe(4)
-    expect(byName[toHex("score", { size: 32 })]).toBe(5)
-  })
-
-  it("sends the payload and content type as system cells", async () => {
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
       creates: [
         {
-          ...validCreate,
-          payload: new Uint8Array([1, 2, 3]),
-          contentType: "application/json",
-          attributes: { level: i32(1) },
+          schema,
+          values: {
+            count: 42,
+            balance: u256(1n),
+            score: dec("3.5"),
+            author: addr("0x1111111111111111111111111111111111111111"),
+            title: "Cells",
+          },
+          expires: DAY,
         },
       ],
     })
-    const byName = Object.fromEntries(sentCreate(writeContract).attributes.map((a) => [a.name, a]))
-    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 7, value: "0x010203" })
-    expect(byName[toHex("$contentType", { size: 32 })].typeId).toBe(8)
+    const typeIds = Object.fromEntries(
+      sentCreate(writeContract).attributes.map((a) => [a.name, a.typeId]),
+    )
+    expect(typeIds[name("count")]).toBe(INDEXED | 2)
+    expect(typeIds[name("balance")]).toBe(INDEXED | 4)
+    expect(typeIds[name("score")]).toBe(INDEXED | 5)
+    expect(typeIds[name("author")]).toBe(9)
+    expect(typeIds[name("title")]).toBe(8)
   })
 
-  it("rejects a content type that is not a MIME token", async () => {
-    const { client } = makeClient()
+  it("writes any number of bytes columns, unindexed, from bare Uint8Arrays or bytes()", async () => {
+    const schema = defineSchema({ body: bytes(), thumbnail: bytes(), empty: bytes() })
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [
+        {
+          schema,
+          values: {
+            body: new Uint8Array([1, 2, 3]),
+            thumbnail: bytes("0xDEAD"),
+            empty: new Uint8Array(),
+          },
+          expires: DAY,
+        },
+      ],
+    })
+    const cells = sentCells(writeContract)
+    expect(cells[name("body")]).toMatchObject({ typeId: 7, value: "0x010203" })
+    expect(cells[name("thumbnail")]).toMatchObject({ typeId: 7, value: "0xdead" })
+    // Empty is a value, not an absence: it is written rather than dropped.
+    expect(cells[name("empty")]).toMatchObject({ typeId: 7, value: "0x" })
+  })
+
+  it("caps each bytes value at 128 KiB", async () => {
+    const schema = defineSchema({ body: bytes(), thumbnail: bytes().optional() })
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH) }, expires: DAY }],
+    })
+    expect(writeContract).toHaveBeenCalledTimes(1)
+
+    const { client: c2 } = makeClient()
     await expect(
-      sendArkivTransaction(client, { creates: [{ ...validCreate, contentType: "Not A Mime" }] }),
-    ).rejects.toThrow(/Invalid content type/)
+      sendArkivTransaction(c2, {
+        creates: [{ schema, values: { body: new Uint8Array(MAX_BYTES_LENGTH + 1) }, expires: DAY }],
+      }),
+    ).rejects.toThrow(InvalidValueError)
+  })
+
+  it("caps the bytes of one create at 128 KiB in total", async () => {
+    const schema = defineSchema({ body: bytes(), thumbnail: bytes() })
+    const half = new Uint8Array(MAX_ENTITY_BYTES / 2)
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ schema, values: { body: half, thumbnail: half }, expires: DAY }],
+    })
+    expect(writeContract).toHaveBeenCalledTimes(1)
+
+    const { client: c2, writeContract: w2 } = makeClient()
+    await expect(
+      sendArkivTransaction(c2, {
+        creates: [
+          {
+            schema,
+            values: { body: half, thumbnail: new Uint8Array(MAX_ENTITY_BYTES / 2 + 1) },
+            expires: DAY,
+          },
+        ],
+      }),
+    ).rejects.toThrow(EntityTooLargeError)
+    expect(w2).not.toHaveBeenCalled()
+  })
+
+  it("carries no cells for a schema with no columns", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      creates: [{ schema: defineSchema({}), values: {}, expires: DAY }],
+    })
+    expect(sentCreate(writeContract).attributes).toEqual([])
   })
 
   it("sorts attributes ascending by their bytes32 name", async () => {
+    const schema = defineSchema({ tag: str(), status: str().indexed(), score: i32() })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      creates: [{ ...validCreate, attributes: { tag: "zz", status: "active", score: 30 } }],
+      creates: [{ schema, values: { tag: "zz", status: "active", score: 30 }, expires: DAY }],
     })
-    const names = sentCreate(writeContract).attributes.map((a) => a.name)
-    expect(names).toEqual([...names].sort())
-    // The "$" system cells lead; the user attributes follow in name order.
-    expect(names.slice(2)).toEqual([
-      toHex("score", { size: 32 }),
-      toHex("status", { size: 32 }),
-      toHex("tag", { size: 32 }),
+    expect(sentCreate(writeContract).attributes.map((a) => a.name)).toEqual([
+      name("score"),
+      name("status"),
+      name("tag"),
     ])
+  })
+
+  it("writes each create of a batch through its own schema", async () => {
+    const Files = defineSchema({ path: str().indexed(), body: bytes() })
+    const { client, writeContract } = makeClient()
+    const result = await sendArkivTransaction(client, {
+      creates: [
+        validCreate,
+        { schema: Files, values: { path: "/a", body: new Uint8Array([7]) }, expires: DAY },
+      ],
+    })
+    const [docs, files] = sentOperations(writeContract).map(
+      (op) => decodeAbiParameters(CREATE_PARAMS, op.operationData)[0],
+    )
+    expect(docs.attributes.map((a) => [a.name, a.typeId])).toEqual([
+      [name("category"), INDEXED | 8],
+    ])
+    expect(files.attributes.map((a) => [a.name, a.typeId])).toEqual([
+      [name("body"), 7],
+      [name("path"), INDEXED | 8],
+    ])
+    expect(result.createdEntityKeys).toEqual([mintedKey(0), mintedKey(1)])
   })
 })
 
@@ -512,64 +667,145 @@ describe("patch", () => {
     return decodeAbiParameters(PATCH_PARAMS, op.operationData)[0]
   }
 
-  it("carries only what the patch named", async () => {
+  it("carries only what the patch named, flagged as its column declares", async () => {
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(11) } }],
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: i32(11) } }],
     })
     const patch = sentPatch(writeContract)
     expect(patch.entityKey).toBe(ENTITY_KEY)
-    // No $payload, no $contentType, no tombstones: everything unnamed is left alone.
+    // No tombstones, nothing unnamed: everything else is left alone.
     expect(patch.mutations).toEqual([
-      { name: toHex("level", { size: 32 }), typeId: 2, value: expect.any(String) },
+      { name: name("level"), typeId: INDEXED | 2, value: expect.any(String) },
     ])
   })
 
-  it("writes the system cells only when the patch gives them", async () => {
+  it("flips a column's indexing when the schema writing it says so", async () => {
+    const Indexed = defineSchema({ title: str().indexed() })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, payload: new Uint8Array([9]) }],
+      patches: [{ schema: Indexed, entityKey: ENTITY_KEY, set: { title: "x" } }],
     })
-    const names = sentPatch(writeContract).mutations.map((m) => m.name)
-    expect(names).toEqual([toHex("$payload", { size: 32 })])
+    expect(sentPatch(writeContract).mutations[0].typeId).toBe(INDEXED | 8)
+
+    const { client: c2, writeContract: w2 } = makeClient()
+    await sendArkivTransaction(c2, {
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { title: "x" } }],
+    })
+    expect(sentPatch(w2).mutations[0].typeId).toBe(8)
   })
 
-  it("tombstones an unset attribute with typeId 0 and an empty value", async () => {
+  it("does not apply defaults — a patch writes only what it names", async () => {
+    const schema = defineSchema({ category: str(), mimeType: str().default("text/markdown") })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, unset: ["draft"] }],
+      patches: [{ schema, entityKey: ENTITY_KEY, set: { category: "x" } }],
+    })
+    expect(sentPatch(writeContract).mutations.map((m) => m.name)).toEqual([name("category")])
+  })
+
+  it("tombstones an unset optional column with typeId 0 and an empty value", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, unset: ["title"] }],
     })
     expect(sentPatch(writeContract).mutations).toEqual([
-      { name: toHex("draft", { size: 32 }), typeId: 0, value: "0x" },
+      { name: name("title"), typeId: 0, value: "0x" },
     ])
+  })
+
+  it("refuses to unset a required column", async () => {
+    const { client, writeContract } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, unset: ["category" as never] }],
+      }),
+    ).rejects.toThrow(SchemaMismatchError)
+    expect(writeContract).not.toHaveBeenCalled()
+  })
+
+  it("rejects a set of a column the schema does not have, or of the wrong type", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { nope: 1 } as never }],
+      }),
+    ).rejects.toThrow(SchemaMismatchError)
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: "high" } as never }],
+      }),
+    ).rejects.toThrow(/i32 column, but the value is a str/)
+  })
+
+  it("leaves out a column set to undefined, as a create does", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: undefined, title: "x" } }],
+    })
+    expect(sentPatch(writeContract).mutations.map((m) => m.name)).toEqual([name("title")])
+  })
+
+  it("treats a patch of nothing but undefined values as empty", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: undefined } }],
+      }),
+    ).rejects.toThrow(EmptyPatchError)
+  })
+
+  it("does not count an undefined set as conflicting with an unset", async () => {
+    const { client, writeContract } = makeClient()
+    await sendArkivTransaction(client, {
+      patches: [
+        { schema: Docs, entityKey: ENTITY_KEY, set: { title: undefined }, unset: ["title"] },
+      ],
+    })
+    expect(sentPatch(writeContract).mutations).toEqual([
+      { name: name("title"), typeId: 0, value: "0x" },
+    ])
+  })
+
+  it("still rejects null, which is not 'left out'", async () => {
+    const { client } = makeClient()
+    await expect(
+      sendArkivTransaction(client, {
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: null } as never }],
+      }),
+    ).rejects.toThrow(MissingValueError)
   })
 
   it("sorts writes and tombstones together, not each half on its own", async () => {
+    const schema = defineSchema({
+      zeta: str(),
+      beta: str(),
+      alpha: str().optional(),
+      gamma: str().optional(),
+    })
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
       patches: [
         {
+          schema,
           entityKey: ENTITY_KEY,
           set: { zeta: "z", beta: "b" },
           unset: ["alpha", "gamma"],
-          payload: new Uint8Array([1]),
         },
       ],
     })
-    const names = sentPatch(writeContract).mutations.map((m) => m.name)
-    expect(names).toEqual([
-      toHex("$payload", { size: 32 }),
-      toHex("alpha", { size: 32 }),
-      toHex("beta", { size: 32 }),
-      toHex("gamma", { size: 32 }),
-      toHex("zeta", { size: 32 }),
+    expect(sentPatch(writeContract).mutations.map((m) => m.name)).toEqual([
+      name("alpha"),
+      name("beta"),
+      name("gamma"),
+      name("zeta"),
     ])
   })
 
   it("collapses a name repeated in unset, since it is the same intent twice", async () => {
     const { client, writeContract } = makeClient()
     await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, unset: ["draft", "draft"] }],
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, unset: ["title", "title"] }],
     })
     // Two identical tombstones would break the engine's strict-ascending uniqueness rule.
     expect(sentPatch(writeContract).mutations).toHaveLength(1)
@@ -579,7 +815,9 @@ describe("patch", () => {
     const { client, writeContract } = makeClient()
     await expect(
       sendArkivTransaction(client, {
-        patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) }, unset: ["level"] }],
+        patches: [
+          { schema: Docs, entityKey: ENTITY_KEY, set: { level: i32(1) }, unset: ["level"] },
+        ],
       }),
     ).rejects.toThrow(ConflictingMutationError)
     expect(writeContract).not.toHaveBeenCalled()
@@ -588,47 +826,42 @@ describe("patch", () => {
   it("rejects a patch with nothing to apply", async () => {
     const { client, writeContract } = makeClient()
     await expect(
-      sendArkivTransaction(client, { patches: [{ entityKey: ENTITY_KEY }] }),
+      sendArkivTransaction(client, { patches: [{ schema: Docs, entityKey: ENTITY_KEY }] }),
     ).rejects.toThrow(EmptyPatchError)
     // Present but empty is just as empty.
     await expect(
-      sendArkivTransaction(client, { patches: [{ entityKey: ENTITY_KEY, set: {}, unset: [] }] }),
+      sendArkivTransaction(client, {
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: {}, unset: [] }],
+      }),
     ).rejects.toThrow(EmptyPatchError)
     expect(writeContract).not.toHaveBeenCalled()
-  })
-
-  it("still validates a content type when one is given", async () => {
-    const { client } = makeClient()
-    await expect(
-      sendArkivTransaction(client, {
-        patches: [{ entityKey: ENTITY_KEY, payload: new Uint8Array(), contentType: "Not A Mime" }],
-      }),
-    ).rejects.toThrow(/Invalid content type/)
   })
 
   it("rejects a bare string as unset, rather than tombstoning its letters", async () => {
     const { client, writeContract } = makeClient()
-    // A Set is built from any iterable, so "draft" would become tombstones for d, r, a, f and t —
-    // five valid attribute names, none of them the one meant, and the real "draft" left untouched.
+    // A Set is built from any iterable, so "title" would become tombstones for t, i, t, l and e —
+    // and the real "title" left untouched.
     await expect(
       sendArkivTransaction(client, {
-        patches: [{ entityKey: ENTITY_KEY, unset: "draft" as unknown as string[] }],
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, unset: "title" as never }],
       }),
-    ).rejects.toThrow(/must be an array of attribute names/)
+    ).rejects.toThrow(/must be an array of column names/)
     expect(writeContract).not.toHaveBeenCalled()
   })
 
-  it("rejects unsetting a system cell, which belongs to the engine", async () => {
+  it("rejects unsetting a system attribute, which is no column of any schema", async () => {
     const { client } = makeClient()
     await expect(
-      sendArkivTransaction(client, { patches: [{ entityKey: ENTITY_KEY, unset: ["$payload"] }] }),
-    ).rejects.toThrow(InvalidAttributeNameError)
+      sendArkivTransaction(client, {
+        patches: [{ schema: Docs, entityKey: ENTITY_KEY, unset: ["$owner" as never] }],
+      }),
+    ).rejects.toThrow(SchemaMismatchError)
   })
 
   it("does not fetch a block height for a patch-only batch", async () => {
     const { client } = makeClient()
     await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: i32(1) } }],
     })
     // A patch carries no expiry, so there is nothing to resolve against the chain.
     expect(client.getBlockNumber).not.toHaveBeenCalled()
@@ -645,7 +878,7 @@ describe("failures that are not reverts", () => {
     ;(client.waitForTransactionReceipt as ReturnType<typeof vi.fn>).mockRejectedValue(timeout)
 
     const failure = await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: i32(1) } }],
     }).catch((error: Error) => error)
 
     expect(failure).toBeInstanceOf(EntityMutationError)
@@ -672,7 +905,7 @@ describe("a revert the node catches before there is a receipt", () => {
     )
 
     const failure = await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: i32(1) } }],
     }).catch((error: Error) => error)
 
     expect(failure).toBeInstanceOf(EntityMutationError)
@@ -689,7 +922,7 @@ describe("a revert the node catches before there is a receipt", () => {
     )
 
     const failure = await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: i32(1) } }],
     }).catch((error: Error) => error)
 
     expect(failure.message).toContain('"/"')
@@ -702,7 +935,7 @@ describe("a revert the node catches before there is a receipt", () => {
     ;(client.writeContract as ReturnType<typeof vi.fn>).mockRejectedValue(opaque)
 
     const failure = await sendArkivTransaction(client, {
-      patches: [{ entityKey: ENTITY_KEY, set: { level: i32(1) } }],
+      patches: [{ schema: Docs, entityKey: ENTITY_KEY, set: { level: i32(1) } }],
     }).catch((error: Error) => error)
 
     expect(failure.message).toContain("nonce too low")

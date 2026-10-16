@@ -13,8 +13,6 @@ import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
 import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
 import type { PatchEntityParameters } from "../actions/wallet/patchEntity"
-// Internal seam: the ABI encoders are not part of the package's public surface.
-import { encodeAttributes, encodeMutations } from "../attr/attributes"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
 import { ARKIV_ADDRESS } from "../consts"
@@ -31,22 +29,15 @@ import {
   patchOperation,
   transferOwnershipOperation,
 } from "../entity/operations"
-import { EmptyPatchError, EntityMutationError, InvalidContentTypeError } from "../errors"
+import { EmptyPatchError, EntityMutationError } from "../errors"
+// Internal seam: the ABI encoders are not part of the package's public surface.
+import { encodeCreate, encodePatch } from "../schema/attributes"
 import type { TxParams } from "../types"
 
 import { getLogger } from "./logger"
 import { describeEntityRevert } from "./revert"
 
 const logger = getLogger("utils:arkiv-transactions")
-
-// RFC 2045 token chars, lowercase only. Rejects uppercase to prevent text/plain vs Text/Plain ambiguity.
-const MIME_REGEX = /^[a-z][a-z0-9!#$&\-^_]*\/[a-z0-9][a-z0-9!#$&\-^_.+]*$/
-
-function validateContentType(contentType: string): void {
-  if (!MIME_REGEX.test(contentType)) {
-    throw new InvalidContentTypeError(contentType)
-  }
-}
 
 export const ENTITY_ERRORS_ABI = parseAbi([
   // Batch and operation framing.
@@ -94,11 +85,11 @@ export type SendArkivTransactionResult = {
 export async function sendArkivTransaction(
   client: ArkivClient,
   ops: {
-    creates?: CreateEntityParameters[]
-    patches?: PatchEntityParameters[]
-    deletes?: DeleteEntityParameters[]
-    extensions?: ExtendEntityParameters[]
-    ownershipChanges?: ChangeOwnershipParameters[]
+    creates?: readonly CreateEntityParameters[] | undefined
+    patches?: readonly PatchEntityParameters[] | undefined
+    deletes?: readonly DeleteEntityParameters[] | undefined
+    extensions?: readonly ExtendEntityParameters[] | undefined
+    ownershipChanges?: readonly ChangeOwnershipParameters[] | undefined
   },
   txParams?: TxParams,
 ): Promise<SendArkivTransactionResult> {
@@ -108,6 +99,21 @@ export async function sendArkivTransaction(
 
   const { creates, patches, deletes, extensions, ownershipChanges } = ops
 
+  // Every write is checked against its schema before the block read, so one that does not fit
+  // fails without touching the network — and a network failure cannot mask it.
+  const encodedCreates = (creates ?? []).map((item) => ({
+    item,
+    attributes: encodeCreate(item.schema, item.values),
+  }))
+
+  const patchOps = (patches ?? []).map((item) => {
+    const mutations = encodePatch(item.schema, item)
+    if (mutations.length === 0) {
+      throw new EmptyPatchError(item.entityKey)
+    }
+    return patchOperation({ entityKey: item.entityKey, mutations })
+  })
+
   // The block height, to resolve any relative expiry — which both creates and extensions carry.
   // Skipped entirely for a batch with neither.
   const currentBlock =
@@ -115,9 +121,7 @@ export async function sendArkivTransaction(
 
   const expiryContext = { currentBlock }
 
-  const createOps = (creates ?? []).map((item) => {
-    validateContentType(item.contentType)
-
+  const createOps = encodedCreates.map(({ item, attributes }) => {
     const salt = item.salt === undefined ? randomSalt() : resolveSalt(item.salt)
     const expiry = resolveExpiry(item.expires, expiryContext)
 
@@ -125,20 +129,8 @@ export async function sendArkivTransaction(
       salt,
       expiry,
       creationFlags: encodeCreationFlags(item.flags),
-      attributes: encodeAttributes(item.attributes, {
-        payload: item.payload,
-        contentType: item.contentType,
-      }),
+      attributes,
     })
-  })
-
-  const patchOps = (patches ?? []).map((item) => {
-    if (item.contentType !== undefined) validateContentType(item.contentType)
-    const mutations = encodeMutations(item)
-    if (mutations.length === 0) {
-      throw new EmptyPatchError(item.entityKey)
-    }
-    return patchOperation({ entityKey: item.entityKey, mutations })
   })
 
   // An extension resolves its expiry exactly as a create does — the engine applies the same
