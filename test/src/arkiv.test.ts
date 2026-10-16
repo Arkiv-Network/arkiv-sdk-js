@@ -866,10 +866,8 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(full.cursor).toBeUndefined()
 
       // A selection narrows what the node sends back, raw query or not.
-      const projected = await publicClient.query(queryString, { select: { key: true } })
-      expect(projected.entities[0]?.key).toBe(entityKey)
-      expect(projected.entities[0]?.owner).toBeUndefined()
-      expect(projected.entities[0]?.attributes).toBeUndefined()
+      const projected = await publicClient.query(queryString, { select: { key: true, tag: true } })
+      expect(projected.entities).toEqual([{ key: entityKey, tag: str(value) }])
     },
     { timeout: 30000 },
   )

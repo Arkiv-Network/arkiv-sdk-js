@@ -5,7 +5,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 ### Added
 - Schemas, exported from `@arkiv-network/sdk/schema`. `defineSchema({ ... })` declares an entity's columns. Each column is a type constructor called with no arguments (`str()`, `dec()`, `bytes()`, ...) and refined with `.indexed()`, `.optional()` and `.default(...)`. Called with a value, the same constructor still makes a typed value: `dec()` is a column, `dec("4.1")` is a value
 - `bytes` is a user type: `bytes()` is a column, `bytes(value)` a value, and a bare `Uint8Array` is taken as one. Bytes are stored but never indexed. An entity may have any number of bytes columns, each up to 128 KiB (`MAX_BYTES_LENGTH`). The bytes columns of one create or patch may hold at most 128 KiB together (`MAX_ENTITY_BYTES`, provisional until the protocol settles a per-entity cap); more throws `EntityTooLargeError`
-- `select(...).from(schema)` on the query builder. The selection names entity fields and columns side by side, and results are flat rows typed by the schema. `where` only accepts the schema's indexed columns, compared against values of their type: anything else is a compile error and a runtime `InvalidPredicateError`. A matching entity that does not fit the schema fails the fetch with `SchemaMismatchError` unless `onMismatch: "skip"` is set
+- `select(...).from(schema)` on the query builder. The selection keeps its meaning and the rows their shape, but each selected attribute is typed and checked as the schema's column. `where` only accepts the schema's indexed columns, compared against values of their type: anything else is a compile error and a runtime `InvalidPredicateError`. A matching entity that does not fit the schema fails the fetch with `SchemaMismatchError` unless `onMismatch: "skip"` is set
 - Named schemas: `defineSchema("posts", { ... })` tags every entity it creates with an indexed `schema` attribute holding the name, and `.from()` filters on it, so a query through a named schema only sees entities written through it and needs no other filter. Reads check the tag too. `schema` is a reserved column name, and the tag counts against `MAX_ATTRIBUTES`
 - `.from(schema, { onMismatch: "skip" })` leaves entities that do not fit the schema out of the page instead of failing the fetch, and `QueryResult.skipped` reports how many each page left out. `"throw"` is the default
 - `getEntity(key, schema)` reads one entity through a schema
@@ -22,7 +22,9 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** `attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
 - **Breaking:** `gt`/`gte`/`lt`/`lte` only accept values of ordered types (`i32`, `u64`, `u256`, `dec`, or a bare number or bigint) at compile time. A predicate on a `bytes` value throws `InvalidPredicateError`
 - **Breaking:** `SelectQueryBuilder`'s type parameters are now the selection and the schema, not the result type. `from()` returns a new builder rather than re-typing the one it was called on
-- **Breaking:** `select(selection)` with a selection typed `SelectArg` (built at runtime) now types its results with every field optional — `Entity`, or `PartialRow` through a schema — instead of claiming every field is present
+- **Breaking:** `select()` returns flat rows, with or without a schema: the selection names entity fields and attributes side by side, so `select({ key: true, title: true })` returns `{ key, title }`, with `title` an `ArkivValue | undefined` without a schema. Rows are plain objects rather than `Entity` instances. `attributes` (all attributes as a map) and `attributeSchema` can be selected with or without a schema, and `getEntity(key)` returns the same row as `select("*")`
+- **Breaking:** `query()` takes the same selection as `select()` and returns the same flat rows, typed from the selection, instead of `Entity` objects. `QueryOptions` and `QueryReturnType` take the selection and row type as type parameters
+- **Breaking:** a selection only known at runtime — typed `SelectArg`, or with a field typed `boolean` — types its results with every field optional (`PartialRow`) instead of claiming every field is present. A field set to `undefined` is not selected, and a selection that asks for nothing (`{}`, every field `false`, an empty `attributes` map) is a compile error
 - **Breaking:** the `QueryResult` constructor takes the page's `skipped` count after `cursor`, before the next-page callback
 - `ArkivValue` includes `BytesValue`, and `AnyArkivValue` is gone. `UserTypeTag` is now `IndexableTypeTag`
 - `MAX_ATTRIBUTES` also caps the number of columns a schema may declare
@@ -30,6 +32,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 ### Removed
 - **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead
 - **Breaking:** `AttributeInputs`, and writing attributes without a schema. A schema built at runtime with `defineSchema` covers dynamic attribute sets
+- **Breaking:** the `EntitySelection` and `ProjectedEntity` types. Use `Selection` and `Row`
 
 ## [0.8.1] - 2026-09-08
 

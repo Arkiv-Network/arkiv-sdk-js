@@ -181,9 +181,9 @@ for await (const row of publicClient
 
 #### Selecting fields with `select()`
 
-Pass nothing (or `"*"`) to fetch everything, or pass an object to fetch only specific fields. Through
-a schema, the selection names entity fields (`key`, `owner`, `creator`, `createdAt`, `updatedAt`,
-`expiresAt`, `creationFlags`) and columns side by side, and each result is a flat row:
+Pass nothing (or `"*"`) to fetch everything, or pass an object to fetch only specific fields. The
+selection names entity fields (`key`, `owner`, `creator`, `createdAt`, `updatedAt`, `expiresAt`,
+`creationFlags`) and attributes side by side, and each result is a flat row:
 
 ```typescript
 // Every entity field and every column
@@ -230,16 +230,28 @@ const page = await publicClient.select().from(Posts, { onMismatch: "skip" }).whe
 page.skipped; // matching entities on this page that did not fit Posts
 ```
 
-To read entities without a schema — say, to explore what a node holds — leave out `.from(...)` and
-select `attributes` instead of columns:
+A query reads the same without a schema — say, to explore what a node holds. Leave out
+`.from(...)` and the selection means what it did, and the rows keep their shape. Only the checking is
+gone: each attribute comes back as whatever value the entity holds, or `undefined`, and `where` takes
+any attribute:
 
 ```typescript
-await publicClient.select({ key: true, attributes: true }).where(eq("category", "docs")).fetch();
+const [row] = (
+  await publicClient.select({ key: true, title: true }).where(eq("category", "docs")).fetch()
+).entities;
+row.title;    // ArkivValue | undefined — e.g. { type: "str", value: "Hello" }
+```
+
+To read every attribute without naming them, select `attributes` — a map of all of them — and
+`attributeSchema` for their types and indexing. Both work through a schema too:
+
+```typescript
+await publicClient.select({ key: true, attributes: true, attributeSchema: true }).where(eq("category", "docs")).fetch();
 ```
 
 > **Footgun:** pass the selection inline. A selection stored in a variable widens its `true` values
-> to `boolean`, so the result type can't be narrowed (you get `{}` and a compile error on every
-> field). If you need to reuse one, annotate it `as const`:
+> to `boolean`, so which fields come back is only known at runtime and every field of the result is
+> optional. If you need to reuse one, annotate it `as const`:
 > ```typescript
 > const fields = { owner: true, title: true } as const;
 > await publicClient.select(fields).from(Posts).where(eq("category", "docs")).fetch();

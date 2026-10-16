@@ -18,18 +18,21 @@ export * from "./errors"
 // see #106
 export type {
   AttributeRef,
-  EntitySelection,
+  DynamicSelection,
   Expression,
   FromOptions,
   FullEntity,
   FullRow,
-  ProjectedEntity,
+  NonEmptySelection,
+  PartialRow,
   QueryResult,
   ResultOf,
   Row,
   SchemaRef,
   SelectArg,
+  Selected,
   Selection,
+  SelectionOf,
 } from "./query"
 export { SelectQueryBuilder } from "./query"
 // schemas and the attribute type system

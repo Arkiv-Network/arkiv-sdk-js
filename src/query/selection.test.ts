@@ -1,7 +1,17 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes, dec, defineSchema, i32, SchemaMismatchError, str, u256 } from "../schema"
+import {
+  addr,
+  bytes,
+  dec,
+  defineSchema,
+  InvalidAttributeNameError,
+  i32,
+  SchemaMismatchError,
+  str,
+  u256,
+} from "../schema"
 import { Entity } from "../types/entity"
-import { projectSchema, toRow, toRpcSelect } from "./selection"
+import { projectSelection, toRow, toRpcSelect } from "./selection"
 
 const EVERY_FIELD = {
   key: true,
@@ -65,10 +75,20 @@ describe("toRpcSelect", () => {
     expect(() => toRpcSelect({ attributes: { projectId: true } })).not.toThrow()
   })
 
-  it("rejects a name that is not an entity field, pointing at from()", () => {
-    expect(() => toRpcSelect({ key: true, title: true } as never)).toThrow(/\.from\(schema\)/)
-    // The old payload fields are gone from the entity: a bytes column holds what they did.
-    expect(() => toRpcSelect({ payload: true } as never)).toThrow(/not an entity field/)
+  it("treats a field set to undefined as not selected", () => {
+    expect(toRpcSelect({ key: true, owner: undefined })).toMatchObject({ key: true, owner: false })
+    expect(() => toRpcSelect({ key: undefined })).toThrow(/at least one field/)
+  })
+
+  it("asks for any other name as an attribute, by name", () => {
+    expect(toRpcSelect({ key: true, title: true })).toMatchObject({
+      key: true,
+      attributes: { title: true },
+    })
+    expect(toRpcSelect({ title: true, attributes: { body: true } })).toMatchObject({
+      attributes: { title: true, body: true },
+    })
+    expect(() => toRpcSelect({ "not a name": true })).toThrow(InvalidAttributeNameError)
   })
 })
 
@@ -83,9 +103,9 @@ const Posts = defineSchema({
 const KEY = `0x${"ab".repeat(32)}` as const
 const AUTHOR = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
 
-describe("projectSchema", () => {
+describe("projectSelection", () => {
   it("asks for the selected entity fields, and the selected columns by name", () => {
-    const projection = projectSchema({ key: true, title: true, body: true, score: false }, Posts)
+    const projection = projectSelection({ key: true, title: true, body: true, score: false }, Posts)
     expect(projection.select).toEqual({
       key: true,
       owner: false,
@@ -103,7 +123,7 @@ describe("projectSchema", () => {
 
   it("selects every entity field and every column for nothing or a star", () => {
     for (const selection of [undefined, "*"] as const) {
-      const { select } = projectSchema(selection, Posts)
+      const { select } = projectSelection(selection, Posts)
       expect(select).toMatchObject({ key: true, owner: true, creationFlags: true })
       // Named, not `true`: attributes beyond the schema stay on the node.
       expect(select.attributes).toEqual({
@@ -117,25 +137,37 @@ describe("projectSchema", () => {
   })
 
   it("asks for no attributes when only entity fields are selected", () => {
-    expect(projectSchema({ owner: true }, Posts).select.attributes).toBe(false)
+    expect(projectSelection({ owner: true }, Posts).select.attributes).toBe(false)
   })
 
   it("rejects a name that is neither an entity field nor a column", () => {
-    expect(() => projectSchema({ key: true, nope: true }, Posts)).toThrow(
+    expect(() => projectSelection({ key: true, nope: true }, Posts)).toThrow(
       /"nope", which is neither an entity field nor a column/,
     )
-    // The schema-less selection keys mean nothing through a schema.
-    expect(() => projectSchema({ attributes: true }, Posts)).toThrow(/neither/)
+  })
+
+  it("reads attributes as a whole the same way through a schema as without one", () => {
+    const projection = projectSelection({ key: true, title: true, attributes: true }, Posts)
+    expect(projection.select.attributes).toBe(true)
+    const entity = new Entity({ key: KEY, attributes: { title: str("Hi"), extra: i32(1) } })
+    expect(toRow(entity, projection)).toEqual({
+      key: KEY,
+      title: str("Hi"),
+      attributes: { title: str("Hi"), extra: i32(1) },
+    })
   })
 
   it("rejects a selection that asks for nothing, or a map where a boolean belongs", () => {
-    expect(() => projectSchema({ key: false }, Posts)).toThrow(/at least one field/)
-    expect(() => projectSchema({ title: { x: true } }, Posts)).toThrow(/true or false/)
+    expect(() => projectSelection({ key: false }, Posts)).toThrow(/at least one field/)
+    expect(() => projectSelection({ title: { x: true } }, Posts)).toThrow(/true or false/)
   })
 })
 
 describe("toRow", () => {
-  const projection = projectSchema({ key: true, author: true, title: true, thumbnail: true }, Posts)
+  const projection = projectSelection(
+    { key: true, author: true, title: true, thumbnail: true },
+    Posts,
+  )
 
   it("lays out the selected fields and columns side by side", () => {
     const row = toRow(
@@ -185,7 +217,7 @@ describe("toRow", () => {
 
   it("reads a column named after an Object.prototype key as absent when the entity lacks it", () => {
     const Odd = defineSchema({ constructor: str().optional(), toString: str().optional() })
-    const row = toRow(new Entity({ key: KEY, attributes: {} }), projectSchema("*", Odd))
+    const row = toRow(new Entity({ key: KEY, attributes: {} }), projectSelection("*", Odd))
     expect(row).toHaveProperty("constructor", undefined)
     expect(row).toHaveProperty("toString", undefined)
   })
@@ -193,11 +225,11 @@ describe("toRow", () => {
 
 describe("a named schema", () => {
   const Tagged = defineSchema("posts", { title: str(), score: dec().optional() })
-  const projection = projectSchema({ key: true, title: true }, Tagged)
+  const projection = projectSelection({ key: true, title: true }, Tagged)
 
   it("fetches the tag alongside the columns, even when no column is selected", () => {
     expect(projection.select.attributes).toEqual({ title: true, schema: true })
-    expect(projectSchema({ key: true }, Tagged).select.attributes).toEqual({ schema: true })
+    expect(projectSelection({ key: true }, Tagged).select.attributes).toEqual({ schema: true })
   })
 
   it("checks the tag, but leaves it out of the row", () => {
@@ -219,6 +251,23 @@ describe("a named schema", () => {
     expect(() =>
       toRow(new Entity({ key: KEY, attributes: { title: str("Hi") } }), projection),
     ).toThrow(/not tagged with a schema/)
+  })
+
+  it("leaves the tag out of the attributes map and the attribute schema too", () => {
+    const whole = projectSelection({ key: true, attributes: true, attributeSchema: true }, Tagged)
+    const entity = new Entity({
+      key: KEY,
+      attributes: { title: str("Hi"), schema: str("posts") },
+      attributeSchema: {
+        title: { type: "str", indexed: false },
+        schema: { type: "str", indexed: true },
+      },
+    })
+    expect(toRow(entity, whole)).toEqual({
+      key: KEY,
+      attributes: { title: str("Hi") },
+      attributeSchema: { title: { type: "str", indexed: false } },
+    })
   })
 
   it("rejects an entity whose tag is not a str, whatever its type", () => {
