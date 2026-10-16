@@ -4,8 +4,9 @@ import type { TypeTag } from "../schema"
  * A predicate asked for an operator the query language does not define for that type.
  *
  * The operator × type matrix is part of the language, not a policy: a range comparison on an
- * equality-only type is a **parse error** at the node, not an empty result. Catching it here turns
- * a round trip and an RPC error code into a stack trace pointing at the call site.
+ * equality-only type is a **type error** at the node (a {@link QueryError} of kind `"type"`), not
+ * an empty result. Catching it here turns a round trip and an RPC error code into a stack trace
+ * pointing at the call site.
  *
  * | | `=` `!=` | `<` `<=` `>` `>=` | `STARTSWITH` |
  * | --- | --- | --- | --- |
@@ -35,9 +36,19 @@ export class UnsupportedOperatorError extends Error {
 }
 
 /**
- * A predicate could not be expressed in the query language for a reason other than its operator —
- * a system attribute that is returned in results but cannot be filtered on, a system attribute
- * compared against the wrong type, or a combinator with nothing to combine.
+ * A predicate or query could not be expressed in the query language for a reason other than its
+ * operator. The main causes:
+ *
+ * - a `$` name that is not a queryable system attribute — one returned in results but never
+ *   indexed (`$createdAt`, `$updatedAt`, `$creationFlags`), or none at all;
+ * - a system attribute compared against the wrong type, or tested with `exists()` / `hasType()`,
+ *   which on a system attribute would be constants;
+ * - a comparison against a `bytes` value, which is never indexed;
+ * - a `hasType()` tag that is not an indexable type;
+ * - a combinator with nothing to combine;
+ * - a query with no filter at all — a named schema's tag counts as one;
+ * - through `.from(schema)`, a filter that does not fit the schema: a name that is not a column, a
+ *   column that is not indexed, or a value of another type than the column's.
  */
 export class InvalidPredicateError extends Error {
   /** The attribute the predicate names, where there is one. */

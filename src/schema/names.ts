@@ -49,8 +49,9 @@ const RESERVED = new Set([
  * reserved words.
  *
  * @param name - The attribute name.
- * @throws {InvalidAttributeNameError} If the name is empty, too long, uses characters outside the
- * grammar, or collides with a reserved word.
+ * @throws {InvalidAttributeNameError} If the name is empty, starts with `$` (reserved for system
+ * attributes), too long, uses characters outside the grammar, contains `--` (which opens a query
+ * comment), or collides with a reserved word.
  */
 export function validateAttributeName(name: string): void {
   if (typeof name !== "string" || name.length === 0) {

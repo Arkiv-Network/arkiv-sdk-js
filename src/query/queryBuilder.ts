@@ -48,7 +48,9 @@ type FilterProblem<R, S extends Schema> = R extends {
     : N extends SchemaRef<S>["name"]
       ? `"${N}" has type ${Extract<SchemaRef<S>, { name: N }>["type"]}, but is compared against a value of type ${T}`
       : N extends keyof ColumnsOf<S>
-        ? `"${N}" is not indexed, so it cannot be filtered on. Declare it ${ColumnsOf<S>[N]["type"]}().indexed() to filter on it`
+        ? ColumnsOf<S>[N]["type"] extends "bytes"
+          ? `"${N}" is a bytes column, and bytes are never indexed, so it cannot be filtered on. Index a str, bytes32 or key derived from it instead`
+          : `"${N}" is not indexed, so it cannot be filtered on. Declare it ${ColumnsOf<S>[N]["type"]}().indexed() to filter on it`
         : `"${N}" is not a column of this schema`
   : never
 
@@ -78,7 +80,11 @@ type SelectionCheck<TSelection, TSchema extends Schema> = [
   ? unknown
   : { "selected names that are not columns of this schema": UnknownSelection<TSelection, TSchema> }
 
-/** How a query through a schema treats a matching entity that does not fit the schema. */
+/**
+ * How a query through a schema treats a matching entity that does not fit the schema — one not
+ * tagged with a named schema's name, or missing a selected required column or holding one of
+ * another type. Columns the selection leaves out are not checked.
+ */
 export type FromOptions = {
   /**
    * `"throw"` (the default) fails the fetch with a {@link SchemaMismatchError}. `"skip"` leaves the
@@ -97,10 +103,11 @@ export type FromOptions = {
  * rather than constructing it directly — that is what infers the result shape from the selection.
  *
  * The query returns flat rows: the selected entity fields and attributes side by side. Naming a
- * schema with {@link from} changes what the selection means for nothing but the attributes — they
- * come back typed and checked as the schema declares — and has `where` checked against it, so that
- * filtering on a column the schema does not index, or comparing one against the wrong type, is a
- * compile error.
+ * schema with {@link from} changes what the selection means for nothing but the selected
+ * attributes — they come back typed and checked as the schema declares — and has `where` checked
+ * against it, so that filtering on a column the schema does not index, or comparing one against the
+ * wrong type, is a compile error. A named schema also restricts the query to entities tagged with
+ * its name, and leaves that tag out of the rows' `$attributes` and `$attributeSchema`.
  *
  * Every filter added with {@link where}, {@link ownedBy} and {@link createdBy} must hold; use
  * {@link or} for alternatives inside one call.
@@ -156,12 +163,15 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    * it — and `where` is checked against the schema's indexed columns.
    *
    * A named schema also filters: only entities tagged with its name match, so a query through it
-   * sees only entities written through it, and needs no other filter. An unnamed schema types the
-   * query without filtering it — `where` alone decides which entities match.
+   * sees only entities written through it, and needs no other filter. The tag is how the query finds
+   * them rather than one of their attributes, so rows leave it out of `$attributes` and
+   * `$attributeSchema`. An unnamed schema types the query without filtering it — `where` alone
+   * decides which entities match.
    *
-   * A matching entity that does not fit the schema — a required column missing, or of another
-   * type — fails the fetch with a {@link SchemaMismatchError}, or is left out of the page with
-   * `{ onMismatch: "skip" }`.
+   * A matching entity that does not fit — a selected required column missing or of another type,
+   * or, for a named schema, a tag that does not match — fails the fetch with a
+   * {@link SchemaMismatchError}, or is left out of the page with `{ onMismatch: "skip" }`. Columns
+   * the selection leaves out are not checked.
    *
    * Returns a new builder, carrying whatever this one already holds; this one is left as it was.
    *
@@ -304,7 +314,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
     if (filters.length === 0) {
       throw new InvalidPredicateError(
         "A query needs at least one filter — the language has no spelling for 'match every " +
-          'entity". Add a where(...) predicate, or narrow by ownedBy(...) / createdBy(...).',
+          "entity'. Add a where(...) predicate, or narrow by ownedBy(...) / createdBy(...).",
       )
     }
     return and(filters).toString()
@@ -315,8 +325,9 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    *
    * @throws {InvalidPredicateError} If no filter has been added, or a filter does not fit the
    * schema.
-   * @throws {SchemaMismatchError} If, through a schema, a matching entity does not fit it — unless
-   * `from()` was given `{ onMismatch: "skip" }`.
+   * @throws If the {@link limit} is not an integer from 1 to 200.
+   * @throws {SchemaMismatchError} If, through a schema, a matching entity does not fit the selected
+   * columns or a named schema's tag — unless `from()` was given `{ onMismatch: "skip" }`.
    * @throws {QueryError} If the node rejects the query.
    *
    * @example
@@ -357,11 +368,11 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
   }
 
   /**
-   * Walks every page, yielding one entity at a time.
+   * Walks every page, yielding one row at a time.
    *
    * @example
-   * for await (const entity of client.select({ $key: true }).where(eq("category", "docs"))) {
-   *   console.log(entity.$key)
+   * for await (const row of client.select({ $key: true }).where(eq("category", "docs"))) {
+   *   console.log(row.$key)
    * }
    */
   async *[Symbol.asyncIterator](): AsyncGenerator<ResultOf<TSelection, TSchema>> {

@@ -21,16 +21,17 @@ import { toValue, type ValueInput } from "./values"
 export const MAX_ENTITY_BYTES = 128 * 1024
 
 /**
- * An entity's attributes read back without a schema, keyed by name, every value typed.
+ * An entity's attributes as a whole — what the `$attributes` selection returns — keyed by name,
+ * every value typed.
  *
- * A value read from here drops straight back into a write — the vocabulary is the same in both
- * directions.
+ * The vocabulary is the same in both directions, so a value read from here drops straight back into
+ * a write — as long as its name is a column of the schema the write goes through.
  */
 export type Attributes = Readonly<Record<string, ArkivValue>>
 
 /**
  * The names, types and indexing of an entity's attributes, with no values — what the
- * `attributeSchema` projection returns. `indexed` is `undefined` when the node did not say.
+ * `$attributeSchema` selection returns. `indexed` is `undefined` when the node did not say.
  *
  * Useful for asking what shape the data has without paying to transfer it, and for telling apart
  * two entities that use the same name with different types.
@@ -44,10 +45,14 @@ export type AttributeSchema = Readonly<
  * values name, plus the default of every defaulted column they leave out, each flagged indexed or
  * not as its column says — and, for a named schema, the indexed tag that marks the entity as its.
  *
+ * @throws {SchemaDefinitionError} If `schema` is not a schema built with `defineSchema`.
+ * @throws {TypeError} If `values` is not an object.
  * @throws {SchemaMismatchError} If a value names a column the schema lacks, a required column is
  * left out, or a value's type is not its column's.
  * @throws {MissingValueError} If a value is `null`.
+ * @throws {UntypedValueError} If a value is neither a tagged value nor a bare form.
  * @throws {InvalidValueError} If a value does not fit its type.
+ * @throws {EntityTooLargeError} If the `bytes` values add up to more than {@link MAX_ENTITY_BYTES}.
  */
 export function encodeCreate(
   schema: Schema,
@@ -88,12 +93,16 @@ export function encodeCreate(
  * Writing a column with a different indexed flag than the entity holds flips its indexing, so a
  * schema that marks a column `.indexed()` indexes it from the next patch that writes it.
  *
+ * @throws {SchemaDefinitionError} If `schema` is not a schema built with `defineSchema`.
  * @throws {SchemaMismatchError} If a name is not a column, a value's type is not its column's, or
  * `unset` names a required column.
  * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
  * @throws {MissingValueError} If a value in `set` is `null`.
+ * @throws {UntypedValueError} If a value in `set` is neither a tagged value nor a bare form.
  * @throws {InvalidValueError} If a value does not fit its type.
- * @throws {TypeError} If `unset` is not an array.
+ * @throws {EntityTooLargeError} If the `bytes` values in `set` add up to more than
+ * {@link MAX_ENTITY_BYTES}.
+ * @throws {TypeError} If `set` is not an object, or `unset` is not an array.
  */
 export function encodePatch(
   schema: Schema,

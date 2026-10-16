@@ -1,5 +1,4 @@
 import { NoMoreResultsError } from "../errors"
-import type { Entity } from "../types/entity"
 
 /** Fetches the page a cursor points at. */
 type FetchPage<TEntity> = (cursor: string) => Promise<QueryResult<TEntity>>
@@ -10,7 +9,7 @@ type FetchPage<TEntity> = (cursor: string) => Promise<QueryResult<TEntity>>
  * A page is immutable: {@link next} returns the following page rather than mutating this one, so a
  * page that has been read stays readable.
  *
- * @typeParam TEntity - The shape of each entity, inferred from the selection by `client.select()`.
+ * @typeParam TEntity - The shape of each row, inferred from the selection by `client.select()`.
  *
  * @example
  * let page = await client.select({ $key: true }).where(eq("category", "docs")).limit(100).fetch()
@@ -18,8 +17,8 @@ type FetchPage<TEntity> = (cursor: string) => Promise<QueryResult<TEntity>>
  *   page = await page.next()
  * }
  */
-export class QueryResult<TEntity = Entity> {
-  /** The entities on this page. */
+export class QueryResult<TEntity = Record<string, unknown>> {
+  /** The rows on this page — flat, as the selection lays them out. */
   readonly entities: readonly TEntity[]
   /**
    * The block this page was read at.

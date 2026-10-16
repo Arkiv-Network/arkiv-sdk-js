@@ -36,6 +36,7 @@ export type QueryResponse = {
 /**
  * Runs one query and decodes the page it returns.
  *
+ * @throws If `limit` is not an integer from 1 to {@link MAX_LIMIT}.
  * @throws {QueryError} If the node rejects the query.
  */
 export async function runQuery(client: ArkivClient, request: QueryRequest): Promise<QueryResponse> {

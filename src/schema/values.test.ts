@@ -312,7 +312,7 @@ describe("toValue", () => {
     // runtime — from a spread of an optional-shaped object, or from data that never saw a type.
     for (const absent of [undefined, null]) {
       expect(() => toValue(absent as unknown as string)).toThrow(MissingValueError)
-      expect(() => toValue(absent as unknown as string, "score")).toThrow(/Omit "score"/)
+      expect(() => toValue(absent as unknown as string, "score")).toThrow(/Leave "score" out/)
     }
     expect(() => toValue(undefined as unknown as string, "score")).toThrow(
       /attribute "score" is undefined/,

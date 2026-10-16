@@ -50,7 +50,7 @@ export function makeExpiry(minLifetime: bigint, expiresAt: bigint | Date): Expir
   return { minLifetime, expiresAt } as Expiry
 }
 
-/** The two `uint256` values the ABI carries, with every `Date` already placed. */
+/** The two `uint64` values the ABI carries, with every `Date` already placed. */
 export type EncodedExpiry = {
   /** Absolute target block height, or `0n` for a purely relative lifetime. */
   expiresAt: bigint
@@ -72,10 +72,12 @@ export type ExpiryContext = {
 /**
  * Resolves an expiry into the wire pair and the block the entity will expire at.
  *
- * Durations are converted to blocks at the nominal `BLOCK_TIME` (2 seconds), which makes them
- * **approximate**: block production is not a clock, so a lifetime asked for in days drifts if the
- * chain runs fast or slow. The block it was converted to comes back as
- * {@link ResolvedExpiry.target}, so the approximation is always observable rather than assumed.
+ * A duration arrives here already in blocks — {@link ExpirationTime} converted it at the nominal
+ * `BLOCK_TIME` (2 seconds) through {@link toBlocks} — and a `Date` deadline is placed against
+ * `currentBlock` at that same block time here. Both are **approximate**: block production is not a
+ * clock, so a lifetime asked for in days drifts if the chain runs fast or slow. The block the
+ * expiry resolves to against `currentBlock` comes back as {@link ResolvedExpiry.target}, so the
+ * approximation is always observable rather than assumed.
  *
  * @throws {InvalidExpiryError} If the expiry is malformed, does not fit the `uint64` the wire
  * carries, or would leave the entity dead on arrival.

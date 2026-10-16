@@ -39,7 +39,10 @@ export const U256_MAX = 2n ** 256n - 1n
  * The longest `str`, in UTF-8 bytes
  */
 export const MAX_STRING_BYTES = 128
-/** The longest `bytes` value, in bytes. The cap applies to each `bytes` attribute separately. */
+/**
+ * The longest `bytes` value, in bytes. The cap applies to each `bytes` attribute separately, but
+ * all the `bytes` values of one create or patch also share the `MAX_ENTITY_BYTES` budget.
+ */
 export const MAX_BYTES_LENGTH = 128 * 1024
 
 /**
@@ -58,8 +61,8 @@ export function bool(): Column<"bool", false, false, false>
 /**
  * A boolean.
  *
- * `bool` is the one type that may also be written bare — `{ flagged: true }` and
- * `{ flagged: bool(true) }` are the same attribute.
+ * This is the default type for a bare boolean, so `{ flagged: true }` and
+ * `{ flagged: bool(true) }` are the same value.
  *
  * @example
  * bool(true) // { type: "bool", value: true }
@@ -248,7 +251,7 @@ export function dec(): Column<"dec", false, false, false>
  * @example
  * dec("3.5")
  * dec("-0.000000000000000001")  // the smallest step
- * dec(5)                        // integers may be passed bare
+ * dec(5)                        // integers may be passed as a number
  */
 export function dec(value: string | number | bigint): DecValue
 export function dec(
@@ -426,7 +429,9 @@ export function bytes32(
 
 /**
  * A `bytes` column — a blob. Bytes are stored but never indexed, so a bytes column has no
- * `.indexed()`: it can be selected, not filtered on. A schema may have any number of them.
+ * `.indexed()`: it can be selected, not filtered on. A schema may have several, within the
+ * `MAX_ATTRIBUTES` cap on columns — but the `bytes` values of one create or patch share a single
+ * `MAX_ENTITY_BYTES` budget.
  */
 export function bytes(): Column<"bytes", false, false, false>
 /**
@@ -454,7 +459,7 @@ export function bytes(
       "bytes",
       `<${length} bytes>`,
       `${length} bytes exceeds the ${MAX_BYTES_LENGTH}-byte limit on a bytes value`,
-      "Split it across several bytes columns, or store the bulk elsewhere and keep a reference.",
+      "Split it across several entities, or store the bulk elsewhere and keep a reference.",
     )
   }
   return makeValue("bytes", hex)
@@ -507,9 +512,11 @@ function asHex(tag: "key" | "bytes32" | "bytes", value: Hex | Uint8Array): Hex {
  * is what keeps `"0x1234..."` a string rather than silently becoming a key.
  *
  * These defaults apply identically when writing and when querying, so a value written bare and
- * queried bare always agrees with itself. The mismatch to watch for is mixing the two: an attribute
- * written as {@link u64} does not match a bare `bigint` predicate, because that predicate asserts
- * `u256`. A type mismatch is not an error to the engine — it simply matches nothing.
+ * queried bare always agrees with itself. The mismatch to watch for is a bare value where its
+ * column has another type: a bare `bigint` is a `u256`, not a {@link u64}. Through a schema that is
+ * caught — a write throws `SchemaMismatchError` and a query throws `InvalidPredicateError` — but a
+ * query without a schema sends the predicate as written, and the engine, for which a type mismatch
+ * is not an error, simply matches nothing.
  */
 export type ValueInput = ArkivValue | boolean | number | bigint | string | Uint8Array
 
@@ -532,8 +539,9 @@ export type TagOf<input> = input extends { readonly type: infer tag extends Type
             : never
 
 /**
- * The bare JavaScript form that defaults to `tag`, where there is one — `string` for `str`,
- * `Uint8Array` for `bytes`. Every other type must be written tagged.
+ * The bare JavaScript form that defaults to `tag`, where there is one — `boolean` for `bool`,
+ * `number` for `i32`, `bigint` for `u256`, `string` for `str`, `Uint8Array` for `bytes`. The other
+ * types — `u64`, `dec`, `bytes32`, `addr` and `key` — must be written tagged.
  */
 export type BareOf<tag extends TypeTag> = {
   bool: boolean

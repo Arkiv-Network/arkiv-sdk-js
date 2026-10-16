@@ -4,13 +4,15 @@ This release implements user-defined entity columns. An entity is no longer a pa
 
 ### Added
 - Schemas, exported from `@arkiv-network/sdk/schema`. `defineSchema({ ... })` declares an entity's columns. Each column is a type constructor called with no arguments (`str()`, `dec()`, `bytes()`, ...) and refined with `.indexed()`, `.optional()` and `.default(...)`. Called with a value, the same constructor still makes a typed value: `dec()` is a column, `dec("4.1")` is a value
-- `bytes` is a user type: `bytes()` is a column, `bytes(value)` a value, and a bare `Uint8Array` is taken as one. Bytes are stored but never indexed. An entity may have any number of bytes columns, each up to 128 KiB (`MAX_BYTES_LENGTH`). The bytes columns of one create or patch may hold at most 128 KiB together (`MAX_ENTITY_BYTES`, provisional until the protocol settles a per-entity cap); more throws `EntityTooLargeError`
-- `select(...).from(schema)` on the query builder. The selection keeps its meaning and the rows their shape, but each selected attribute is typed and checked as the schema's column. `where` only accepts the schema's indexed columns, compared against values of their type: anything else is a compile error and a runtime `InvalidPredicateError`. A matching entity that does not fit the schema fails the fetch with `SchemaMismatchError` unless `onMismatch: "skip"` is set
+- `bytes` is a user type: `bytes()` is a column, `bytes(value)` a value, and a bare `Uint8Array` is taken as one. Bytes are stored but never indexed. An entity may have as many bytes columns as `MAX_ATTRIBUTES` allows, each up to 128 KiB (`MAX_BYTES_LENGTH`). The bytes columns of one create or patch may hold at most 128 KiB together (`MAX_ENTITY_BYTES`, provisional until the protocol settles a per-entity cap); more throws `EntityTooLargeError`
+- `select(...).from(schema)` on the query builder. The selection keeps its meaning and the rows their shape, but each selected attribute is typed and checked as the schema's column. The exception is `"*"` (or no selection), which through a schema means every entity field and every column rather than the `$attributes` map and `$attributeSchema`. A named schema also filters by its tag (below). `where` only accepts the schema's indexed columns and the queryable system attributes (`$key`, `$owner`, `$creator`, `$expiresAt`), compared against values of their type: anything else is a compile error and a runtime `InvalidPredicateError`. A matching entity whose selected columns do not fit the schema, or that does not carry a named schema's tag, fails the fetch with `SchemaMismatchError` unless `onMismatch: "skip"` is set
 - Named schemas: `defineSchema("posts", { ... })` tags every entity it creates with an indexed `arkiv.schema` attribute holding the name, and `.from()` filters on it, so a query through a named schema only sees entities written through it and needs no other filter. Reads check the tag too. `arkiv.schema` is a reserved column name, and the tag counts against `MAX_ATTRIBUTES`
 - `.from(schema, { onMismatch: "skip" })` leaves entities that do not fit the schema out of the page instead of failing the fetch, and `QueryResult.skipped` reports how many each page left out. `"throw"` is the default
 - `getEntity(key, schema)` reads one entity through a schema
 - `executeBatch()` creates and patches each name their own schema and are typed by it, so one batch can write entities of several schemas
-- `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `FromOptions`, `IndexableTypeTag`, `IndexableValue`, `DynamicSelection`, `PartialRow`, `KnownSystemFields`, `SystemField`, `SYSTEM_FIELDS`
+- `SchemaDefinitionError`, `SchemaMismatchError`, `INDEXED_FLAG`, `SCHEMA_ATTRIBUTE`, `FromOptions`, `IndexableTypeTag`, `IndexableValue`, `DynamicSelection`, `PartialRow`
+- Schema exports from `@arkiv-network/sdk/schema` and the package root: `Schema`, `Column`, `AnyColumn`, `Columns`, `ColumnsOf`, `ColumnInput`, `CreateEntityValues`, `PatchEntityValues`, `IndexedColumnName`, `OptionalColumnName`, `isSchema`, `isColumn`, `lookupColumn`
+- Selection and row exports from `@arkiv-network/sdk/query`: the types `Selection`, `Row`, `FullRow`, `ResultOf`, `SelectionOf`, `NonEmptySelection`, `KnownSystemFields`, `Selected`, `SystemField`, `SchemaRef` and `AttributeRef` (also exported from the package root), and `SYSTEM_FIELDS` (also from the package root), `projectSelection` and `toRow`. `QueryRow` from `@arkiv-network/sdk/types` and the package root
 - Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
 
 ### Changed
@@ -37,6 +39,9 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** the `EntitySelection` and `ProjectedEntity` types. Use `Selection` and `Row`
 - **Breaking:** `resolveExpiry()`, `toBlocks()`, `encodeCreationFlags()`, `decodeCreationFlags()` and `OperationType`, and the `EncodedExpiry`, `ExpiryContext` and `ResolvedExpiry` types, are no longer exported. They are internal to the SDK
 - The `brotli-wasm` dependency, which nothing in the SDK used
+
+### Fixed
+- An exclusion in `DEBUG` (`arkiv:*,-arkiv:query:*`) now silences the namespaces it names. It used to do the opposite: it left those enabled and silenced everything else
 
 ## [0.8.1] - 2026-09-08
 

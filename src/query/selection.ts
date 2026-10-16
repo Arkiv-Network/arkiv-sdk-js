@@ -64,7 +64,9 @@ type SelectionKey = (typeof SELECTION_KEYS)[number]
 /**
  * A selection: entity fields, `$attributes` / `$attributeSchema`, and attributes by name, each set
  * to `true` to ask for it. The same selection means the same thing with or without a schema —
- * naming one with `.from(...)` only types and checks the attributes, and the filter.
+ * naming one with `.from(...)` only types and checks the selected attributes, and the filter. A
+ * named schema also restricts the query to entities tagged with its name, and leaves the tag out of
+ * every row.
  */
 export type Selection = Readonly<Record<string, boolean | undefined>>
 
@@ -366,8 +368,8 @@ export function projectSelection(selection?: SelectArg, schema?: Schema): Projec
  * Lays an entity out as a row of `projection` — checking it against the schema, when there is one.
  *
  * @throws {SchemaMismatchError} If a named schema's entity is not tagged with its name, or the
- * entity lacks a required column or holds one with a type other than the schema's — it was not
- * written through this schema, or was patched since.
+ * entity lacks a selected required column or holds one with a type other than the schema's — it
+ * was not written through this schema, or was patched since.
  */
 export function toRow(entity: Entity, projection: Projection): Record<string, unknown> {
   const subject = entity.key === undefined ? "the entity" : `entity ${entity.key}`
