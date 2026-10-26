@@ -181,7 +181,8 @@ export type WalletArkivActions<
      *
      * The new lifetime is resolved the same way a create's is: a duration counts from now rather
      * than adding to what the entity has left, and `atBlock` / `atDate` pin an absolute deadline.
-     * The engine rejects an extension that would not move the expiry later.
+     * The engine rejects an extension that would move the expiry earlier; one that resolves to the
+     * current expiry changes nothing.
      *
      * - JSON-RPC Methods: `eth_sendRawTransaction`
      *

@@ -17,8 +17,9 @@ const logger = getLogger("actions:wallet:extend-entity")
  * `ExpirationTime.fromDays(30)` means "alive for thirty more days from now" whatever the entity's
  * remaining life happened to be.
  *
- * The engine rejects an extension that would not move the expiry later, so extending an entity by
- * less than it already has left is an error rather than a silent shortening.
+ * The engine rejects an extension that would move the expiry earlier, so extending an entity by
+ * less than it already has left is an error rather than a silent shortening. One that resolves to
+ * the current expiry changes nothing.
  *
  * @example
  * await client.extendEntity({ entityKey, expiration: ExpirationTime.fromDays(30) })
