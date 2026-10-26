@@ -526,13 +526,16 @@ describe("through a schema", () => {
     expect(titles).toEqual(["Hello", "Hello"])
   })
 
-  it("fails the fetch when a matching entity does not fit the schema", async () => {
+  it("fails the fetch on an entity that does not fit the schema, with onMismatch: throw", async () => {
     const { client } = makeClient({
       blockNumber: "0x1",
       data: [{ key: KEY, attributes: [{ name: "author", type: "addr", value: ACCOUNT }] }],
     })
     await expect(
-      select(client, { $key: true, title: true }).from(Posts).where(eq("category", "docs")).fetch(),
+      select(client, { $key: true, title: true })
+        .from(Posts, { onMismatch: "throw" })
+        .where(eq("category", "docs"))
+        .fetch(),
     ).rejects.toThrow(SchemaMismatchError)
   })
 
@@ -609,23 +612,25 @@ describe("through a schema", () => {
     expect(title).toEqual(str("Hello"))
   })
 
-  it("throws on a mismatch by default, and skips it with onMismatch: skip", async () => {
+  it("skips a mismatch by default, and throws on it with onMismatch: throw", async () => {
+    // Anyone can write an entity a query matches but the schema does not fit, so one such entity
+    // must not fail every read of the others unless the caller asks for that.
     const misfit = { key: KEY, attributes: [{ name: "author", type: "addr", value: ACCOUNT }] }
     const pages = () => makeClient({ blockNumber: "0x1", data: [row, misfit, row] }).client
 
-    await expect(
-      select(pages(), { $key: true, title: true })
-        .from(Posts)
-        .where(eq("category", "docs"))
-        .fetch(),
-    ).rejects.toThrow(SchemaMismatchError)
-
     const page = await select(pages(), { $key: true, title: true })
-      .from(Posts, { onMismatch: "skip" })
+      .from(Posts)
       .where(eq("category", "docs"))
       .fetch()
     expect(page.entities.map((entry) => entry.title.value)).toEqual(["Hello", "Hello"])
     expect(page.skipped).toBe(1)
+
+    await expect(
+      select(pages(), { $key: true, title: true })
+        .from(Posts, { onMismatch: "throw" })
+        .where(eq("category", "docs"))
+        .fetch(),
+    ).rejects.toThrow(SchemaMismatchError)
   })
 
   it("still throws errors that are not mismatches when skipping", async () => {

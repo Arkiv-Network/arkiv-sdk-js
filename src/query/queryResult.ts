@@ -38,7 +38,7 @@ export class QueryResult<
   readonly cursor: string | undefined
   /**
    * How many matching entities this page left out because they did not fit the schema — always
-   * `0` unless the query ran through `.from(schema, { onMismatch: "skip" })`.
+   * `0` without a schema, or with `.from(schema, { onMismatch: "throw" })`.
    *
    * Counted per page, not per walk: `entities.length + skipped` is what the node returned for this
    * page, so a short or empty page with a cursor is explained here rather than mistaken for the

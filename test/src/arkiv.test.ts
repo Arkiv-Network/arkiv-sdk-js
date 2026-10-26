@@ -521,22 +521,22 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(everyBook.entities.map((row) => row.$key)).not.toContain(author)
 
       // An unnamed schema types a query without filtering it: the author matches `group` too,
-      // and does not fit — which fails the fetch by default, or is skipped on request.
+      // and does not fit — which is skipped by default, or fails the fetch on request.
       const UntaggedBooks = defineSchema({ group: str().indexed(), title: str() })
-      await expect(
-        publicClient
-          .select({ $key: true, title: true })
-          .from(UntaggedBooks)
-          .where(eq("group", group))
-          .fetch(),
-      ).rejects.toThrow(SchemaMismatchError)
       const skipped = await publicClient
         .select({ $key: true, title: true })
-        .from(UntaggedBooks, { onMismatch: "skip" })
+        .from(UntaggedBooks)
         .where(eq("group", group))
         .fetch()
       expect(skipped.entities.map((row) => row.$key)).toEqual([book])
       expect(skipped.skipped).toBe(1)
+      await expect(
+        publicClient
+          .select({ $key: true, title: true })
+          .from(UntaggedBooks, { onMismatch: "throw" })
+          .where(eq("group", group))
+          .fetch(),
+      ).rejects.toThrow(SchemaMismatchError)
     },
     { timeout: 30000 },
   )

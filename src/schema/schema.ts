@@ -69,8 +69,8 @@ export class Schema<C extends Columns = Columns> {
  * `arkiv.schema` attribute holding the name, and `.from(schema)` filters on it — the way a
  * collection keeps one model's documents apart from another's. Without a name, a query through the
  * schema sees every entity its `where` matches, whatever wrote it — though the columns it selects
- * are still checked against the schema, so an entity that does not fit fails the query, or is
- * skipped with `{ onMismatch: "skip" }`.
+ * are still checked against the schema, so an entity that does not fit is left out of the page, or
+ * fails the query with `{ onMismatch: "throw" }`.
  *
  * @param name - The name entities are tagged with — a `str`, so at most 128 bytes. Optional.
  * @param columns - The columns, keyed by attribute name.

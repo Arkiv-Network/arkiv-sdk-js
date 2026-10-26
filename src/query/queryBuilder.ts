@@ -32,10 +32,12 @@ type SelectionCheck<TSelection, TSchema extends Schema> = [
  */
 export type FromOptions = {
   /**
-   * `"throw"` (the default) fails the fetch with a {@link SchemaMismatchError}. `"skip"` leaves the
-   * entity out of the page instead — so a page can hold fewer rows than its limit, and a page whose
-   * every entity was skipped is empty while later pages still have rows. Each page reports how many
-   * it left out as {@link QueryResult.skipped}.
+   * `"skip"` (the default) leaves the entity out of the page — so a page can hold fewer rows than
+   * its limit, and a page whose every entity was skipped is empty while later pages still have rows.
+   * Each page reports how many it left out as {@link QueryResult.skipped}. Arkiv is public, so
+   * anyone can write an entity that matches a query but not the schema; skipping keeps one such
+   * entity from failing every read of the others. `"throw"` fails the fetch with a
+   * {@link SchemaMismatchError} instead.
    */
   onMismatch?: "throw" | "skip" | undefined
 }
@@ -85,7 +87,7 @@ export class SelectQueryBuilder<
 > extends QueryBuilderBase<TSchema> {
   private readonly _selection: SelectArg | undefined
   private _projection: Projection
-  private _onMismatch: "throw" | "skip" = "throw"
+  private _onMismatch: "throw" | "skip" = "skip"
   private _limit: number | undefined
   private _cursor: string | undefined
   private _withCount = false
@@ -113,9 +115,9 @@ export class SelectQueryBuilder<
    * decides which entities match.
    *
    * A matching entity that does not fit — a selected required column missing or of another type,
-   * or, for a named schema, a tag that does not match — fails the fetch with a
-   * {@link SchemaMismatchError}, or is left out of the page with `{ onMismatch: "skip" }`. Columns
-   * the selection leaves out are not checked.
+   * or, for a named schema, a tag that does not match — is left out of the page, or fails the fetch
+   * with a {@link SchemaMismatchError} with `{ onMismatch: "throw" }`. Columns the selection leaves
+   * out are not checked.
    *
    * Returns a new builder, carrying whatever this one already holds; this one is left as it was.
    *
@@ -127,7 +129,7 @@ export class SelectQueryBuilder<
    * @example
    * client.select({ $key: true, title: true }).from(Posts)   // rows typed { $key; title }
    * client.select().from(Posts)                               // every field and every column
-   * client.select().from(Posts, { onMismatch: "skip" })       // leave out entities that do not fit
+   * client.select().from(Posts, { onMismatch: "throw" })      // fail on entities that do not fit
    */
   from<S extends Schema>(
     schema: S & SelectionCheck<TSelection, S>,
@@ -136,7 +138,7 @@ export class SelectQueryBuilder<
     if (!isSchema(schema)) {
       throw new SchemaDefinitionError("from() takes a schema built with defineSchema(...)")
     }
-    const { onMismatch = "throw" } = options
+    const { onMismatch = "skip" } = options
     if (onMismatch !== "throw" && onMismatch !== "skip") {
       throw new TypeError(`onMismatch must be "throw" or "skip", got ${String(onMismatch)}`)
     }
@@ -203,7 +205,7 @@ export class SelectQueryBuilder<
    * schema.
    * @throws If the {@link limit} is not an integer from 1 to 100.
    * @throws {SchemaMismatchError} If, through a schema, a matching entity does not fit the selected
-   * columns or a named schema's tag — unless `from()` was given `{ onMismatch: "skip" }`.
+   * columns or a named schema's tag, and `from()` was given `{ onMismatch: "throw" }`.
    * @throws {QueryError} If the node rejects the query.
    *
    * @example

@@ -237,12 +237,13 @@ filtering it, so `where` alone decides which entities match.
 
 Only what you select is checked. An entity that matches but does not fit the schema — a selected
 column that is required but missing or holds another type, or, for a named schema, another schema's
-tag — fails the fetch with a `SchemaMismatchError`. Pass `{ onMismatch: "skip" }` to leave such
-entities out instead; a page can then hold fewer rows than its limit, and reports how many it left
-out as `skipped`:
+tag — is left out of the page. Anyone can write an entity a query matches, so one that does not
+fit never fails the read of the others. A page can then hold fewer rows than its limit, and reports
+how many it left out as `skipped`. Pass `{ onMismatch: "throw" }` to fail the fetch with a
+`SchemaMismatchError` instead:
 
 ```typescript
-const page = await publicClient.select().from(Posts, { onMismatch: "skip" }).where(eq("category", "docs")).fetch();
+const page = await publicClient.select().from(Posts).where(eq("category", "docs")).fetch();
 page.skipped; // matching entities on this page that did not fit Posts
 ```
 
