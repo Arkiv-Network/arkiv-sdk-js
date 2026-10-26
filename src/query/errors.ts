@@ -3,17 +3,15 @@ import type { TypeTag } from "../schema"
 /**
  * A predicate asked for an operator the query language does not define for that type.
  *
- * The operator × type matrix is part of the language, not a policy: a range comparison on an
- * equality-only type is a **type error** at the node (a {@link QueryError} of kind `"type"`), not
+ * The operator × type matrix is part of the language, not a policy: a prefix test on a type other
+ * than `str` is a **type error** at the node (a {@link QueryError} of kind `"type"`), not
  * an empty result. Catching it here turns a round trip and an RPC error code into a stack trace
  * pointing at the call site.
  *
- * | | `=` `!=` | `<` `<=` `>` `>=` | `STARTSWITH` |
- * | --- | --- | --- | --- |
- * | `bool` | yes | no | no |
- * | `i32` `u64` `u256` `dec` | yes | yes | no |
- * | `str` | yes | no | yes |
- * | `addr` `key` `bytes32` | yes | no | no |
+ * | | `=` `!=` `<` `<=` `>` `>=` `BETWEEN` | `STARTSWITH` |
+ * | --- | --- | --- |
+ * | `str` | yes | yes |
+ * | every other indexable type | yes | no |
  */
 export class UnsupportedOperatorError extends Error {
   /** The attribute the predicate names. */
@@ -44,6 +42,7 @@ export class UnsupportedOperatorError extends Error {
  * - a system attribute compared against the wrong type, or tested with `exists()` / `hasType()`,
  *   which on a system attribute would be constants;
  * - a comparison against a `bytes` value, which is never indexed;
+ * - a `BETWEEN` whose bounds have different types;
  * - a `hasType()` tag that is not an indexable type;
  * - a combinator with nothing to combine;
  * - a query with no filter at all — a named schema's tag counts as one;
@@ -69,7 +68,7 @@ export class InvalidPredicateError extends Error {
 export type QueryErrorKind =
   /** The query string does not parse. `data` locates it: `{ position, expected, got }`. */
   | "parse"
-  /** A predicate is well-formed but ill-typed — a range operator on an equality-only type, an unknown tag. */
+  /** A predicate is well-formed but ill-typed — `STARTSWITH` on a type other than `str`, `BETWEEN` bounds of different types, an unknown tag. */
   | "type"
   /** A literal failed validation — an `i32` out of range, a bad EIP-55 checksum, more than 18 decimal places. */
   | "literal"

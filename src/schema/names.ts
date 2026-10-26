@@ -28,6 +28,7 @@ const RESERVED = new Set([
   "not",
   "true",
   "false",
+  "between",
   "startswith",
   "exists",
   "typeof",

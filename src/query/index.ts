@@ -7,12 +7,12 @@ export { InvalidPredicateError, QueryError, UnsupportedOperatorError } from "./e
 export type {
   AndNode,
   AttributeRef,
+  BetweenNode,
   ComparisonNode,
   ComparisonOperator,
   ExistsNode,
   Expression,
   NotNode,
-  OrderedValue,
   OrNode,
   PredicateValue,
   RefsOf,
@@ -23,6 +23,7 @@ export type {
 } from "./expression"
 export {
   and,
+  between,
   checkAgainstSchema,
   eq,
   exists,

@@ -228,7 +228,7 @@ index, or comparing a column against a value of another type, is a compile error
 ```typescript
 .where(eq("title", "x"))   // ❌ title is not indexed
 .where(eq("score", 5))     // ❌ score is a dec, 5 is an i32 — write dec(5)
-.where(gt("author", ...))  // ❌ addr has no ordering
+.where(between("score", dec(1), 5))  // ❌ both bounds need one type
 ```
 
 A named schema needs no `where` at all — `select().from(Posts)` matches every post: `fetch()`

@@ -20,6 +20,7 @@ import {
 } from "@arkiv-network/sdk"
 import {
   and,
+  between,
   type Expression,
   eq,
   exists,
@@ -782,6 +783,8 @@ describe("Arkiv Integration Tests for public client", () => {
         100, 500,
       ])
       expect(await scores(not(eq("rangescore", i32(100))))).toEqual([200, 300, 400, 500])
+      // Inclusive at both ends, like gte AND lte.
+      expect(await scores(between("rangescore", i32(200), i32(400)))).toEqual([200, 300, 400])
       expect(await scores(startsWith("label", "score-1"))).toEqual([100])
     },
     { timeout: 60000 },

@@ -1,8 +1,6 @@
 import {
   type ColumnsOf,
-  type DecValue,
   describeColumns,
-  type I32Value,
   type IndexableTypeTag,
   type IndexableValue,
   type IndexedColumnName,
@@ -13,8 +11,6 @@ import {
   type TagOf,
   type TypeTag,
   toValue,
-  type U64Value,
-  type U256Value,
   validateAttributeName,
 } from "../schema"
 // Internal seam: the typeId table is the protocol's, not part of the package's public surface.
@@ -22,8 +18,9 @@ import { isIndexable, TYPE_IDS } from "../schema/types"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 
 /**
- * The comparison operators the query language defines. `<` `<=` `>` `>=` need an ordered type —
- * `i32`, `u64`, `u256` or `dec`; every type accepts `=` and `!=`.
+ * The comparison operators the query language defines. Every indexable type accepts all of them;
+ * `<` `<=` `>` `>=` compare in index order — numerically for `i32`, `u64`, `u256` and `dec`,
+ * `false < true` for `bool`, and by unsigned bytes for `str`, `bytes32`, `addr` and `key`.
  */
 export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
 
@@ -33,19 +30,14 @@ export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
  */
 export type PredicateValue = IndexableValue | boolean | number | bigint | string
 
-/** A value of a type with an ordered index, which is what `<` `<=` `>` `>=` need. */
-export type OrderedValue = I32Value | U64Value | U256Value | DecValue | number | bigint
-
 /**
- * `gt`/`gte`/`lt`/`lte`'s check that the value has an ordered type — `unknown` when it does, and
- * otherwise an object whose one property is named after the problem. No value has that property,
- * so the compiler reports the sentence as the property it is missing.
+ * `between`'s check that both bounds have one type — `unknown` when they do, and otherwise an
+ * object whose one property is named after the problem. No value has that property, so the
+ * compiler reports the sentence as the property it is missing.
  */
-type OrderedCheck<V> = [V] extends [OrderedValue]
+type SameTypeCheck<L, H> = [TagOf<L>, TagOf<H>] extends [TagOf<H>, TagOf<L>]
   ? unknown
-  : {
-      [K in `range comparisons are not supported for ${TagOf<Exclude<V, OrderedValue>>}. Only i32, u64, u256 and dec can be compared with < <= > >=`]: never
-    }
+  : { [K in `BETWEEN bounds must have one type, got ${TagOf<L>} and ${TagOf<H>}`]: never }
 
 /**
  * The attribute a predicate names, and the type it asserts — `never` when it asserts none, as
@@ -66,6 +58,14 @@ export interface ComparisonNode<R extends AttributeRef = AttributeRef> extends R
   readonly name: string
   readonly operator: ComparisonOperator
   readonly value: IndexableValue
+}
+
+/** An inclusive range test, `name BETWEEN low AND high`. Both bounds have one type. */
+export interface BetweenNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
+  readonly kind: "between"
+  readonly name: string
+  readonly low: IndexableValue
+  readonly high: IndexableValue
 }
 
 /** A `STARTSWITH` prefix test, the language's only pattern operator. */
@@ -119,6 +119,7 @@ export interface OrNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
  */
 export type Expression<R extends AttributeRef = AttributeRef> =
   | ComparisonNode<R>
+  | BetweenNode<R>
   | StartsWithNode<R>
   | ExistsNode<R>
   | TypeOfNode<R>
@@ -176,16 +177,6 @@ export type SchemaRef<S extends Schema> =
 /** System attributes a query can ask for but not filter on — they carry no index. */
 const RESULT_ONLY_SYSTEM_ATTRIBUTES = ["$createdAt", "$updatedAt", "$creationFlags"]
 
-/** The types that carry an ordered index, and so accept `<` `<=` `>` `>=`. */
-const ORDERED_TAGS: ReadonlySet<TypeTag> = new Set<TypeTag>(["i32", "u64", "u256", "dec"])
-
-const RANGE_OPERATORS: ReadonlySet<ComparisonOperator> = new Set<ComparisonOperator>([
-  "<",
-  "<=",
-  ">",
-  ">=",
-])
-
 /**
  * Checks an attribute reference, returning its fixed type when it names a system attribute.
  *
@@ -237,14 +228,16 @@ function node<T extends Expression>(value: T): T {
   return Object.freeze(value)
 }
 
-function comparison<R extends AttributeRef>(
+/**
+ * Resolves a value a predicate compares `name` against, and checks it can be: not `bytes`, which is
+ * never indexed, and of the fixed type when `name` is a system attribute.
+ */
+function predicateValue(
   name: string,
-  operator: ComparisonOperator,
+  system: TypeTag | undefined,
   input: PredicateValue,
-): ComparisonNode<R> {
-  const system = resolveReference(name)
+): IndexableValue {
   const value = toValue(input, name)
-
   if (value.type === "bytes") {
     throw new InvalidPredicateError(
       `"${name}" is compared against a bytes value, and bytes are stored but never indexed, so ` +
@@ -259,14 +252,15 @@ function comparison<R extends AttributeRef>(
       name,
     )
   }
-  if (RANGE_OPERATORS.has(operator) && !ORDERED_TAGS.has(value.type)) {
-    throw new UnsupportedOperatorError(
-      name,
-      operator,
-      value.type,
-      `Only i32, u64, u256 and dec carry an ordered index; ${value.type} is equality-only.`,
-    )
-  }
+  return value
+}
+
+function comparison<R extends AttributeRef>(
+  name: string,
+  operator: ComparisonOperator,
+  input: PredicateValue,
+): ComparisonNode<R> {
+  const value = predicateValue(name, resolveReference(name), input)
   return node({ kind: "comparison", name, operator, value })
 }
 
@@ -314,12 +308,11 @@ export function ne<N extends string, V extends PredicateValue>(
 }
 
 /**
- * Attribute is greater than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
+ * Attribute is greater than value, in index order — see {@link ComparisonOperator}.
  *
  * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
  * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
  * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
  * gt("level", i32(10))              // level > i32(10)
@@ -327,63 +320,92 @@ export function ne<N extends string, V extends PredicateValue>(
  */
 export function gt<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">", value)
 }
 
 /**
- * Attribute is greater than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
+ * Attribute is greater than or equal to value, in index order — see {@link ComparisonOperator}.
  *
  * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
  * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
  * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
  * gte("score", dec("3.5")) // score >= dec(3.5)
  */
 export function gte<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">=", value)
 }
 
 /**
- * Attribute is less than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
+ * Attribute is less than value, in index order — see {@link ComparisonOperator}.
  *
  * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
  * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
  * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
  * lt("level", i32(10)) // level < i32(10)
  */
 export function lt<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<", value)
 }
 
 /**
- * Attribute is less than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
+ * Attribute is less than or equal to value, in index order — see {@link ComparisonOperator}.
  *
  * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
  * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
  * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
  *
  * @example
  * lte("score", dec("5")) // score <= dec(5)
  */
 export function lte<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<=", value)
+}
+
+/**
+ * Attribute lies between two values, **inclusive** at both ends: it matches exactly what
+ * `and(gte(name, low), lte(name, high))` matches, in one predicate. Both bounds must have one type,
+ * and a `low` above `high` matches nothing.
+ *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the bounds have different types, the name starts with `$` but
+ * is not a queryable system attribute, a system attribute is compared against the wrong type, or a
+ * bound is `bytes`.
+ *
+ * @example
+ * between("score", dec("3.5"), dec("5"))  // score BETWEEN dec(3.5) AND dec(5)
+ * between("$expiresAt", u64(100n), u64(200n))
+ */
+export function between<N extends string, L extends PredicateValue, H extends PredicateValue>(
+  name: N,
+  low: L,
+  high: H & SameTypeCheck<L, H>,
+): BetweenNode<ValueRef<N, L>> {
+  const system = resolveReference(name)
+  const lowValue = predicateValue(name, system, low)
+  const highValue = predicateValue(name, system, high)
+  if (lowValue.type !== highValue.type) {
+    throw new InvalidPredicateError(
+      `BETWEEN on "${name}" has a ${lowValue.type} and a ${highValue.type} bound. Both bounds ` +
+        "must have one type, the type the attribute is compared as.",
+      name,
+    )
+  }
+  return node({ kind: "between", name, low: lowValue, high: highValue })
 }
 
 /**
@@ -612,9 +634,11 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
   const asserted =
     expression.kind === "comparison" || expression.kind === "startsWith"
       ? expression.value.type
-      : expression.kind === "typeOf"
-        ? expression.tag
-        : undefined
+      : expression.kind === "between"
+        ? expression.low.type
+        : expression.kind === "typeOf"
+          ? expression.tag
+          : undefined
   if (asserted !== undefined && asserted !== column.type) {
     throw new InvalidPredicateError(
       `"${name}" is a ${column.type} column, but the predicate asserts a ${asserted}, so it could ` +
@@ -660,6 +684,10 @@ export function render(expression: Expression): string {
   switch (expression.kind) {
     case "comparison":
       return `${expression.name} ${expression.operator} ${renderLiteral(expression.value)}`
+    case "between":
+      // A leaf, never parenthesised: the AND inside BETWEEN belongs to it, so
+      // `a BETWEEN 1 AND 5 AND b = 2` already reads as `(a BETWEEN 1 AND 5) AND b = 2`.
+      return `${expression.name} BETWEEN ${renderLiteral(expression.low)} AND ${renderLiteral(expression.high)}`
     case "startsWith":
       return `${expression.name} STARTSWITH ${renderLiteral(expression.value)}`
     case "exists":
