@@ -258,14 +258,22 @@ const row = (
 row.title;    // ArkivValue | undefined — e.g. { type: "str", value: "Hello" }
 ```
 
-To read every attribute without naming them, select `$attributes` — a map of all of them — and
-`$attributeSchema` for their types and indexing. Both work through a schema too. This is also what
-`"*"` (or nothing) fetches without a schema, alongside the entity fields, since there are no columns
-to list:
+To read every attribute without naming them, select `$attributes`, a map of all of them. `"*"` (or
+nothing) fetches it alongside the entity fields when there is no schema, since there are no columns
+to list.
+
+`$attributeSchema` is for finding out what entities hold without fetching their values: each
+attribute's name, its type, and whether it is indexed. Values can be large — a `bytes` attribute
+holds up to 128 KiB — and an RPC endpoint may cap how big a response it sends, so a page of 100
+entities with every attribute can be more than it will return. Fetch the schema first, then select
+the attributes you need by name. It is never part of `"*"`; select it by name:
 
 ```typescript
-await publicClient.select({ $key: true, $attributes: true, $attributeSchema: true }).where(eq("category", "docs")).fetch();
+const page = await publicClient.select({ $key: true, $attributeSchema: true }).where(eq("category", "docs")).fetch();
+page.entities[0]?.$attributeSchema; // { title: { type: "str", indexed: false }, body: { type: "bytes", indexed: false } }
 ```
+
+Both work through a schema too.
 
 > **Footgun:** pass the selection inline. A selection stored in a variable widens its `true` values
 > to `boolean`, so which fields come back is only known at runtime and every field of the result is

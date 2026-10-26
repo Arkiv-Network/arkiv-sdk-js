@@ -93,6 +93,12 @@ export type ArkivRpcSchema = [
     }
   },
   {
+    Method: "arkiv_getEntity"
+    Parameters: [entityKey: Hex]
+    /** Every field except `attributeSchema`, or `null` if no live entity has the key. */
+    ReturnType: RpcEntity | null
+  },
+  {
     Method: "arkiv_getBlockTiming"
     Parameters?: []
     ReturnType: {

@@ -726,7 +726,11 @@ describe(`Network health check (${chain.name})`, () => {
       expect(entity.parent).toEqual(key(dangling))
       expect(entity.blob).toEqual(bytes("0x010203"))
 
-      expect((await publicClient.getEntity(entityKey)).$attributeSchema).toMatchObject({
+      const shape = await publicClient
+        .select({ $attributeSchema: true })
+        .where(eq("$key", key(entityKey)))
+        .fetch()
+      expect(shape.entities[0]?.$attributeSchema).toMatchObject({
         text: { type: "str", indexed: true },
         count: { type: "i32", indexed: true },
         big: { type: "u64", indexed: true },

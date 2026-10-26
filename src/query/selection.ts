@@ -45,7 +45,10 @@ type EntityField<F extends SystemField> = F extends `$${infer N extends keyof En
  * attribute.
  */
 export type SelectionFields = { [K in SystemField]?: boolean } & {
-  /** Attribute names, types and indexing, without their values. */
+  /**
+   * Attribute names, types and indexing, without their values — a cheap way to find out what
+   * entities hold before fetching values that may be large. See {@link AttributeSchema}.
+   */
   $attributeSchema?: boolean
   /** Every attribute, as a map keyed by name. */
   $attributes?: boolean
@@ -118,10 +121,18 @@ export type Row<S, TSchema extends Schema | undefined = undefined> = {
   readonly [K in keyof S as Selected<S[K]> extends true ? K : never]: FieldValue<K, TSchema>
 }
 
-/** A selection of every key with a fixed meaning, used to type `select()` / `select("*")`. */
-type AllSelected = { [K in (typeof SELECTION_KEYS)[number]]: true }
+/**
+ * What `select()` / `select("*")` selects without a schema: every entity field and every
+ * attribute. Not the `$attributeSchema`: its point is learning an entity's shape without fetching
+ * its values, so returning it next to every value would only add to the response. It is only
+ * returned when asked for by name.
+ */
+type AllSelected = { [K in SystemField | "$attributes"]: true }
 
-/** The result when everything is selected without a schema — every field, and every attribute. */
+/**
+ * The result when everything is selected without a schema — every entity field, and every
+ * attribute as the `$attributes` map. Also what `getEntity(key)` returns.
+ */
 export type FullEntity = Row<AllSelected>
 
 /** The row type when everything is selected through a schema — every entity field and column. */
@@ -283,7 +294,7 @@ export type Projection = {
  * an attribute — through a schema, it must be a column.
  *
  * `undefined` or `"*"` selects every entity field and, through a schema, every column; without one,
- * every attribute as the `$attributes` map, and the `$attributeSchema`.
+ * every attribute as the `$attributes` map. The `$attributeSchema` is only selected by name.
  *
  * Attributes are fetched by name where possible, so the ones a row does not carry stay on the node.
  * A named schema's tag is fetched too, so each entity can be checked against it.
@@ -302,7 +313,6 @@ export function projectSelection(selection?: SelectArg, schema?: Schema): Projec
     fields.push(...SYSTEM_FIELDS)
     if (schema === undefined) {
       attributes = true
-      attributeSchema = true
     } else {
       columns.push(...Object.entries(schema.columns))
     }

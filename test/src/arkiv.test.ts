@@ -1074,7 +1074,11 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(raw).not.toContain(entityKey)
 
       // And the node reports the attributes as unindexed.
-      expect((await publicClient.getEntity(entityKey)).$attributeSchema).toEqual({
+      const shape = await publicClient
+        .select({ $attributeSchema: true })
+        .where(eq("$key", key(entityKey)))
+        .fetch()
+      expect(shape.entities[0]?.$attributeSchema).toEqual({
         group: { type: "str", indexed: true },
         title: { type: "str", indexed: false },
         summary: { type: "str", indexed: false },
@@ -1234,7 +1238,11 @@ describe("Arkiv Integration Tests for public client", () => {
       const { txHash } = await walletClient.patchEntity(RankedV2, entityKey, { set: { rank: 1 } })
       await publicClient.waitForTransactionReceipt({ hash: txHash })
       expect(await byRank()).toEqual([entityKey])
-      expect((await publicClient.getEntity(entityKey)).$attributeSchema.rank).toEqual({
+      const shape = await publicClient
+        .select({ $attributeSchema: true })
+        .where(eq("$key", key(entityKey)))
+        .fetch()
+      expect(shape.entities[0]?.$attributeSchema.rank).toEqual({
         type: "i32",
         indexed: true,
       })

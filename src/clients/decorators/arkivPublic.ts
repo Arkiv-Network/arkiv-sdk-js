@@ -55,7 +55,7 @@ export type PublicArkivActions<
    * Given a schema, it is read through it: the result is a flat row of every entity field and
    * every column, each typed as the schema declares and checked against it.
    *
-   * - JSON-RPC Methods: `arkiv_query`
+   * - JSON-RPC Methods: `arkiv_getEntity`
    *
    * @param key - The entity key (hex string)
    * @param schema - Optionally, the schema to read the entity through.
@@ -138,7 +138,8 @@ export type PublicArkivActions<
    */
   select: {
     /**
-     * Select every field — and, through a schema, every column. Pass nothing or `"*"`.
+     * Select every field — and every column through a schema, or the `$attributes` map without
+     * one. Pass nothing or `"*"`. The `$attributeSchema` is not included: select it by name.
      */
     (selection?: "*"): SelectQueryBuilder<"*">
     /**
@@ -147,7 +148,9 @@ export type PublicArkivActions<
      *
      * Entity fields start with `$`: `$key`, `$owner`, `$creator`, `$createdAt`, `$updatedAt`,
      * `$expiresAt` and `$creationFlags`. `$attributes` reads every attribute as a map, and
-     * `$attributeSchema` their types and indexing. Any other name is an attribute, read as a field
+     * `$attributeSchema` their names, types and indexing without the values — a cheap way to find
+     * out what entities hold before fetching values that may be too large for one response. Any
+     * other name is an attribute, read as a field
      * of its own: untyped without a schema, and through one typed and checked as the column it
      * must be. An attribute name cannot start with `$`, so the two never collide.
      *
@@ -160,7 +163,7 @@ export type PublicArkivActions<
      * client.select({ $key: true, title: true })               // { $key: Hex; title: ArkivValue | undefined }
      * client.select({ $key: true, title: true }).from(Posts)  // { $key: Hex; title: StrValue }
      * client.select({ $owner: true, $attributes: true })      // { $owner: Hex; $attributes: Attributes }
-     * client.select({ $key: true, $attributeSchema: true })   // what shape is the data?
+     * client.select({ $key: true, $attributeSchema: true })   // what do they hold? no values
      */
     <const S extends SelectArg>(
       selection: S & NonEmptySelection<S> & KnownSystemFields<S>,

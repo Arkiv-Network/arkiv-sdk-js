@@ -172,7 +172,17 @@ describe("decoding", () => {
       ],
     })
 
-    const page = await new SelectQueryBuilder(client, "*").where(eq("a", 1)).fetch()
+    const page = await new SelectQueryBuilder(client, {
+      $key: true,
+      $expiresAt: true,
+      $creationFlags: true,
+      $creator: true,
+      $createdAt: true,
+      $attributes: true,
+      $attributeSchema: true,
+    })
+      .where(eq("a", 1))
+      .fetch()
     const entity = page.entities[0]
 
     expect(entity.$key).toBe(KEY)
@@ -204,7 +214,9 @@ describe("decoding", () => {
       blockNumber: "0x1",
       data: [{ key: KEY, attributeSchema: [{ name: "version", type: "i32" }] }],
     })
-    const page = await new SelectQueryBuilder(client, "*").where(eq("a", 1)).fetch()
+    const page = await new SelectQueryBuilder(client, { $attributeSchema: true })
+      .where(eq("a", 1))
+      .fetch()
     expect(page.entities[0].$attributeSchema).toEqual({
       version: { type: "i32", indexed: undefined },
     })
