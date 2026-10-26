@@ -19,6 +19,8 @@ export type QueryOptions<TSelection extends SelectArg = SelectArg> = {
   limit?: number | undefined
   /** Cursor from a previous page. */
   cursor?: string | undefined
+  /** Whether to also count every entity the query matches, returned as `count`. */
+  count?: boolean | undefined
 }
 
 /**
@@ -34,6 +36,8 @@ export type QueryReturnType<TResult = FullEntity> = {
   cursor: string | undefined
   /** The block the page was read at. */
   blockNumber: bigint
+  /** How many entities the query matches, if `count` was set. */
+  count: bigint | undefined
 }
 
 /**
@@ -62,6 +66,7 @@ export async function query<const S extends SelectArg = "*">(
     limit: options.limit,
     cursor: options.cursor,
     atBlock: options.atBlock,
+    count: options.count,
   })
   return {
     ...page,

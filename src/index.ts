@@ -26,6 +26,7 @@ export type {
   KnownSystemFields,
   NonEmptySelection,
   PartialRow,
+  QueryBuilderBase,
   QueryResult,
   ResultOf,
   Row,
@@ -36,7 +37,7 @@ export type {
   SelectionOf,
   SystemField,
 } from "./query"
-export { SelectQueryBuilder, SYSTEM_FIELDS } from "./query"
+export { CountQueryBuilder, SelectQueryBuilder, SYSTEM_FIELDS } from "./query"
 // schemas and the attribute type system
 export * from "./schema"
 // re-export arkiv types in main index file

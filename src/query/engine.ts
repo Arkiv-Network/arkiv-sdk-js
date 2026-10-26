@@ -22,6 +22,8 @@ export type QueryRequest = {
   cursor?: string | undefined
   /** Block height to read at. Defaults to the head. */
   atBlock?: bigint | undefined
+  /** Whether to also count every entity the query matches. */
+  count?: boolean | undefined
 }
 
 /** One page of results. */
@@ -31,6 +33,8 @@ export type QueryResponse = {
   blockNumber: bigint
   /** The cursor for the next page, or `undefined` when this was the last one. */
   cursor: string | undefined
+  /** How many entities the query matches, if the request asked to count them. */
+  count: bigint | undefined
 }
 
 /**
@@ -40,7 +44,7 @@ export type QueryResponse = {
  * @throws {QueryError} If the node rejects the query.
  */
 export async function runQuery(client: ArkivClient, request: QueryRequest): Promise<QueryResponse> {
-  const { query, select, limit, cursor, atBlock } = request
+  const { query, select, limit, cursor, atBlock, count } = request
 
   if (limit !== undefined) {
     if (!Number.isInteger(limit) || limit < 1) {
@@ -55,7 +59,7 @@ export async function runQuery(client: ArkivClient, request: QueryRequest): Prom
   }
 
   const queryOptions: RpcQueryOptions = {
-    select,
+    select: count ? { ...select, count: true } : select,
     ...(atBlock !== undefined && { atBlock: numberToHex(atBlock) }),
     ...(limit !== undefined && { limit: numberToHex(limit) }),
     ...(cursor !== undefined && { cursor }),
@@ -75,5 +79,6 @@ export async function runQuery(client: ArkivClient, request: QueryRequest): Prom
     entities: result.data.map((rpcEntity) => entityFromRpcResult(rpcEntity)),
     blockNumber: BigInt(result.blockNumber),
     cursor: result.cursor,
+    count: result.count === undefined ? undefined : BigInt(result.count),
   }
 }

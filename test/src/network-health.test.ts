@@ -883,13 +883,15 @@ describe(`Network health check (${chain.name})`, () => {
   )
 
   test(
-    "the entity count reflects what is stored",
+    "the count reflects what is stored",
     async () => {
-      const before = await publicClient.getEntityCount()
+      const owned = () => publicClient.count().ownedBy(account.address).fetch()
+      const before = await owned()
       await create(Probe, { purpose: "count_test" })
 
-      expect(await publicClient.getEntityCount()).toBeGreaterThan(before)
-      console.log(`  COUNT  ${before} → ${await publicClient.getEntityCount()}`)
+      const after = await owned()
+      expect(after).toBeGreaterThan(before)
+      console.log(`  COUNT  ${before} → ${after}`)
     },
     { timeout: 120_000 },
   )

@@ -1,5 +1,7 @@
 export type { StrValue } from "../schema"
 export type { Entity, RpcSelect } from "../types"
+export type { QueryBuilderBase } from "./builderBase"
+export { CountQueryBuilder } from "./countBuilder"
 export type { QueryRequest, QueryResponse } from "./engine"
 export { MAX_LIMIT, runQuery } from "./engine"
 export type { QueryErrorKind } from "./errors"

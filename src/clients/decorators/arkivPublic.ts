@@ -1,7 +1,6 @@
 import type { Account, Address, Chain, Client, Hex, PublicActions, Transport } from "viem"
 import { type GetBlockTimingReturnType, getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
-import { getEntityCount } from "../../actions/public/getEntityCount"
 import { getEntityNonce } from "../../actions/public/getEntityNonce"
 import {
   type PredictEntityKeysParameters,
@@ -19,6 +18,7 @@ import {
   watchEntityEvents,
 } from "../../actions/public/watchEntityEvents"
 import type { SaltInput } from "../../entity/key"
+import { CountQueryBuilder } from "../../query/countBuilder"
 import type { Expression } from "../../query/expression"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type {
@@ -171,6 +171,21 @@ export type PublicArkivActions<
   }
 
   /**
+   * Returns a CountQueryBuilder: counts the entities a query matches, without fetching any of them.
+   *
+   * It filters exactly as {@link select} does — `.from(schema)`, `.where(...)`, `.ownedBy(...)`,
+   * `.createdBy(...)` and `.atBlock(...)` — and `.fetch()` resolves to a `bigint`. To show the total
+   * next to a page of rows, use `select(...).withCount()` instead.
+   *
+   * - JSON-RPC Methods: `arkiv_query`, with the `count` projection
+   *
+   * @example
+   * const total = await client.count().from(Posts).ownedBy(account.address).fetch()
+   * const news = await client.count().from(Posts).where(eq("category", "news")).fetch()
+   */
+  count: () => CountQueryBuilder
+
+  /**
    * Runs one query and returns one page, with no builder in between.
    *
    * The selection means what it does in {@link PublicArkivActions.select}, and the results are the
@@ -208,24 +223,6 @@ export type PublicArkivActions<
     query: Expression | string,
     queryOptions?: QueryOptions<S>,
   ) => Promise<QueryReturnType<QueryRow<S>>>
-
-  /**
-   * Returns the total number of entities on the chain.
-   * @returns The number of entities currently stored
-   *
-   * @example
-   * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
-   * import { http } from "viem"
-   *
-   * const client = createPublicClient({
-   *   chain: tiramisu,
-   *   transport: http(),
-   * })
-   * const entityCount = await client.getEntityCount()
-   * // entityCount = 0
-   */
-  getEntityCount: () => Promise<number>
 
   /**
    * Returns how many entities an account has created — its entity-minting nonce.
@@ -356,8 +353,8 @@ export function publicArkivActions<
       query(client, rawQuery, queryOptions)) as PublicArkivActions["query"],
     select: ((selection?: SelectArg) =>
       new SelectQueryBuilder(client, selection)) as PublicArkivActions["select"],
+    count: () => new CountQueryBuilder(client),
     getBlockTiming: () => getBlockTiming(client),
-    getEntityCount: () => getEntityCount(client),
     getEntityNonce: (owner: Address) => getEntityNonce(client, owner),
     predictEntityKeys: <
       const TCount extends number = number,

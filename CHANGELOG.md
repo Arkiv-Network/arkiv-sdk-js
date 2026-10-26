@@ -14,6 +14,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - Schema exports from `@arkiv-network/sdk/schema` and the package root: `Schema`, `Column`, `AnyColumn`, `Columns`, `ColumnsOf`, `ColumnInput`, `CreateEntityValues`, `PatchEntityValues`, `IndexedColumnName`, `OptionalColumnName`, `isSchema`, `isColumn`, `lookupColumn`
 - Selection and row exports from `@arkiv-network/sdk/query`: the types `Selection`, `Row`, `FullRow`, `ResultOf`, `SelectionOf`, `NonEmptySelection`, `KnownSystemFields`, `Selected`, `SystemField`, `SchemaRef` and `AttributeRef` (also exported from the package root), and `SYSTEM_FIELDS` (also from the package root), `projectSelection` and `toRow`. `QueryRow` from `@arkiv-network/sdk/types` and the package root
 - `between(name, low, high)`, an inclusive range test that matches what `and(gte(name, low), lte(name, high))` does, sent as `name BETWEEN low AND high`. Both bounds must have one type: mixed bounds are a compile error and throw `InvalidPredicateError`. `BetweenNode` is exported from `@arkiv-network/sdk/query`
+- `client.count()` counts the entities a query matches without fetching them: a `CountQueryBuilder` that filters as `select()` does (`from`, `where`, `ownedBy`, `createdBy`, `atBlock`) and whose `fetch()` resolves to a `bigint`. `select(...).withCount()` adds the same total to every page as `QueryResult.count`, typed `bigint`, and `query()` takes `count: true`. All three use the `count` projection of `arkiv_query`
 - Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
 
 ### Changed
@@ -34,7 +35,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** entity fields are selected and read with a `$` prefix, as `where` already filters on them: `$key`, `$owner`, `$creator`, `$createdAt`, `$updatedAt`, `$expiresAt` and `$creationFlags`. An attribute name cannot start with `$`, so no attribute collides with them, and an attribute named `owner` is selected as `owner`. `$attributes` (every attribute as a map) and `$attributeSchema` replace `attributes` and `attributeSchema`, with or without a schema. `$attributes` takes only `true`: the map of names for a subset is gone, since attributes are selected by name. A `$` name that is not an entity field is a compile error and throws
 - **Breaking:** `query()` takes the same selection as `select()` and returns the same flat rows, typed from the selection, instead of `Entity` objects. `QueryOptions` and `QueryReturnType` take the selection and row type as type parameters
 - **Breaking:** a selection only known at runtime — typed `SelectArg`, or with a field typed `boolean` — types its results with every field optional (`PartialRow`) instead of claiming every field is present. A field set to `undefined` is not selected, and a selection that asks for nothing (`{}`, or every field `false`) is a compile error
-- **Breaking:** the `QueryResult` constructor takes the page's `skipped` count after `cursor`, before the next-page callback
+- **Breaking:** the `QueryResult` constructor takes the page's `skipped` count and the query's `count` after `cursor`, before the next-page callback. `QueryResult` takes the type of `count` as a second type parameter
 - `ArkivValue` includes `BytesValue`, and `AnyArkivValue` is gone. `UserTypeTag` is now `IndexableTypeTag`
 - `MAX_ATTRIBUTES` also caps the number of columns a schema may declare
 
@@ -43,6 +44,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** `AttributeInputs`, and writing attributes without a schema. A schema built at runtime with `defineSchema` covers dynamic attribute sets
 - **Breaking:** the `EntitySelection` and `ProjectedEntity` types. Use `Selection` and `Row`
 - **Breaking:** `resolveExpiry()`, `toBlocks()`, `encodeCreationFlags()`, `decodeCreationFlags()` and `OperationType`, and the `EncodedExpiry`, `ExpiryContext` and `ResolvedExpiry` types, are no longer exported. They are internal to the SDK
+- **Breaking:** `getEntityCount()` on the public client, and with it `arkiv_getEntityCount`. Count a query instead: `client.count().ownedBy(owner).fetch()`
 - The `brotli-wasm` dependency, which nothing in the SDK used
 
 ### Fixed

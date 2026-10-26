@@ -67,6 +67,11 @@ export type RpcSelect = {
   creationFlags?: boolean
   attributeSchema?: boolean
   attributes?: boolean | Record<string, boolean>
+  /**
+   * Not a field of each entity but of the page: the number of entities the query matches at the
+   * block, regardless of `limit` and `cursor`, returned as the response's `count`.
+   */
+  count?: boolean
 }
 
 /** The second parameter of `arkiv_query` — what to return, and where in the results to start. */
@@ -90,6 +95,8 @@ export type ArkivRpcSchema = [
       blockNumber: Hex
       /** Omitted when no pages remain. */
       cursor?: string
+      /** How many entities the query matches, as a hex quantity. Present only when selected. */
+      count?: Hex
     }
   },
   {
@@ -106,10 +113,5 @@ export type ArkivRpcSchema = [
       current_block_time: number
       duration: number
     }
-  },
-  {
-    Method: "arkiv_getEntityCount"
-    Parameters?: []
-    ReturnType: number
   },
 ]

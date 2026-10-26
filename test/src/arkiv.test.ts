@@ -1010,9 +1010,10 @@ describe("Arkiv Integration Tests for public client", () => {
   )
 
   test(
-    "the entity count follows what was created",
+    "the count follows what was created",
     async () => {
-      const before = await publicClient.getEntityCount()
+      const owned = () => publicClient.count().ownedBy(account.address).fetch()
+      const before = await owned()
 
       const created = await walletClient.executeBatch({
         creates: Array.from({ length: 3 }, () => ({
@@ -1023,7 +1024,15 @@ describe("Arkiv Integration Tests for public client", () => {
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
-      expect(await publicClient.getEntityCount()).toBe(before + 3)
+      expect(await owned()).toBe(before + 3n)
+      const page = await publicClient
+        .select({ $key: true })
+        .ownedBy(account.address)
+        .withCount()
+        .limit(1)
+        .fetch()
+      expect(page.count).toBe(before + 3n)
+      expect(page.entities).toHaveLength(1)
     },
     { timeout: 30000 },
   )

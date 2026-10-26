@@ -26,7 +26,7 @@ import type { DynamicSelection, SelectArg, Selection } from "./selection"
 const ACCOUNT = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" as const
 const KEY = `0x${"ab".repeat(32)}` as const
 
-type Page = { data: RpcEntity[]; blockNumber: string; cursor?: string }
+type Page = { data: RpcEntity[]; blockNumber: string; cursor?: string; count?: string }
 
 /** A client whose `arkiv_query` serves the given pages in order. */
 function makeClient(...pages: Page[]) {
@@ -144,6 +144,55 @@ describe("the options it sends", () => {
     await expect(query().limit(1.5).fetch()).rejects.toThrow(/positive integer/)
     expect(query().limit(MAX_LIMIT)).toBeDefined()
     expect(request).not.toHaveBeenCalled()
+  })
+})
+
+describe("withCount", () => {
+  it("carries the total on every page, typed bigint", async () => {
+    const { client, request } = makeClient(
+      { data: [{ key: KEY }], blockNumber: "0x1", cursor: "b64:next", count: "0x2" },
+      { data: [{ key: KEY }], blockNumber: "0x1", count: "0x2" },
+    )
+    const first = await new SelectQueryBuilder(client, { $key: true })
+      .where(eq("a", 1))
+      .withCount()
+      .limit(1)
+      .fetch()
+    const second = await first.next()
+
+    const total: bigint = first.count
+    const again: bigint = second.count
+    expect(total).toBe(2n)
+    expect(again).toBe(2n)
+    expect(sent(request, 0).options.select).toMatchObject({ key: true, count: true })
+    expect(sent(request, 1).options.select).toMatchObject({ key: true, count: true })
+  })
+
+  it("fails rather than typing a missing count as bigint", async () => {
+    const { client } = makeClient({ data: [], blockNumber: "0x1" })
+    await expect(
+      new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).withCount().fetch(),
+    ).rejects.toThrow(/returned no count/)
+  })
+
+  it("leaves count undefined, in the type too, unless asked for", async () => {
+    const { client, request } = makeClient({ data: [], blockNumber: "0x1" })
+    const page = await new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).fetch()
+    const nothing: undefined = page.count
+    expect(nothing).toBeUndefined()
+    expect(sent(request).options.select).not.toHaveProperty("count")
+  })
+
+  it("survives from(), and leaves the builder it was called on uncounted", async () => {
+    const Posts = defineSchema("posts", { category: str().indexed() })
+    const { client, request } = makeClient({ data: [], blockNumber: "0x1", count: "0x0" })
+    const base = new SelectQueryBuilder(client, { $key: true }).where(eq("category", "news"))
+    const counted = base.withCount().from(Posts)
+    const page = await counted.fetch()
+    const total: bigint = page.count
+    expect(total).toBe(0n)
+    await base.fetch()
+    expect(sent(request, 1).options.select).not.toHaveProperty("count")
   })
 })
 
