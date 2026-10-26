@@ -75,7 +75,7 @@ export type RpcQueryOptions = {
   atBlock?: Hex
   /** What to return. Defaults to `{ key: true }`. */
   select?: RpcSelect
-  /** Page size, as a hex quantity. Node maximum is 200. */
+  /** Page size, as a hex quantity. Node maximum is 100. */
   limit?: Hex
   /** Opaque cursor from a previous response; bound to that query, block and selection. */
   cursor?: string

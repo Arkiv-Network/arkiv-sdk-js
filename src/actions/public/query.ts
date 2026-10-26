@@ -15,7 +15,7 @@ export type QueryOptions<TSelection extends SelectArg = SelectArg> = {
   select?: TSelection | undefined
   /** Block height to read at. Defaults to the head. */
   atBlock?: bigint | undefined
-  /** Page size, up to the node maximum of 200. */
+  /** Page size, up to the node maximum of 100. */
   limit?: number | undefined
   /** Cursor from a previous page. */
   cursor?: string | undefined

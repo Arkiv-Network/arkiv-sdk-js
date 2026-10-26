@@ -1393,7 +1393,7 @@ describe(`Network health check (${chain.name})`, () => {
           .select({ id: true })
           .from(Rows)
           .where(inGroup, query)
-          .limit(200)
+          .limit(100)
           .fetch()
         const ids = page.entities.map((row) => row.id.value).sort((a, b) => a - b)
         expect({ query: String(query), ids }).toEqual({ query: String(query), ids: expected })

@@ -8,7 +8,7 @@ import { asQueryError } from "./errors"
 
 const logger = getLogger("query:engine")
 
-export const MAX_LIMIT = 200
+export const MAX_LIMIT = 100
 
 /** One `arkiv_query` call. */
 export type QueryRequest = {

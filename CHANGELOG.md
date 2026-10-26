@@ -25,6 +25,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** `expires` is now `expiration` on `createEntity()`, `extendEntity()` and every batch operation
 - **Breaking:** `$attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
 - `gt`/`gte`/`lt`/`lte` accept every indexable type, system attributes included, and compare in index order: numerically for `i32`, `u64`, `u256` and `dec`, `false < true` for `bool`, and by unsigned bytes for `str`, `addr`, `key` and `bytes32`. They no longer throw `UnsupportedOperatorError`, which only `startsWith()` throws now. A predicate on a `bytes` value throws `InvalidPredicateError`
+- **Breaking:** the page size is capped at 100, the node's new maximum. `MAX_LIMIT` is `100`, and a larger `limit` throws
 - **Breaking:** `between` is a reserved attribute name, since the query language now has a `BETWEEN` operator
 - **Breaking:** `SelectQueryBuilder`'s type parameters are now the selection and the schema, not the result type. `from()` returns a new builder rather than re-typing the one it was called on
 - **Breaking:** `select()` returns flat rows, with or without a schema: the selection names entity fields and attributes side by side, so `select({ $key: true, title: true })` returns `{ $key, title }`, with `title` an `ArkivValue | undefined` without a schema. Rows are plain objects rather than `Entity` instances. `getEntity(key)` returns the same row as `select("*")`

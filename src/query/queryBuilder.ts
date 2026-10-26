@@ -261,7 +261,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
   }
 
   /**
-   * Sets the page size, up to the node maximum of 200. Without it the node picks the page size.
+   * Sets the page size, up to the node maximum of 100. Without it the node picks the page size.
    *
    * @example
    * builder.limit(100)
@@ -325,7 +325,7 @@ export class SelectQueryBuilder<TSelection = "*", TSchema extends Schema | undef
    *
    * @throws {InvalidPredicateError} If no filter has been added, or a filter does not fit the
    * schema.
-   * @throws If the {@link limit} is not an integer from 1 to 200.
+   * @throws If the {@link limit} is not an integer from 1 to 100.
    * @throws {SchemaMismatchError} If, through a schema, a matching entity does not fit the selected
    * columns or a named schema's tag — unless `from()` was given `{ onMismatch: "skip" }`.
    * @throws {QueryError} If the node rejects the query.
