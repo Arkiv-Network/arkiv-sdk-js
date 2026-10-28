@@ -116,8 +116,8 @@ const Posts = defineSchema("posts", {
 })
 ```
 
-The type constructors are `bool`, `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32` and
-`bytes`. Each column may be refined with `.indexed()` (every type but `bytes`), `.optional()` and
+The type constructors are `bool`, `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key` and `bytes`.
+Each column may be refined with `.indexed()` (every type but `bytes`), `.optional()` and
 `.default(...)`.
 
 The same constructors, called with a value, make a typed value: `dec("4.1")` is a decimal, the way SQL

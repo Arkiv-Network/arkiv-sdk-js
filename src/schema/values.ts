@@ -14,7 +14,6 @@ import {
   type AddrValue,
   type ArkivValue,
   type BoolValue,
-  type Bytes32Value,
   type BytesValue,
   type DecValue,
   type I32Value,
@@ -46,12 +45,19 @@ export const MAX_STRING_BYTES = 128
 export const MAX_BYTES_LENGTH = 128 * 1024
 
 /**
- * Finds the first C0 control or DEL — the characters a `str` may not contain.
+ * Finds the first lone UTF-16 surrogate — a string the node would reject, since it has no UTF-8
+ * encoding. `TextEncoder` would quietly replace it with U+FFFD instead.
  */
-function findControlChar(value: string): { index: number; code: number } | undefined {
+function findLoneSurrogate(value: string): number | undefined {
   for (let index = 0; index < value.length; index++) {
     const code = value.charCodeAt(index)
-    if (code <= 0x1f || code === 0x7f) return { index, code }
+    if (code < 0xd800 || code > 0xdfff) continue
+    const next = value.charCodeAt(index + 1)
+    if (code <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+      index++
+      continue
+    }
+    return index
   }
   return undefined
 }
@@ -306,13 +312,12 @@ export function str(): Column<"str", false, false, false>
 /**
  * A UTF-8 string of at most 128 bytes.
  *
- * The limit is on **bytes**, not characters: a string of 128 emoji does not fit.
+ * The limit is on **bytes**, not characters: a string of 128 emoji does not fit. Any character
+ * is allowed, control characters included. To store raw bytes, use {@link bytes}, or hex in a
+ * `str` when they must be indexed.
  *
- * C0 control characters and DEL are rejected: the query language writes a `str` as `str('...')`,
- * whose only escape is a doubled quote, so a control character could be stored but never queried.
- *
- * @throws {InvalidValueError} If the value is not a string, holds a control character, or exceeds
- * 128 UTF-8 bytes.
+ * @throws {InvalidValueError} If the value is not a string, holds a lone surrogate (so it has no
+ * UTF-8 encoding), or exceeds 128 UTF-8 bytes.
  *
  * @example
  * str("Bob")
@@ -324,16 +329,12 @@ export function str(...args: [] | [string]): StrValue | Column<"str", false, fal
   if (typeof value !== "string") {
     throw new InvalidValueError("str", value, "not a string")
   }
-  const control = findControlChar(value)
-  if (control !== undefined) {
-    const code = control.code.toString(16).padStart(4, "0").toUpperCase()
+  const surrogate = findLoneSurrogate(value)
+  if (surrogate !== undefined) {
     throw new InvalidValueError(
       "str",
       value,
-      `contains the control character U+${code} at index ${control.index}`,
-      "A str is written into a query as str('...'), whose only escape is a doubled quote — there " +
-        "is no spelling for a control character, so this value could be stored but never queried. " +
-        "Free-form text belongs in a bytes column; keep a short, printable key here.",
+      `contains a lone surrogate at index ${surrogate}, so it is not valid UTF-8`,
     )
   }
   const bytes = stringToBytes(value).length
@@ -405,28 +406,6 @@ export function key(
   return makeValue("key", asFixedHex("key", args[0], 32))
 }
 
-/** A `bytes32` column, indexed for equality once `.indexed()`. */
-export function bytes32(): Column<"bytes32", false, false, false>
-/**
- * 32 opaque bytes — a hash, a digest, an identifier from another system.
- *
- * Use {@link key} instead when the bytes are an Arkiv entity key: same wire width, but the
- * distinct type makes the reference visible to readers and to the query language.
- *
- * @param value - 32 bytes, as `0x` hex or raw bytes.
- * @throws {InvalidValueError} If the value is not exactly 32 bytes.
- *
- * @example
- * bytes32(keccak256(toBytes("hello")))
- */
-export function bytes32(value: Hex | Uint8Array): Bytes32Value
-export function bytes32(
-  ...args: [] | [Hex | Uint8Array]
-): Bytes32Value | Column<"bytes32", false, false, false> {
-  if (args.length === 0) return createColumn("bytes32", toTypedValue)
-  return makeValue("bytes32", asFixedHex("bytes32", args[0], 32))
-}
-
 /**
  * A `bytes` column — a blob. Bytes are stored but never indexed, so a bytes column has no
  * `.indexed()`: it can be selected, not filtered on. A schema may have several, within the
@@ -466,7 +445,7 @@ export function bytes(
 }
 
 /** Normalizes hex-or-bytes input of a known width into lowercase `0x` hex. */
-function asFixedHex(tag: "key" | "bytes32", value: Hex | Uint8Array, size: number): Hex {
+function asFixedHex(tag: "key", value: Hex | Uint8Array, size: number): Hex {
   if (value instanceof Uint8Array) {
     if (value.length !== size) {
       throw new InvalidValueError(tag, `<${value.length} bytes>`, `not exactly ${size} bytes`)
@@ -485,7 +464,7 @@ function asFixedHex(tag: "key" | "bytes32", value: Hex | Uint8Array, size: numbe
 }
 
 /** Normalizes hex-or-bytes input into lowercase `0x` hex of a whole number of bytes. */
-function asHex(tag: "key" | "bytes32" | "bytes", value: Hex | Uint8Array): Hex {
+function asHex(tag: "key" | "bytes", value: Hex | Uint8Array): Hex {
   if (value instanceof Uint8Array) return toHex(value)
   if (typeof value !== "string" || !isHex(value, { strict: true })) {
     throw new InvalidValueError(tag, value, "not 0x-prefixed hex")
@@ -541,7 +520,7 @@ export type TagOf<input> = input extends { readonly type: infer tag extends Type
 /**
  * The bare JavaScript form that defaults to `tag`, where there is one — `boolean` for `bool`,
  * `number` for `i32`, `bigint` for `u256`, `string` for `str`, `Uint8Array` for `bytes`. The other
- * types — `u64`, `dec`, `bytes32`, `addr` and `key` — must be written tagged.
+ * types — `u64`, `dec`, `addr` and `key` — must be written tagged.
  */
 export type BareOf<tag extends TypeTag> = {
   bool: boolean
@@ -549,7 +528,6 @@ export type BareOf<tag extends TypeTag> = {
   u64: never
   u256: bigint
   dec: never
-  bytes32: never
   bytes: Uint8Array
   str: string
   addr: never
@@ -641,7 +619,6 @@ const CONSTRUCTORS: { readonly [tag in TypeTag]: (value: never) => ArkivValue } 
   u64,
   u256,
   dec,
-  bytes32,
   bytes,
   str,
   addr,
@@ -673,8 +650,6 @@ function revalidate(value: ArkivValue): ArkivValue {
       return u256(value.value)
     case "dec":
       return dec(value.value)
-    case "bytes32":
-      return bytes32(value.value)
     case "bytes":
       return bytes(value.value)
     case "str":

@@ -38,7 +38,6 @@ import {
   addr,
   bool,
   bytes,
-  bytes32,
   dec,
   defineSchema,
   i32,
@@ -915,11 +914,9 @@ describe("Arkiv Integration Tests for public client", () => {
   test(
     "every attribute type round-trips as the type it was written with",
     async () => {
-      const digest = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as Hex
       const someone = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
       const entityKey = "0x9f2c000000000000000000000000000000000000000000000000000000000001" as Hex
       const AllTypes = defineSchema({
-        digestattr: bytes32().indexed(),
         numattr: i32().indexed(),
         zeroattr: i32().indexed(),
         bigattr: u64().indexed(),
@@ -935,7 +932,6 @@ describe("Arkiv Integration Tests for public client", () => {
       const created = await walletClient.createEntity(
         AllTypes,
         {
-          digestattr: bytes32(digest),
           numattr: i32(42),
           zeroattr: 0,
           bigattr: u64(1_200_000n),
@@ -952,7 +948,6 @@ describe("Arkiv Integration Tests for public client", () => {
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
       const expected = {
-        digestattr: bytes32(digest),
         numattr: i32(42),
         zeroattr: i32(0),
         bigattr: u64(1_200_000n),
@@ -973,7 +968,6 @@ describe("Arkiv Integration Tests for public client", () => {
         .from(AllTypes)
         .where(
           and(
-            eq("digestattr", bytes32(digest)),
             eq("numattr", i32(42)),
             eq("zeroattr", i32(0)),
             eq("bigattr", u64(1_200_000n)),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes, bytes32, dec, defineSchema, i32, key, str, u64, u256 } from "../schema"
+import { addr, bytes, dec, defineSchema, i32, key, str, u64, u256 } from "../schema"
 import { InvalidAttributeNameError } from "../schema/errors"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 import {
@@ -31,7 +31,6 @@ describe("literals", () => {
     expect(String(eq("score", dec("3.5")))).toBe("score = dec(3.5)")
     expect(String(eq("name", str("Bob")))).toBe("name = str('Bob')")
     expect(String(eq("parent", key(ENTITY_KEY)))).toBe(`parent = key(${ENTITY_KEY})`)
-    expect(String(eq("hash", bytes32(ENTITY_KEY)))).toBe(`hash = bytes32(${ENTITY_KEY})`)
     expect(String(eq("who", addr(ACCOUNT)))).toBe(`who = addr(${ACCOUNT})`)
   })
 
@@ -83,7 +82,6 @@ describe("comparisons", () => {
     expect(String(lte("name", "Bob"))).toBe("name <= str('Bob')")
     expect(String(lt("who", addr(ACCOUNT)))).toBe(`who < addr(${ACCOUNT})`)
     expect(String(gt("parent", key(ENTITY_KEY)))).toBe(`parent > key(${ENTITY_KEY})`)
-    expect(String(gt("hash", bytes32(ENTITY_KEY)))).toBe(`hash > bytes32(${ENTITY_KEY})`)
   })
 
   it("carries the offending operator and type on the error", () => {
@@ -377,7 +375,7 @@ describe("checkAgainstSchema", () => {
     const check = () => checkAgainstSchema(exists("body"), Posts)
     expect(check).toThrow(InvalidPredicateError)
     expect(check).toThrow(/"body" is a bytes column, and bytes are stored but never indexed/)
-    expect(check).toThrow(/Index a str, bytes32 or key derived from it instead/)
+    expect(check).toThrow(/Index a hash of it, as a hex str, instead/)
     expect(check).not.toThrow(/\.indexed\(\)/)
   })
 

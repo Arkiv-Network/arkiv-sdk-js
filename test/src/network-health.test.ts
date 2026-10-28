@@ -35,7 +35,6 @@ import {
   addr,
   bool,
   bytes,
-  bytes32,
   dec,
   defineSchema,
   i32,
@@ -677,7 +676,6 @@ describe(`Network health check (${chain.name})`, () => {
     "every attribute type round-trips and stays queryable",
     async () => {
       const tag = `attrs-${Date.now()}`
-      const digest = `0x${"de".repeat(32)}` as Hex
       const dangling = `0x${"ab".repeat(32)}` as Hex
       const huge = 2n ** 200n
       const AllTypes = defineSchema({
@@ -690,7 +688,7 @@ describe(`Network health check (${chain.name})`, () => {
         amount: u256().indexed(),
         score: dec().indexed(),
         flagged: bool().indexed(),
-        digest: bytes32().indexed(),
+        multiline: str().indexed(),
         who: addr().indexed(),
         parent: key().indexed(),
         blob: bytes(),
@@ -706,7 +704,7 @@ describe(`Network health check (${chain.name})`, () => {
         amount: u256(huge),
         score: dec("3.5"),
         flagged: true,
-        digest: bytes32(digest),
+        multiline: "line one\n\tline two",
         who: addr(account.address),
         parent: key(dangling),
         blob: new Uint8Array([1, 2, 3]),
@@ -721,7 +719,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(entity.amount).toEqual(u256(huge))
       expect(entity.score).toEqual(dec("3.5"))
       expect(entity.flagged).toEqual(bool(true))
-      expect(entity.digest).toEqual(bytes32(digest))
+      expect(entity.multiline).toEqual(str("line one\n\tline two"))
       expect(entity.who).toEqual(addr(account.address))
       expect(entity.parent).toEqual(key(dangling))
       expect(entity.blob).toEqual(bytes("0x010203"))
@@ -737,7 +735,7 @@ describe(`Network health check (${chain.name})`, () => {
         amount: { type: "u256", indexed: true },
         score: { type: "dec", indexed: true },
         flagged: { type: "bool", indexed: true },
-        digest: { type: "bytes32", indexed: true },
+        multiline: { type: "str", indexed: true },
         who: { type: "addr", indexed: true },
         parent: { type: "key", indexed: true },
         blob: { type: "bytes", indexed: false },
@@ -753,8 +751,8 @@ describe(`Network health check (${chain.name})`, () => {
       expect(await matches(eq("score", dec("3.5")))).toBe(1)
       expect(await matches(eq("who", addr(account.address)))).toBe(1)
       expect(await matches(eq("parent", key(dangling)))).toBe(1)
-      expect(await matches(eq("digest", bytes32(digest)))).toBe(1)
-      expect(await matches(eq("digest", bytes32(`0x${"11".repeat(32)}`)))).toBe(0)
+      expect(await matches(eq("multiline", "line one\n\tline two"))).toBe(1)
+      expect(await matches(startsWith("multiline", "line one\n"))).toBe(1)
 
       expect(await matches(gt("score", dec("3.4999")))).toBe(1)
       expect(await matches(lt("score", dec("3.4999")))).toBe(0)
@@ -1050,7 +1048,7 @@ describe(`Network health check (${chain.name})`, () => {
       expect(await kindOf(`group = str('${group}') AND rank = i32(2147483648)`)).toBe("literal")
       expect(await kindOf("(".repeat(200))).toBe("limits")
       expect(await kindOf(`group = str('${group}')`, { atBlock: 10n ** 12n })).toBe("block")
-      expect(await kindOf(`group > str('${group}')`)).toBe("type")
+      expect(await kindOf(`group = str('${group}') AND $owner = i32(5)`)).toBe("type")
 
       const firstPage = await publicClient.query(`group = str('${group}')`, {
         select: { $key: true },

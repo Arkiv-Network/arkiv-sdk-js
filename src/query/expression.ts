@@ -20,7 +20,7 @@ import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 /**
  * The comparison operators the query language defines. Every indexable type accepts all of them;
  * `<` `<=` `>` `>=` compare in index order — numerically for `i32`, `u64`, `u256` and `dec`,
- * `false < true` for `bool`, and by unsigned bytes for `str`, `bytes32`, `addr` and `key`.
+ * `false < true` for `bool`, and by unsigned bytes for `str`, `addr` and `key`.
  */
 export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
 
@@ -241,7 +241,7 @@ function predicateValue(
   if (value.type === "bytes") {
     throw new InvalidPredicateError(
       `"${name}" is compared against a bytes value, and bytes are stored but never indexed, so ` +
-        "they cannot be filtered on. Index a str, bytes32 or key derived from them instead.",
+        "they cannot be filtered on. Index a hash of them, as a hex str, instead.",
       name,
     )
   }
@@ -479,8 +479,8 @@ export function exists<N extends string>(
  * Useful when the same name is written with different types across entities — a comparison already
  * asserts the type, so this is for asking about the type alone.
  *
- * @param tag - The type tag: `bool`, `i32`, `u64`, `u256`, `dec`, `bytes32`, `str`, `addr` or
- * `key` — any type but `bytes`, which is never indexed.
+ * @param tag - The type tag: `bool`, `i32`, `u64`, `u256`, `dec`, `str`, `addr` or `key` — any
+ * type but `bytes`, which is never indexed.
  * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
  * @throws {InvalidPredicateError} If the tag is not an indexable type, the name is a system
  * attribute (whose type is fixed), or the name starts with `$` but is not a system attribute.
@@ -503,7 +503,7 @@ export function hasType<N extends string, T extends IndexableTypeTag>(
   if (!isIndexableTag(tag)) {
     throw new InvalidPredicateError(
       `"${tag}" is not an indexable attribute type. Use one of ` +
-        "bool, i32, u64, u256, dec, bytes32, str, addr, key.",
+        "bool, i32, u64, u256, dec, str, addr, key.",
       name,
     )
   }
@@ -619,7 +619,7 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
     if (column.type === "bytes") {
       throw new InvalidPredicateError(
         `"${name}" is a bytes column, and bytes are stored but never indexed, so it cannot be ` +
-          "filtered on. Index a str, bytes32 or key derived from it instead, or select it and " +
+          "filtered on. Index a hash of it, as a hex str, instead, or select it and " +
           "filter the results in JavaScript.",
         name,
       )
@@ -716,8 +716,6 @@ function renderLiteral(value: IndexableValue): string {
       return `u256(${value.value})`
     case "dec":
       return `dec(${value.value})`
-    case "bytes32":
-      return `bytes32(${value.value})`
     case "key":
       return `key(${value.value})`
     case "addr":

@@ -25,7 +25,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** `executeBatch()` takes `creates: [{ schema, values, expiration, ... }]` and `patches: [{ schema, entityKey, set?, unset? }]`
 - **Breaking:** `expires` is now `expiration` on `createEntity()`, `extendEntity()` and every batch operation
 - **Breaking:** `$attributeSchema` entries are `{ type, indexed }` rather than a bare type tag. `indexed` is `undefined` when the node does not report it
-- `gt`/`gte`/`lt`/`lte` accept every indexable type, system attributes included, and compare in index order: numerically for `i32`, `u64`, `u256` and `dec`, `false < true` for `bool`, and by unsigned bytes for `str`, `addr`, `key` and `bytes32`. They no longer throw `UnsupportedOperatorError`, which only `startsWith()` throws now. A predicate on a `bytes` value throws `InvalidPredicateError`
+- `gt`/`gte`/`lt`/`lte` accept every indexable type, system attributes included, and compare in index order: numerically for `i32`, `u64`, `u256` and `dec`, `false < true` for `bool`, and by unsigned bytes for `str`, `addr` and `key`. They no longer throw `UnsupportedOperatorError`, which only `startsWith()` throws now. A predicate on a `bytes` value throws `InvalidPredicateError`
 - **Breaking:** the page size is capped at 100, the node's new maximum. `MAX_LIMIT` is `100`, and a larger `limit` throws
 - **Breaking:** `between` is a reserved attribute name, since the query language now has a `BETWEEN` operator
 - `getEntity()` reads with `arkiv_getEntity` instead of an `arkiv_query` on `$key`
@@ -38,6 +38,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** the `QueryResult` constructor takes the page's `skipped` count and the query's `count` after `cursor`, before the next-page callback. `QueryResult` takes the type of `count` as a second type parameter
 - `ArkivValue` includes `BytesValue`, and `AnyArkivValue` is gone. `UserTypeTag` is now `IndexableTypeTag`
 - `MAX_ATTRIBUTES` also caps the number of columns a schema may declare
+- `str()` checks a value as the node does: at most 128 UTF-8 bytes, and valid UTF-8. Control characters are now accepted, and a lone surrogate, which has no UTF-8 encoding, throws `InvalidValueError`
 
 ### Removed
 - **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead
@@ -45,6 +46,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** the `EntitySelection` and `ProjectedEntity` types. Use `Selection` and `Row`
 - **Breaking:** `resolveExpiry()`, `toBlocks()`, `encodeCreationFlags()`, `decodeCreationFlags()` and `OperationType`, and the `EncodedExpiry`, `ExpiryContext` and `ResolvedExpiry` types, are no longer exported. They are internal to the SDK
 - **Breaking:** `getEntityCount()` on the public client, and with it `arkiv_getEntityCount`. Count a query instead: `client.count().ownedBy(owner).fetch()`
+- **Breaking:** the `bytes32` type, its constructor and `Bytes32Value`. typeId 6 is reserved. Use `key` for an entity key, and a hex `str` for other indexed bytes of up to 64 bytes. A `bytes32` value the node returns is read as a `key`, and `bytes32` is no longer a reserved attribute name
 - The `brotli-wasm` dependency, which nothing in the SDK used
 
 ### Fixed

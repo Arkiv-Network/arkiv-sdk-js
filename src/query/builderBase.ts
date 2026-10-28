@@ -28,7 +28,7 @@ type FilterProblem<R, S extends Schema> = R extends {
       ? `"${N}" has type ${Extract<SchemaRef<S>, { name: N }>["type"]}, but is compared against a value of type ${T}`
       : N extends keyof ColumnsOf<S>
         ? ColumnsOf<S>[N]["type"] extends "bytes"
-          ? `"${N}" is a bytes column, and bytes are never indexed, so it cannot be filtered on. Index a str, bytes32 or key derived from it instead`
+          ? `"${N}" is a bytes column, and bytes are never indexed, so it cannot be filtered on. Index a hash of it, as a hex str, instead`
           : `"${N}" is not indexed, so it cannot be filtered on. Declare it ${ColumnsOf<S>[N]["type"]}().indexed() to filter on it`
         : `"${N}" is not a column of this schema`
   : never

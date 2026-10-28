@@ -38,7 +38,6 @@ const RESERVED = new Set([
   "u64",
   "u256",
   "dec",
-  "bytes32",
   "bytes",
   "str",
   "addr",
