@@ -20,6 +20,7 @@ import {
 import type { SaltInput } from "../../entity/key"
 import { CountQueryBuilder } from "../../query/countBuilder"
 import type { Expression } from "../../query/expression"
+import type { OrderTerm } from "../../query/order"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type {
   FullEntity,
@@ -196,13 +197,13 @@ export type PublicArkivActions<
    * expression combinators apply.
    *
    * @param query - An {@link Expression}, or the raw query string.
-   * @param queryOptions - Selection, page size, cursor and block. {@link QueryOptions}
+   * @param queryOptions - Selection, sort, page size, cursor and block. {@link QueryOptions}
    * @returns One page of entities. {@link QueryReturnType}
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
    * import { tiramisu } from "@arkiv-network/sdk/chains"
-   * import { and, eq, gte } from "@arkiv-network/sdk/query"
+   * import { and, desc, eq, gte } from "@arkiv-network/sdk/query"
    * import { i32 } from "@arkiv-network/sdk/schema"
    * import { http } from "viem"
    *
@@ -212,6 +213,7 @@ export type PublicArkivActions<
    * })
    * const page = await client.query(and(eq("category", "docs"), gte("level", i32(10))), {
    *   select: { $key: true, title: true },
+   *   orderBy: desc("level", "i32"),
    *   limit: 100,
    * })
    * // { entities: [{ $key: Hex; title: ArkivValue | undefined }], cursor: "b64:…", blockNumber: 32223n }
@@ -219,9 +221,9 @@ export type PublicArkivActions<
    * // The raw form, unchecked:
    * await client.query("category = str('docs') AND level >= i32(10)")
    */
-  query: <const S extends SelectArg = "*">(
+  query: <const S extends SelectArg = "*", const K extends OrderTerm = OrderTerm>(
     query: Expression | string,
-    queryOptions?: QueryOptions<S>,
+    queryOptions?: QueryOptions<S, K>,
   ) => Promise<QueryReturnType<QueryRow<S>>>
 
   /**

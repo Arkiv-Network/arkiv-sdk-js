@@ -32,6 +32,10 @@ const RESERVED = new Set([
   "startswith",
   "exists",
   "typeof",
+  "order",
+  "by",
+  "asc",
+  "desc",
   // type tags
   "bool",
   "i32",

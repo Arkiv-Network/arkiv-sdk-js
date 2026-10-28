@@ -50,7 +50,7 @@ export type AttributeRef = { readonly name: string; readonly type: IndexableType
 declare const refs: unique symbol
 
 /** The type-level record of the attributes an expression names. Never present at runtime. */
-type Refs<R extends AttributeRef> = { readonly [refs]?: R }
+export type Refs<R extends AttributeRef> = { readonly [refs]?: R }
 
 /** A comparison between an attribute and a typed literal. */
 export interface ComparisonNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
@@ -182,8 +182,13 @@ const RESULT_ONLY_SYSTEM_ATTRIBUTES = ["$createdAt", "$updatedAt", "$creationFla
  *
  * User attribute names go through the same grammar the write path enforces, so a name that could
  * never have been written is rejected here rather than matching nothing.
+ *
+ * @param use - What the reference is for, `"filter"` or `"sort"`, which the error messages name.
  */
-function resolveReference(name: string): TypeTag | undefined {
+export function resolveReference(
+  name: string,
+  use: "filter" | "sort" = "filter",
+): TypeTag | undefined {
   if (typeof name !== "string" || !name.startsWith("$")) {
     validateAttributeName(name)
     return undefined
@@ -194,9 +199,11 @@ function resolveReference(name: string): TypeTag | undefined {
   if (RESULT_ONLY_SYSTEM_ATTRIBUTES.includes(name)) {
     // Selected, and read back, as the entity field of the same name without the `$`.
     const field = name.slice(1)
+    const reason =
+      use === "filter" ? "carries no index, so it cannot be filtered on" : "cannot be sorted on"
     throw new InvalidPredicateError(
-      `"${name}" is returned in query results but carries no index, so it cannot be filtered ` +
-        `on. Select it as \`${field}\` and filter the results in JavaScript instead.`,
+      `"${name}" is returned in query results but ${reason}. Select it as \`${field}\` and ${use} ` +
+        "the results in JavaScript instead.",
       name,
     )
   }
@@ -214,10 +221,13 @@ function resolveReference(name: string): TypeTag | undefined {
  * Takes a `string` rather than an `IndexableTypeTag` on purpose — the callers' static types
  * already say as much, and this is the runtime check for the code that has no types.
  */
-function isIndexableTag(tag: string): tag is IndexableTypeTag {
+export function isIndexableTag(tag: string): tag is IndexableTypeTag {
   // `Object.hasOwn` rather than `in`, which would also accept every Object.prototype key.
   return Object.hasOwn(TYPE_IDS, tag) && isIndexable(tag as TypeTag)
 }
+
+/** The indexable type tags, listed for error messages: "bool, i32, u64, …". */
+export const INDEXABLE_TAGS = (Object.keys(TYPE_IDS) as TypeTag[]).filter(isIndexable).join(", ")
 
 /** Freezes a node and gives it a (non-enumerable, so still `toEqual`-able) rendering. */
 function node<T extends Expression>(value: T): T {
@@ -502,8 +512,7 @@ export function hasType<N extends string, T extends IndexableTypeTag>(
   }
   if (!isIndexableTag(tag)) {
     throw new InvalidPredicateError(
-      `"${tag}" is not an indexable attribute type. Use one of ` +
-        "bool, i32, u64, u256, dec, str, addr, key.",
+      `"${tag}" is not an indexable attribute type. Use one of ${INDEXABLE_TAGS}.`,
       name,
     )
   }
@@ -607,23 +616,8 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
   // System attributes were checked against their fixed types when the predicate was built.
   if (name.startsWith("$")) return
 
-  const column = lookupColumn(schema, name)
-  if (column === undefined) {
-    throw new InvalidPredicateError(
-      `"${name}" is not a column of the schema, so a predicate on it can only match entities ` +
-        `written some other way. Its columns are ${describeColumns(schema)}.`,
-      name,
-    )
-  }
+  const column = sortableColumn(schema, name, "filter")
   if (!column.isIndexed) {
-    if (column.type === "bytes") {
-      throw new InvalidPredicateError(
-        `"${name}" is a bytes column, and bytes are stored but never indexed, so it cannot be ` +
-          "filtered on. Index a hash of it, as a hex str, instead, or select it and " +
-          "filter the results in JavaScript.",
-        name,
-      )
-    }
     throw new InvalidPredicateError(
       `"${name}" is not indexed, and only indexed attributes can be filtered on. Declare it ` +
         `${column.type}().indexed() — entities written before that are indexed by their next ` +
@@ -631,6 +625,7 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
       name,
     )
   }
+  const columnType = column.type
   const asserted =
     expression.kind === "comparison" || expression.kind === "startsWith"
       ? expression.value.type
@@ -639,13 +634,52 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
         : expression.kind === "typeOf"
           ? expression.tag
           : undefined
-  if (asserted !== undefined && asserted !== column.type) {
+  if (asserted !== undefined && asserted !== columnType) {
     throw new InvalidPredicateError(
-      `"${name}" is a ${column.type} column, but the predicate asserts a ${asserted}, so it could ` +
-        `never match. Write ${column.type}(...) around the value.`,
+      `"${name}" is a ${columnType} column, but the predicate asserts a ${asserted}, so it could ` +
+        `never match. Write ${columnType}(...) around the value.`,
       name,
     )
   }
+}
+
+/**
+ * The column a filter or sort through a schema names, which must be of any type but bytes. A sort
+ * reads it whether or not it is indexed; a filter also needs it indexed, which the caller checks.
+ *
+ * @param use - What the column is for, `"filter"` or `"sort"`, which the error messages name.
+ * @throws {InvalidPredicateError} If the name is not a column of the schema, or names a bytes one.
+ */
+export function sortableColumn(
+  schema: Schema,
+  name: string,
+  use: "filter" | "sort",
+): { readonly type: IndexableTypeTag; readonly isIndexed: boolean } {
+  const column = lookupColumn(schema, name)
+  if (column === undefined) {
+    const consequence =
+      use === "filter"
+        ? "a predicate on it can only match entities written some other way"
+        : "it cannot be sorted on"
+    throw new InvalidPredicateError(
+      `"${name}" is not a column of the schema, so ${consequence}. Its columns are ` +
+        `${describeColumns(schema)}.`,
+      name,
+    )
+  }
+  if (column.type === "bytes") {
+    // A hash of the bytes can be filtered on for equality, but sorting by one orders nothing useful.
+    throw new InvalidPredicateError(
+      use === "filter"
+        ? `"${name}" is a bytes column, and bytes are stored but never indexed, so it cannot be ` +
+            "filtered on. Index a hash of it, as a hex str, instead, or select it and filter the " +
+            "results in JavaScript."
+        : `"${name}" is a bytes column, and bytes cannot be sorted on. Select it and sort the ` +
+            "results in JavaScript.",
+      name,
+    )
+  }
+  return { type: column.type, isIndexed: column.isIndexed }
 }
 
 /**

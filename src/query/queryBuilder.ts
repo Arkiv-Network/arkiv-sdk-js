@@ -3,7 +3,16 @@ import { isSchema, type Schema, SchemaDefinitionError, SchemaMismatchError } fro
 import type { Entity } from "../types/entity"
 import { QueryBuilderBase } from "./builderBase"
 import { type QueryRequest, runQuery } from "./engine"
+import { InvalidPredicateError } from "./errors"
 import type { or } from "./expression"
+import {
+  type asc,
+  checkedOrderTerm,
+  type desc,
+  type OrderCheck,
+  type OrderTerm,
+  renderOrderBy,
+} from "./order"
 import { QueryResult } from "./queryResult"
 import {
   type Projection,
@@ -57,7 +66,7 @@ export type FromOptions = {
  * its name, and leaves that tag out of the rows' `$attributes` and `$attributeSchema`.
  *
  * Every filter added with {@link where}, {@link ownedBy} and {@link createdBy} must hold; use
- * {@link or} for alternatives inside one call.
+ * {@link or} for alternatives inside one call. {@link orderBy} sorts what they match.
  *
  * @typeParam TSelection - The selection, inferred by `client.select()`.
  * @typeParam TSchema - The schema named with {@link from}, if any.
@@ -66,7 +75,7 @@ export type FromOptions = {
  * import { createPublicClient } from "@arkiv-network/sdk"
  * import { dec } from "@arkiv-network/sdk/schema"
  * import { tiramisu } from "@arkiv-network/sdk/chains"
- * import { and, eq, gt } from "@arkiv-network/sdk/query"
+ * import { and, desc, eq, gt } from "@arkiv-network/sdk/query"
  * import { http } from "viem"
  *
  * const client = createPublicClient({ chain: tiramisu, transport: http() })
@@ -75,6 +84,7 @@ export type FromOptions = {
  *   .select({ $key: true, author: true, title: true })
  *   .from(Posts)
  *   .where(and(eq("category", "docs"), gt("score", dec("4.0"))))
+ *   .orderBy(desc("score"))
  *   .limit(20)
  *   .fetch()
  *
@@ -91,6 +101,7 @@ export class SelectQueryBuilder<
   private _limit: number | undefined
   private _cursor: string | undefined
   private _withCount = false
+  private _orderBy: OrderTerm | undefined
 
   /**
    * @throws If the selection is not `"*"` or an object, asks for nothing, or names an attribute
@@ -153,6 +164,51 @@ export class SelectQueryBuilder<
   }
 
   /**
+   * Sorts the results by one attribute, with an {@link asc} or {@link desc} key. The whole walk is
+   * sorted, not each page on its own, and ties come in the node's own order. Calling it again
+   * replaces the order.
+   *
+   * Any attribute but a bytes one can be sorted on, indexed or not. After `from()`, the key takes
+   * its type from the column, and naming anything but a non-bytes column or a queryable system
+   * attribute is a compile error. Without a schema, a key on a user attribute names its type. Call
+   * it after `from()`: a key given before it is checked against the schema only when the query is
+   * sent.
+   *
+   * @param key - The sort, an `asc(...)` or a `desc(...)`.
+   * @throws {InvalidPredicateError} If not given exactly one key, or the key is not one `asc(...)`
+   * or `desc(...)` would build. A key that does not fit the schema, or has no type without one,
+   * throws when the query is sent.
+   *
+   * @example
+   * builder.orderBy(desc("score"))                       // through a schema
+   * builder.orderBy(desc("score", "u256"))               // without one
+   * builder.orderBy(asc("$expiresAt"))
+   */
+  orderBy<const K extends OrderTerm>(key: K & OrderCheck<K, TSchema>): this
+  orderBy(...keys: unknown[]): this {
+    // The signature takes one key; this catches the callers the type checker does not reach, for
+    // whom a second key would otherwise be silently ignored.
+    if (keys.length !== 1) {
+      throw new InvalidPredicateError("orderBy() takes one key, an asc(...) or desc(...).")
+    }
+    this._orderBy = checkedOrderTerm(keys[0])
+    return this
+  }
+
+  /**
+   * The query string this builder will send: the filters, as {@link QueryBuilderBase.toString}
+   * renders them, followed by the {@link orderBy} clause, if any.
+   *
+   * @throws {InvalidPredicateError} If no filter has been added, a filter or sort key does not fit
+   * the schema, or — without a schema — a sort key on a user attribute has no type.
+   */
+  override toString(): string {
+    const filters = super.toString()
+    if (this._orderBy === undefined) return filters
+    return `${filters} ${renderOrderBy(this._orderBy, this._schema)}`
+  }
+
+  /**
    * Sets the page size, up to the node maximum of 100. Without it the node picks the page size.
    *
    * @example
@@ -201,8 +257,8 @@ export class SelectQueryBuilder<
   /**
    * Runs the query and returns the first page.
    *
-   * @throws {InvalidPredicateError} If no filter has been added, or a filter does not fit the
-   * schema.
+   * @throws {InvalidPredicateError} If no filter has been added, or a filter or sort key does not
+   * fit the schema.
    * @throws If the {@link limit} is not an integer from 1 to 100.
    * @throws {SchemaMismatchError} If, through a schema, a matching entity does not fit the selected
    * columns or a named schema's tag, and `from()` was given `{ onMismatch: "throw" }`.

@@ -256,12 +256,26 @@ describe("validateAttributeName", () => {
   })
 
   it("rejects names the query language could never parse back, whatever their casing", () => {
-    for (const reserved of ["and", "OR", "Between", "key", "str", "bytes", "EXISTS"]) {
+    for (const reserved of [
+      "and",
+      "OR",
+      "Between",
+      "key",
+      "str",
+      "bytes",
+      "EXISTS",
+      "order",
+      "BY",
+      "Asc",
+      "desc",
+    ]) {
       expect(() => validateAttributeName(reserved)).toThrow(/reserved by the query language/)
     }
     // Only the exact word is reserved — a name containing it is fine.
     expect(isValidAttributeName("android")).toBe(true)
     expect(isValidAttributeName("sortKey")).toBe(true)
+    expect(isValidAttributeName("orderedAt")).toBe(true)
+    expect(isValidAttributeName("description")).toBe(true)
     // No longer a type, so no longer reserved.
     expect(isValidAttributeName("bytes32")).toBe(true)
   })
