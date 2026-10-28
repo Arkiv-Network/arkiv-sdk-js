@@ -231,6 +231,28 @@ index, or comparing a column against a value of another type, is a compile error
 .where(between("score", dec(1), 5))  // ❌ both bounds need one type
 ```
 
+Sort with `orderBy`, passing one key: an `asc(...)` or a `desc(...)`. Calling `orderBy` again
+replaces the order. The node sorts the attribute as one type, so the key has a type: through a schema it is
+the column's, and the system attributes `$key`, `$owner`, `$creator` and `$expiresAt` have fixed
+ones. Without a schema, write it. Call `orderBy` after `from(...)`, so the compiler can check the
+key against the schema; a key given before it is checked only when the query is sent:
+
+```typescript
+import { asc, desc } from "@arkiv-network/sdk/query"
+
+.from(Posts).orderBy(desc("score"))      // score:dec DESC
+.from(Posts).orderBy(asc("title"))       // title:str ASC, indexed or not
+.from(Posts).orderBy(asc("$expiresAt"))  // $expiresAt:u64 ASC
+.where(eq("category", "docs")).orderBy(desc("score", "dec"))  // without a schema
+.from(Posts).orderBy(asc("body"))    // ❌ bytes cannot be sorted on
+.from(Posts).orderBy(desc("$createdAt"))  // ❌ $createdAt cannot be sorted on
+.from(Posts).orderBy(desc("score"), asc("$key"))  // ❌ one key only
+```
+
+Any column but a `bytes` one can be sorted on, indexed or not. An entity where the attribute is unset, or set with
+another type, has no value to sort by, and sorts below every value: first with `asc`, last with
+`desc`. The order holds across the whole walk, not each page on its own.
+
 A named schema needs no `where` at all — `select().from(Posts)` matches every post: `fetch()`
 returns the first page, and `for await` walks them all. An unnamed schema types a query without
 filtering it, so `where` alone decides which entities match.

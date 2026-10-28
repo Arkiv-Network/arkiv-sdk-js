@@ -47,7 +47,10 @@ export class UnsupportedOperatorError extends Error {
  * - a combinator with nothing to combine;
  * - a query with no filter at all — a named schema's tag counts as one;
  * - through `.from(schema)`, a filter that does not fit the schema: a name that is not a column, a
- *   column that is not indexed, or a value of another type than the column's.
+ *   column that is not indexed, or a value of another type than the column's;
+ * - a sort key that cannot be sent: an `orderBy()` with no key or more than one, a key on a bytes
+ *   column or on something that is not a column of the schema, one with no type and no schema to
+ *   take it from, or one whose type is not the attribute's.
  */
 export class InvalidPredicateError extends Error {
   /** The attribute the predicate names, where there is one. */
@@ -146,13 +149,21 @@ export function asQueryError(error: unknown, query: string): QueryError | undefi
     const link = current as {
       code?: unknown
       data?: unknown
-      shortMessage?: unknown
+      details?: unknown
       cause?: unknown
     }
     if (code === undefined && typeof link.code === "number") code = link.code
     if (data === undefined && link.data !== undefined) data = link.data
-    if (detail === undefined && typeof link.shortMessage === "string") detail = link.shortMessage
+    // viem keeps the node's own message as `details`. Its `shortMessage` is the EIP-1474 label for
+    // the code ("Requested resource not found." for -32001), which says nothing about the query.
+    if (detail === undefined && typeof link.details === "string" && link.details !== "") {
+      detail = link.details
+    }
     current = link.cause
+  }
+  if (detail === undefined) {
+    const message = (data as { message?: unknown } | undefined)?.message
+    if (typeof message === "string" && message !== "") detail = message
   }
 
   const kind = code === undefined ? undefined : QUERY_ERROR_KINDS[code]

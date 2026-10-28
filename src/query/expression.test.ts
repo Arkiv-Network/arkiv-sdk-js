@@ -199,12 +199,12 @@ describe("between", () => {
 
 describe("startsWith", () => {
   it("takes a bare string or a str value", () => {
-    expect(String(startsWith("desc", "ab"))).toBe("desc STARTSWITH str('ab')")
-    expect(String(startsWith("desc", str("ab")))).toBe("desc STARTSWITH str('ab')")
+    expect(String(startsWith("description", "ab"))).toBe("description STARTSWITH str('ab')")
+    expect(String(startsWith("description", str("ab")))).toBe("description STARTSWITH str('ab')")
   })
 
   it("escapes the prefix like any other string literal", () => {
-    expect(String(startsWith("desc", "O'"))).toBe("desc STARTSWITH str('O''')")
+    expect(String(startsWith("description", "O'"))).toBe("description STARTSWITH str('O''')")
   })
 
   it("rejects a non-str value", () => {
@@ -297,13 +297,13 @@ describe("precedence", () => {
       lte("score", dec("5")),
       eq("parent", key(ENTITY_KEY)),
       eq("flagged", true),
-      startsWith("desc", str("ab")),
+      startsWith("description", str("ab")),
       or(eq("status", str("open")), not(exists("closedAt"))),
       lt("$expiresAt", u64(1_200_000n)),
     )
     expect(q.toString()).toBe(
       "level >= i32(10) AND score >= dec(3.5) AND score <= dec(5) AND " +
-        `parent = key(${ENTITY_KEY}) AND flagged = true AND desc STARTSWITH str('ab') AND ` +
+        `parent = key(${ENTITY_KEY}) AND flagged = true AND description STARTSWITH str('ab') AND ` +
         "(status = str('open') OR NOT EXISTS(closedAt)) AND $expiresAt < u64(1200000)",
     )
   })

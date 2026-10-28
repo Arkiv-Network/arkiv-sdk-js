@@ -11,6 +11,7 @@ import {
   bytes,
   dec,
   defineSchema,
+  InvalidAttributeNameError,
   i32,
   SchemaMismatchError,
   type StrValue,
@@ -20,6 +21,7 @@ import type { RpcEntity } from "../types/rpcSchema"
 import { MAX_LIMIT } from "./engine"
 import { InvalidPredicateError, QueryError } from "./errors"
 import { eq, exists, gte, or } from "./expression"
+import { asc, desc } from "./order"
 import { SelectQueryBuilder } from "./queryBuilder"
 import type { DynamicSelection, SelectArg, Selection } from "./selection"
 
@@ -347,6 +349,167 @@ describe("pagination", () => {
   })
 })
 
+describe("orderBy", () => {
+  const Posts = defineSchema("posts", {
+    category: str().indexed(),
+    score: dec().indexed(),
+    title: str(),
+    body: bytes(),
+  })
+  const select = <const S extends Selection>(client: ArkivClient, selection: S) =>
+    new SelectQueryBuilder<S>(client, selection)
+
+  it("sorts after the whole filter, a top-level OR included", async () => {
+    const { client, request } = makeClient()
+    await select(client, { $key: true })
+      .where(or(eq("status", "open"), eq("status", "review")))
+      .orderBy(desc("score", "u256"))
+      .fetch()
+    expect(sent(request).query).toBe(
+      "status = str('open') OR status = str('review') ORDER BY score:u256 DESC",
+    )
+  })
+
+  it("takes the type from the schema's column", async () => {
+    const { client, request } = makeClient()
+    await select(client, { $key: true }).from(Posts).orderBy(desc("score")).fetch()
+    expect(sent(request).query).toBe("arkiv.schema = str('posts') ORDER BY score:dec DESC")
+  })
+
+  it("replaces the order when called again", async () => {
+    const { client, request } = makeClient()
+    await select(client, { $key: true })
+      .from(Posts)
+      .orderBy(desc("score"))
+      .orderBy(asc("category"))
+      .fetch()
+    expect(sent(request).query).toBe("arkiv.schema = str('posts') ORDER BY category:str ASC")
+  })
+
+  it("takes exactly one key, at compile time and at the call", () => {
+    const { client } = makeClient()
+    const builder = select(client, { $key: true }).from(Posts).orderBy(desc("category"))
+    // @ts-expect-error - orderBy takes one key
+    expect(() => builder.orderBy()).toThrow(/needs one key/)
+    // @ts-expect-error - the node sorts by one attribute only
+    expect(() => builder.orderBy(asc("category"), desc("score"))).toThrow(/takes one key/)
+    // @ts-expect-error - nor as an array
+    expect(() => builder.orderBy([asc("category")])).toThrow(/not an array/)
+    // @ts-expect-error - two in an array are still two
+    expect(() => builder.orderBy([asc("category"), desc("score")])).toThrow(/takes one key/)
+    // @ts-expect-error - nor as an empty array, which is no key rather than too many
+    expect(() => builder.orderBy([])).toThrow(/needs one key/)
+    // @ts-expect-error - a key is an asc(...) or desc(...)
+    expect(() => builder.orderBy("score")).toThrow(/is an asc\(\.\.\.\) or a desc/)
+    // A failed call leaves the order it would have replaced.
+    expect(builder.toString()).toEndWith("ORDER BY category:str DESC")
+  })
+
+  it("holds a key built by hand to what asc() and desc() check, at the call", () => {
+    const { client } = makeClient()
+    const builder = select(client, { $key: true }).where(eq("category", "docs"))
+    const key = (fields: object) => ({ kind: "order", name: "score", type: "str", ...fields })
+    const orderBy = (fields: object) => () => builder.orderBy(key(fields) as never)
+    expect(orderBy({ direction: "desc -- " })).toThrow(/"asc" or "desc"/)
+    expect(orderBy({ name: "a--b", direction: "asc" })).toThrow(InvalidAttributeNameError)
+    expect(orderBy({ name: "a b", direction: "asc" })).toThrow(InvalidAttributeNameError)
+    expect(orderBy({ type: "bytes", direction: "asc" })).toThrow(/cannot be sorted as "bytes"/)
+    expect(orderBy({ type: "u64) OR (", direction: "asc" })).toThrow(/cannot be sorted as/)
+    expect(orderBy({ name: "$createdAt", type: "u64", direction: "asc" })).toThrow(
+      /cannot be sorted on/,
+    )
+    expect(orderBy({ name: "$whatever", type: "u64", direction: "asc" })).toThrow(/not a system/)
+    expect(orderBy({ name: "$expiresAt", type: "u256", direction: "asc" })).toThrow(/always a u64/)
+    // A hand-built $key with no type gets the fixed one, as asc() would give it.
+    builder.orderBy(key({ name: "$key", type: undefined, direction: "asc" }) as never)
+    expect(builder.toString()).toEndWith("ORDER BY $key:key ASC")
+  })
+
+  it("types each name of a union by itself, so a column and a system attribute mix", () => {
+    const { client } = makeClient()
+    const column = "$expiresAt" as "score" | "$expiresAt"
+    const builder = select(client, { $key: true }).from(Posts).orderBy(desc(column))
+    expect(builder.toString()).toEndWith("ORDER BY $expiresAt:u64 DESC")
+  })
+
+  it("needs a type for a name typed as plain string without a schema, at compile time", () => {
+    const { client } = makeClient()
+    const name: string = "score"
+    const builder = select(client, { $key: true }).where(eq("category", "docs"))
+    // @ts-expect-error - a plain string could name any attribute, so it needs its type
+    expect(() => builder.orderBy(desc(name)).toString()).toThrow(/needs its type/)
+    expect(builder.orderBy(desc(name, "dec")).toString()).toEndWith("ORDER BY score:dec DESC")
+  })
+
+  it("sends the same order with every page", async () => {
+    const { client, request } = makeClient(
+      { data: [{ key: KEY }], blockNumber: "0x1", cursor: "b64:1" },
+      { data: [], blockNumber: "0x1" },
+    )
+    const first = await select(client, { $key: true }).from(Posts).orderBy(desc("score")).fetch()
+    await first.next()
+    expect(sent(request, 1).query).toBe(sent(request, 0).query)
+    expect(sent(request, 1).query).toEndWith("ORDER BY score:dec DESC")
+  })
+
+  it("survives from() and withCount()", async () => {
+    const { client, request } = makeClient({ data: [], blockNumber: "0x1", count: "0x0" })
+    await select(client, { $key: true })
+      .orderBy(desc("score", "dec"))
+      .from(Posts)
+      .withCount()
+      .fetch()
+    expect(sent(request).query).toBe("arkiv.schema = str('posts') ORDER BY score:dec DESC")
+  })
+
+  it("needs a type without a schema, at compile time and before sending", async () => {
+    const { client, request } = makeClient()
+    const builder = select(client, { $key: true }).where(eq("category", "docs"))
+    // @ts-expect-error - score needs its type without a schema
+    await expect(builder.orderBy(desc("score")).fetch()).rejects.toThrow(/needs its type/)
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it("sorts on a column that is not indexed", async () => {
+    const { client, request } = makeClient()
+    await select(client, { $key: true }).from(Posts).orderBy(asc("title")).fetch()
+    expect(sent(request).query).toBe("arkiv.schema = str('posts') ORDER BY title:str ASC")
+  })
+
+  it("only sorts on the schema's non-bytes columns, at compile time and before sending", async () => {
+    const { client, request } = makeClient()
+    const query = () => select(client, { $key: true }).from(Posts)
+    // @ts-expect-error - title is a str, not a u256
+    await expect(query().orderBy(asc("title", "u256")).fetch()).rejects.toThrow(/str column/)
+    // @ts-expect-error - body is bytes, which cannot be sorted on
+    await expect(query().orderBy(asc("body")).fetch()).rejects.toThrow(/bytes cannot be sorted on/)
+    // @ts-expect-error - nope is not a column
+    await expect(query().orderBy(asc("nope")).fetch()).rejects.toThrow(/not a column/)
+    // @ts-expect-error - score is a dec, not a u256
+    await expect(query().orderBy(asc("score", "u256")).fetch()).rejects.toThrow(/dec column/)
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it("only sorts on the system attributes that can be sorted on, at compile time", () => {
+    const { client } = makeClient()
+    const builder = select(client, { $key: true }).from(Posts)
+    // @ts-expect-error - $createdAt cannot be sorted on
+    expect(() => builder.orderBy(desc("$createdAt"))).toThrow(
+      /"\$createdAt" is returned in query results but cannot be sorted on/,
+    )
+    // @ts-expect-error - $expiresAt is a u64
+    expect(() => builder.orderBy(desc("$expiresAt", "u256"))).toThrow(/always a u64/)
+  })
+
+  it("accepts the sortable system attributes without a type or a schema", async () => {
+    const { client, request } = makeClient()
+    await select(client, { $key: true }).ownedBy(ACCOUNT).orderBy(asc("$expiresAt")).fetch()
+    expect(sent(request).query).toEndWith("ORDER BY $expiresAt:u64 ASC")
+    await select(client, { $key: true }).ownedBy(ACCOUNT).orderBy(desc("$creator")).fetch()
+    expect(sent(request, 1).query).toEndWith("ORDER BY $creator:addr DESC")
+  })
+})
+
 describe("node rejections", () => {
   /** viem wraps the arkiv codes in its own EIP-1474 classes, so the code sits down the chain. */
   function rpcFailure(code: number, data?: unknown) {
@@ -371,6 +534,57 @@ describe("node rejections", () => {
     expect(error.data).toEqual(data)
     expect(error.query).toBe("a = i32(1)")
     expect(error.message).toContain("Query: a = i32(1)")
+  })
+
+  it("words the message with the node's detail, not viem's label for the code", async () => {
+    const { client } = makeClient()
+    const inner = Object.assign(new Error("RPC Request failed."), {
+      code: -32001,
+      details: "unexpected character",
+      data: { message: "unexpected character", position: 25 },
+    })
+    const outer = Object.assign(new Error("Requested resource not found."), {
+      shortMessage: "Requested resource not found.",
+      details: "unexpected character",
+      code: -32001,
+      cause: inner,
+    })
+    ;(client.request as ReturnType<typeof vi.fn>).mockRejectedValue(outer)
+
+    const error = (await new SelectQueryBuilder(client, { $key: true })
+      .where(eq("a", 1))
+      .fetch()
+      .catch((e) => e)) as QueryError
+    expect(error.message).toStartWith("Query rejected (parse, -32001): unexpected character.")
+    expect(error.message).not.toContain("not found")
+  })
+
+  it("skips an empty detail for the next link's, or the node's data", async () => {
+    const { client } = makeClient()
+    const inner = Object.assign(new Error("RPC Request failed."), {
+      code: -32001,
+      data: { message: "unexpected character", position: 25 },
+    })
+    const outer = Object.assign(new Error(""), { details: "", code: -32001, cause: inner })
+    ;(client.request as ReturnType<typeof vi.fn>).mockRejectedValue(outer)
+
+    const error = (await new SelectQueryBuilder(client, { $key: true })
+      .where(eq("a", 1))
+      .fetch()
+      .catch((e) => e)) as QueryError
+    expect(error.message).toStartWith("Query rejected (parse, -32001): unexpected character.")
+  })
+
+  it("falls back to the message in the node's data", async () => {
+    const { client } = makeClient()
+    const data = { message: "unknown tag", position: 3 }
+    ;(client.request as ReturnType<typeof vi.fn>).mockRejectedValue(rpcFailure(-32002, data))
+
+    const error = (await new SelectQueryBuilder(client, { $key: true })
+      .where(eq("a", 1))
+      .fetch()
+      .catch((e) => e)) as QueryError
+    expect(error.message).toStartWith("Query rejected (type, -32002): unknown tag.")
   })
 
   it("maps each code in the frozen range", async () => {

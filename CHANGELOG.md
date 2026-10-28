@@ -15,6 +15,8 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - Selection and row exports from `@arkiv-network/sdk/query`: the types `Selection`, `Row`, `FullRow`, `ResultOf`, `SelectionOf`, `NonEmptySelection`, `KnownSystemFields`, `Selected`, `SystemField`, `SchemaRef` and `AttributeRef` (also exported from the package root), and `SYSTEM_FIELDS` (also from the package root), `projectSelection` and `toRow`. `QueryRow` from `@arkiv-network/sdk/types` and the package root
 - `between(name, low, high)`, an inclusive range test that matches what `and(gte(name, low), lte(name, high))` does, sent as `name BETWEEN low AND high`. Both bounds must have one type: mixed bounds are a compile error and throw `InvalidPredicateError`. `BetweenNode` is exported from `@arkiv-network/sdk/query`
 - `client.count()` counts the entities a query matches without fetching them: a `CountQueryBuilder` that filters as `select()` does (`from`, `where`, `ownedBy`, `createdBy`, `atBlock`) and whose `fetch()` resolves to a `bigint`. `select(...).withCount()` adds the same total to every page as `QueryResult.count`, typed `bigint`, and `query()` takes `count: true`. All three use the `count` projection of `arkiv_query`
+- `select(...).orderBy(key)` sorts the results by one attribute, sent as `ORDER BY name:type DESC` after the whole filter. The key is an `asc(name, type?)` or `desc(name, type?)` from `@arkiv-network/sdk/query`. More than one key is a compile error and throws `InvalidPredicateError`. Through a schema the key takes its type from the column, and any column but a `bytes` one, indexed or not, and the queryable system attributes (`$key`, `$owner`, `$creator`, `$expiresAt`) can be sorted on. Anything else throws `InvalidPredicateError`, and is also a compile error when `orderBy` is called after `from()`. Without a schema, a key on a user attribute must name its type. Calling `orderBy` again replaces the order. An entity where the attribute is unset or holds another type sorts below every value: first with `asc`, last with `desc`. `OrderTerm` and `SortDirection` are exported from `@arkiv-network/sdk/query` and the package root
+- `client.query(query, { orderBy })` sorts too: the key is sent as the `ORDER BY` clause after the query, raw string or expression, and is checked as `select().orderBy()` checks it without a schema
 - Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
 
 ### Changed
@@ -28,6 +30,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - `gt`/`gte`/`lt`/`lte` accept every indexable type, system attributes included, and compare in index order: numerically for `i32`, `u64`, `u256` and `dec`, `false < true` for `bool`, and by unsigned bytes for `str`, `addr` and `key`. They no longer throw `UnsupportedOperatorError`, which only `startsWith()` throws now. A predicate on a `bytes` value throws `InvalidPredicateError`
 - **Breaking:** the page size is capped at 100, the node's new maximum. `MAX_LIMIT` is `100`, and a larger `limit` throws
 - **Breaking:** `between` is a reserved attribute name, since the query language now has a `BETWEEN` operator
+- **Breaking:** `order`, `by`, `asc` and `desc` are reserved attribute names, since the query language now has an `ORDER BY` clause
 - `getEntity()` reads with `arkiv_getEntity` instead of an `arkiv_query` on `$key`
 - **Breaking:** `select()` / `select("*")` without a schema, and `getEntity(key)`, no longer return `$attributeSchema`: a `FullEntity` is every entity field and `$attributes`. Select `$attributeSchema` by name to read an entity's shape
 - **Breaking:** `SelectQueryBuilder`'s type parameters are now the selection and the schema, not the result type. `from()` returns a new builder rather than re-typing the one it was called on
@@ -51,6 +54,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 
 ### Fixed
 - An exclusion in `DEBUG` (`arkiv:*,-arkiv:query:*`) now silences the namespaces it names. It used to do the opposite: it left those enabled and silenced everything else
+- A `QueryError`'s message carries the node's reason, such as `unexpected character`. It used to carry viem's label for the error code instead, so every parse error read `Requested resource not found.`
 
 ## [0.8.1] - 2026-09-08
 

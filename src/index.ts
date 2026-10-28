@@ -25,6 +25,7 @@ export type {
   FullRow,
   KnownSystemFields,
   NonEmptySelection,
+  OrderTerm,
   PartialRow,
   QueryBuilderBase,
   QueryResult,
@@ -35,6 +36,7 @@ export type {
   Selected,
   Selection,
   SelectionOf,
+  SortDirection,
   SystemField,
 } from "./query"
 export { CountQueryBuilder, SelectQueryBuilder, SYSTEM_FIELDS } from "./query"
