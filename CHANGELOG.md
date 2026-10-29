@@ -18,6 +18,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - `select(...).orderBy(key)` sorts the results by one attribute, sent as `ORDER BY name:type DESC` after the whole filter. The key is an `asc(name, type?)` or `desc(name, type?)` from `@arkiv-network/sdk/query`. More than one key is a compile error and throws `InvalidPredicateError`. Through a schema the key takes its type from the column, and any column but a `bytes` one, indexed or not, and the queryable system attributes (`$key`, `$owner`, `$creator`, `$expiresAt`) can be sorted on. Anything else throws `InvalidPredicateError`, and is also a compile error when `orderBy` is called after `from()`. Without a schema, a key on a user attribute must name its type. Calling `orderBy` again replaces the order. An entity where the attribute is unset or holds another type sorts below every value: first with `asc`, last with `desc`. `OrderTerm` and `SortDirection` are exported from `@arkiv-network/sdk/query` and the package root
 - `client.query(query, { orderBy })` sorts too: the key is sent as the `ORDER BY` clause after the query, raw string or expression, and is checked as `select().orderBy()` checks it without a schema
 - Schemas and columns are recognised by a `Symbol.for` brand rather than `instanceof`, so one defined through the package's CJS build is accepted by its ESM build and vice versa
+- Rabdi testnet, exported from `@arkiv-network/sdk/chains` as `rabdi({ accessKey })`. Unlike the chains before it, it is a constructor that takes an Arkiv access key and puts it in the RPC URLs, so every transport using the chain's URL and every wallet the chain is added to sends it. `accessKey: ""` uses the heavily rate-limited public endpoint and warns once, pointing to https://hub.arkiv.network/access-keys. Leaving the key out is a compile error and throws `MissingAccessKeyError`. Its options are typed `ArkivChainOptions`
 
 ### Changed
 - **Breaking:** `@arkiv-network/sdk/attr` is now `@arkiv-network/sdk/schema`
@@ -98,7 +99,8 @@ This release tracks the arkiv-reth engine and rewrites most of the SDK surface. 
 - **Breaking:** `buildQuery()` and `QueryBuilder`, along with `withAttributes()`/`withMetadata()`/`withPayload()`. Use `select()`
 - **Breaking:** `subscribeEntityEvents()`. Use `watchEntityEvents()`
 - **Breaking:** `orderBy` on the query builder, the `orderBy` query option and the `asc`/`desc` helpers, deprecated in 0.7.0. Sort the fetched entities in JavaScript
-- **Breaking:** the Kaolin and Braga testnets. Use Cheesecake
+- **Breaking:** the Kaolin, Braga and Cheesecake testnets. Use Rabdi
+- **Breaking:** `chainFromName()`. Import the chain from `@arkiv-network/sdk/chains` instead
 - **Breaking:** `InvalidExpirationError`, `InvalidAttributeError`, `InvalidAttributeKeyError`, `DuplicateAttributeError` and `NoCursorOrLimitError`
 
 ## [0.7.0] - 2026-07-09

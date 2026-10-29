@@ -74,11 +74,11 @@ export type FromOptions = {
  * @example
  * import { createPublicClient } from "@arkiv-network/sdk"
  * import { dec } from "@arkiv-network/sdk/schema"
- * import { tiramisu } from "@arkiv-network/sdk/chains"
+ * import { rabdi } from "@arkiv-network/sdk/chains"
  * import { and, desc, eq, gt } from "@arkiv-network/sdk/query"
  * import { http } from "viem"
  *
- * const client = createPublicClient({ chain: tiramisu, transport: http() })
+ * const client = createPublicClient({ chain: rabdi({ accessKey: "..." }), transport: http() })
  *
  * const page = await client
  *   .select({ $key: true, author: true, title: true })

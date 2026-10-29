@@ -13,7 +13,7 @@ import {
   ExpirationTime,
   NoEntityFoundError,
 } from "@arkiv-network/sdk"
-import { localhost, tiramisu } from "@arkiv-network/sdk/chains"
+import { localhost, rabdi } from "@arkiv-network/sdk/chains"
 import {
   and,
   type Expression,
@@ -83,19 +83,23 @@ if (RPC_URL_FROM_ENV) {
 }
 
 if (CHAIN_FROM_ENV) {
-  const chains = { tiramisu, localhost } as const
+  // A chain Arkiv hosts takes its access key from ARKIV_ACCESS_KEY
+  const chains = {
+    rabdi: () => rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" }),
+    localhost: () => localhost,
+  } as const
   const found = chains[CHAIN_FROM_ENV as keyof typeof chains]
   if (!found) {
     throw new Error(
       `Unknown chain: ${CHAIN_FROM_ENV}. Valid options: ${Object.keys(chains).join(", ")}, or set RPC_URL.`,
     )
   }
-  chain = found
+  chain = found()
 }
 
 if (!chain) {
   throw new Error(
-    "No chain configured. Set RPC_URL to a node, or set CHAIN to one of tiramisu, localhost.",
+    "No chain configured. Set RPC_URL to a node, or set CHAIN to one of rabdi, localhost.",
   )
 }
 

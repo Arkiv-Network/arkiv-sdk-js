@@ -71,11 +71,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const entity = await client.getEntity(entityKey)
@@ -115,13 +115,13 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { and, eq, gt } from "@arkiv-network/sdk/query"
    * import { dec } from "@arkiv-network/sdk/schema"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * // through a schema — rows typed { $key: Hex; author: AddrValue; title: StrValue }
@@ -202,13 +202,13 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { and, desc, eq, gte } from "@arkiv-network/sdk/query"
    * import { i32 } from "@arkiv-network/sdk/schema"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const page = await client.query(and(eq("category", "docs"), gte("level", i32(10))), {
@@ -237,11 +237,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const nonce = await client.getEntityNonce("0xabc…")
@@ -298,11 +298,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const blockTiming = await client.getBlockTiming()
@@ -327,11 +327,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const unwatch = client.watchEntityEvents({

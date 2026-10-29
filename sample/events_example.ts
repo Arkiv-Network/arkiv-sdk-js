@@ -1,9 +1,11 @@
 import { createPublicClient } from "@arkiv-network/sdk"
-import { tiramisu } from "@arkiv-network/sdk/chains"
+import { rabdi } from "@arkiv-network/sdk/chains"
 import { http } from "viem"
 
+// Rabdi is the Arkiv testnet. Set ARKIV_ACCESS_KEY to a free key from
+// https://hub.arkiv.network/access-keys; without one, it uses the rate-limited public endpoint.
 const publicClient = createPublicClient({
-  chain: tiramisu, // tiramisu is the Arkiv testnet
+  chain: rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" }),
   transport: http(),
 })
 
