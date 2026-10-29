@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "bun:test"
 import type { Hex } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
-import { NoMoreResultsError } from "../errors"
 import {
   type AddrValue,
   type ArkivValue,
@@ -28,7 +27,7 @@ import type { DynamicSelection, SelectArg, Selection } from "./selection"
 const ACCOUNT = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" as const
 const KEY = `0x${"ab".repeat(32)}` as const
 
-type Page = { data: RpcEntity[]; blockNumber: string; cursor?: string; count?: string }
+type Page = { data: RpcEntity[]; blockNumber: string; count?: string }
 
 /** A client whose `arkiv_query` serves the given pages in order. */
 function makeClient(...pages: Page[]) {
@@ -113,23 +112,47 @@ describe("the options it sends", () => {
 
     const { options } = sent(request)
     expect(options).toEqual({ select: expect.objectContaining({ key: true, attributes: true }) })
-    // No limit or cursor unless asked for — the node picks its own page size.
+    // No limit or offset unless asked for — the node picks its own page size.
     expect(Object.keys(options).sort()).toEqual(["select"])
   })
 
-  it("sends limit and cursor as the RPC spells them", async () => {
+  it("sends limit and offset as the RPC spells them", async () => {
     const { client, request } = makeClient()
     await new SelectQueryBuilder(client, { $key: true })
       .where(eq("a", 1))
       .limit(100)
-      .cursor("b64:abc")
+      .offset(200)
       .fetch()
 
     const { options } = sent(request)
     expect(options).toMatchObject({
       limit: "0x64",
-      cursor: "b64:abc",
+      offset: "0xc8",
     })
+  })
+
+  it("sends an offset of 0", async () => {
+    const { client, request } = makeClient()
+    await new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).offset(0).fetch()
+    expect(sent(request).options).toMatchObject({ offset: "0x0" })
+  })
+
+  it("rejects an offset the node would reject", async () => {
+    const { client, request } = makeClient()
+    const query = () => new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1))
+    await expect(query().offset(-1).fetch()).rejects.toThrow(/non-negative integer/)
+    await expect(query().offset(1.5).fetch()).rejects.toThrow(/non-negative integer/)
+    await expect(query().offset(Number.NaN).fetch()).rejects.toThrow(/non-negative integer/)
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it("sends each fetch the builder as it is then", async () => {
+    const { client, request } = makeClient()
+    const builder = new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).limit(2)
+    await builder.fetch()
+    await builder.offset(2).fetch()
+    expect(sent(request, 0).options).not.toHaveProperty("offset")
+    expect(sent(request, 1).options).toMatchObject({ limit: "0x2", offset: "0x2" })
   })
 
   it("rejects a page size the node would reject", async () => {
@@ -148,24 +171,22 @@ describe("the options it sends", () => {
 })
 
 describe("withCount", () => {
-  it("carries the total on every page, typed bigint", async () => {
-    const { client, request } = makeClient(
-      { data: [{ key: KEY }], blockNumber: "0x1", cursor: "b64:next", count: "0x2" },
-      { data: [{ key: KEY }], blockNumber: "0x1", count: "0x2" },
-    )
-    const first = await new SelectQueryBuilder(client, { $key: true })
+  it("carries the total, typed bigint", async () => {
+    const { client, request } = makeClient({
+      data: [{ key: KEY }],
+      blockNumber: "0x1",
+      count: "0x2",
+    })
+    const page = await new SelectQueryBuilder(client, { $key: true })
       .where(eq("a", 1))
       .withCount()
       .limit(1)
+      .offset(1)
       .fetch()
-    const second = await first.next()
 
-    const total: bigint = first.count
-    const again: bigint = second.count
+    const total: bigint = page.count
     expect(total).toBe(2n)
-    expect(again).toBe(2n)
-    expect(sent(request, 0).options.select).toMatchObject({ key: true, count: true })
-    expect(sent(request, 1).options.select).toMatchObject({ key: true, count: true })
+    expect(sent(request).options.select).toMatchObject({ key: true, count: true })
   })
 
   it("fails rather than typing a missing count as bigint", async () => {
@@ -272,80 +293,6 @@ describe("decoding", () => {
   })
 })
 
-describe("pagination", () => {
-  const page = (cursor: string | undefined, ...keys: string[]): Page => ({
-    blockNumber: "0x8e1ff",
-    data: keys.map((k) => ({ key: k as `0x${string}` })),
-    ...(cursor !== undefined && { cursor }),
-  })
-
-  it("follows the cursor and stops when the node omits it", async () => {
-    const { client, request } = makeClient(
-      page("b64:1", "0x1", "0x2"),
-      page("b64:2", "0x3"),
-      page(undefined, "0x4"),
-    )
-    const builder = new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).limit(2)
-
-    const first = await builder.fetch()
-    expect(first.entities).toHaveLength(2)
-    expect(first.hasNextPage()).toBe(true)
-
-    const second = await first.next()
-    expect(sent(request, 1).options).toMatchObject({ cursor: "b64:1" })
-
-    const third = await second.next()
-    expect(sent(request, 2).options).toMatchObject({ cursor: "b64:2" })
-    expect(third.hasNextPage()).toBe(false)
-    await expect(third.next()).rejects.toThrow(NoMoreResultsError)
-  })
-
-  it("leaves an already-read page readable", async () => {
-    const { client } = makeClient(page("b64:1", "0x1"), page(undefined, "0x2"))
-    const first = await new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1)).fetch()
-    await first.next()
-    // next() returns the following page rather than mutating this one.
-    expect(first.entities).toHaveLength(1)
-    expect(first.cursor).toBe("b64:1")
-  })
-
-  it("reports a full last page correctly", async () => {
-    // The old heuristic was "fewer rows than the limit means the end", which mistakes a final page
-    // that happens to be exactly full for a middle one. The node omits the cursor instead.
-    const { client } = makeClient(page(undefined, "0x1", "0x2"))
-    const result = await new SelectQueryBuilder(client, { $key: true })
-      .where(eq("a", 1))
-      .limit(2)
-      .fetch()
-    expect(result.entities).toHaveLength(2)
-    expect(result.hasNextPage()).toBe(false)
-  })
-
-  it("pages the query it started with, not whatever the builder says later", async () => {
-    const { client, request } = makeClient(page("b64:1", "0x1"), page(undefined, "0x2"))
-    const builder = new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1))
-
-    const first = await builder.fetch()
-    // The builder stays mutable and reusable. Re-reading it per page would send page 2 under a
-    // different query than the cursor was issued for, which the node answers with a "cursor" error
-    // — or, worse, with rows from another result set.
-    builder.where(eq("b", 2)).limit(50)
-    await first.next()
-
-    expect(sent(request, 1).query).toBe("a = i32(1)")
-    expect(sent(request, 1).options).not.toHaveProperty("limit")
-  })
-
-  it("walks every page through the async iterator", async () => {
-    const { client } = makeClient(page("b64:1", "0x1", "0x2"), page(undefined, "0x3"))
-    const keys: unknown[] = []
-    for await (const entity of new SelectQueryBuilder(client, { $key: true }).where(eq("a", 1))) {
-      keys.push((entity as { $key: string }).$key)
-    }
-    expect(keys).toEqual(["0x1", "0x2", "0x3"])
-  })
-})
-
 describe("orderBy", () => {
   const Posts = defineSchema("posts", {
     category: str().indexed(),
@@ -434,15 +381,11 @@ describe("orderBy", () => {
     expect(builder.orderBy(desc(name, "dec")).toString()).toEndWith("ORDER BY score:dec DESC")
   })
 
-  it("sends the same order with every page", async () => {
-    const { client, request } = makeClient(
-      { data: [{ key: KEY }], blockNumber: "0x1", cursor: "b64:1" },
-      { data: [], blockNumber: "0x1" },
-    )
-    const first = await select(client, { $key: true }).from(Posts).orderBy(desc("score")).fetch()
-    await first.next()
-    expect(sent(request, 1).query).toBe(sent(request, 0).query)
-    expect(sent(request, 1).query).toEndWith("ORDER BY score:dec DESC")
+  it("sends the order with an offset", async () => {
+    const { client, request } = makeClient()
+    await select(client, { $key: true }).from(Posts).orderBy(asc("$key")).offset(20).fetch()
+    expect(sent(request).query).toEndWith("ORDER BY $key:key ASC")
+    expect(sent(request).options).toMatchObject({ offset: "0x14" })
   })
 
   it("survives from() and withCount()", async () => {
@@ -586,7 +529,6 @@ describe("node rejections", () => {
       [-32002]: "type",
       [-32003]: "literal",
       [-32004]: "limits",
-      [-32005]: "cursor",
     }
     for (const [code, kind] of Object.entries(kinds)) {
       const { client } = makeClient()
@@ -718,18 +660,13 @@ describe("through a schema", () => {
     first.score
   })
 
-  it("decodes every page of a walk as rows", async () => {
-    const { client } = makeClient(
-      { blockNumber: "0x1", data: [row], cursor: "next" },
-      { blockNumber: "0x1", data: [row] },
-    )
-    const titles: string[] = []
-    for await (const entry of select(client, { title: true })
+  it("decodes every entity of a page as a row", async () => {
+    const { client } = makeClient({ blockNumber: "0x1", data: [row, row] })
+    const { entities } = await select(client, { title: true })
       .from(Posts)
-      .where(eq("category", "docs"))) {
-      titles.push(entry.title.value)
-    }
-    expect(titles).toEqual(["Hello", "Hello"])
+      .where(eq("category", "docs"))
+      .fetch()
+    expect(entities.map((entry) => entry.title.value)).toEqual(["Hello", "Hello"])
   })
 
   it("fails the fetch on an entity that does not fit the schema, with onMismatch: throw", async () => {
@@ -782,18 +719,18 @@ describe("through a schema", () => {
     expect(sent(request).options.select).toMatchObject({ attributes: { title: true } })
   })
 
-  it("carries the filters, owner, limit and cursor across from()", async () => {
+  it("carries the filters, owner, limit and offset across from()", async () => {
     const { client, request } = makeClient()
     await new SelectQueryBuilder(client, { $key: true })
       .where(eq("category", "docs"))
       .ownedBy(ACCOUNT)
       .limit(5)
-      .cursor("0xc0")
+      .offset(10)
       .from(Posts)
       .fetch()
     const { query, options } = sent(request)
     expect(query).toBe(`category = str('docs') AND $owner = addr(${ACCOUNT})`)
-    expect(options).toMatchObject({ limit: "0x5", cursor: "0xc0" })
+    expect(options).toMatchObject({ limit: "0x5", offset: "0xa" })
   })
 
   it("reads the same selection without a schema, untyped and unchecked", async () => {
@@ -851,38 +788,17 @@ describe("through a schema", () => {
     ).rejects.toThrow(/Unknown attribute type/)
   })
 
-  it("skips on every page of a walk", async () => {
+  it("counts skips, so a page of misfits is not mistaken for the end", async () => {
     const misfit = { key: KEY, attributes: [] }
-    const { client } = makeClient(
-      { blockNumber: "0x1", data: [misfit], cursor: "next" },
-      { blockNumber: "0x1", data: [row] },
-    )
-    const titles: string[] = []
-    for await (const entry of select(client, { title: true })
-      .from(Posts, { onMismatch: "skip" })
-      .where(eq("category", "docs"))) {
-      titles.push(entry.title.value)
-    }
-    expect(titles).toEqual(["Hello"])
-  })
-
-  it("counts skips per page, so an empty page with a cursor is not mistaken for the end", async () => {
-    const misfit = { key: KEY, attributes: [] }
-    const { client } = makeClient(
-      { blockNumber: "0x1", data: [misfit, misfit], cursor: "next" },
-      { blockNumber: "0x1", data: [row] },
-    )
-    const first = await select(client, { title: true })
+    const { client } = makeClient({ blockNumber: "0x1", data: [misfit, row, misfit] })
+    const page = await select(client, { title: true })
       .from(Posts, { onMismatch: "skip" })
       .where(eq("category", "docs"))
+      .limit(3)
       .fetch()
-    expect(first.entities).toEqual([])
-    expect(first.skipped).toBe(2)
-    expect(first.hasNextPage()).toBe(true)
-
-    const second = await first.next()
-    expect(second.entities).toHaveLength(1)
-    expect(second.skipped).toBe(0)
+    expect(page.entities.map((entry) => entry.title.value)).toEqual(["Hello"])
+    // The node counted all three toward the limit, so the next page starts at offset 3.
+    expect(page.entities.length + page.skipped).toBe(3)
   })
 
   it("reports nothing skipped when not skipping, or without a schema", async () => {

@@ -197,7 +197,7 @@ export type PublicArkivActions<
    * expression combinators apply.
    *
    * @param query - An {@link Expression}, or the raw query string.
-   * @param queryOptions - Selection, sort, page size, cursor and block. {@link QueryOptions}
+   * @param queryOptions - Selection, sort, page size, offset and count. {@link QueryOptions}
    * @returns One page of entities. {@link QueryReturnType}
    *
    * @example
@@ -216,7 +216,7 @@ export type PublicArkivActions<
    *   orderBy: desc("level", "i32"),
    *   limit: 100,
    * })
-   * // { entities: [{ $key: Hex; title: ArkivValue | undefined }], cursor: "b64:…", blockNumber: 32223n }
+   * // { entities: [{ $key: Hex; title: ArkivValue | undefined }], blockNumber: 32223n, count: undefined }
    *
    * // The raw form, unchecked:
    * await client.query("category = str('docs') AND level >= i32(10)")

@@ -4,7 +4,7 @@ import type { ArkivClient } from "../../clients/baseClient"
 import { ARKIV_ADDRESS } from "../../consts"
 import { ENTITY_EVENTS_ABI, type EntityEventName } from "../../entity/events"
 import type { EntityEvent } from "../../types/events"
-import { watchEntityEvents } from "./watchEntityEvents"
+import { type WatchEntityEventsParameters, watchEntityEvents } from "./watchEntityEvents"
 
 const KEY_A = `0x${"aa".repeat(32)}` as Hex
 const KEY_B = `0x${"bb".repeat(32)}` as Hex
@@ -245,18 +245,27 @@ describe("the watcher itself", () => {
     expect(h.watchEventCalls[0]).toMatchObject({ pollingInterval: 1000 })
   })
 
-  it("forwards fromBlock and pollingInterval, and omits fromBlock when unset", () => {
-    const withOptions = harness()
-    watchEntityEvents(withOptions.client, {
-      onEntityCreated: () => {},
-      fromBlock: 90n,
-      pollingInterval: 250,
-    })
-    expect(withOptions.watchEventCalls[0]).toMatchObject({ fromBlock: 90n, pollingInterval: 250 })
+  it("forwards pollingInterval, and starts at the head", () => {
+    const h = harness()
+    watchEntityEvents(h.client, { onEntityCreated: () => {}, pollingInterval: 250 })
+    expect(h.watchEventCalls[0]).toMatchObject({ pollingInterval: 250 })
+    expect(h.watchEventCalls[0]).not.toHaveProperty("fromBlock")
+  })
 
-    const bare = harness()
-    watchEntityEvents(bare.client, { onEntityCreated: () => {} })
-    expect(bare.watchEventCalls[0]).not.toHaveProperty("fromBlock")
+  it("rejects a fromBlock rather than ignoring it", () => {
+    const h = harness()
+    const params = { onEntityCreated: () => {}, fromBlock: 90n }
+    // @ts-expect-error - the watcher only follows the head
+    expect(() => watchEntityEvents(h.client, params)).toThrow(/takes no fromBlock/)
+    expect(h.watchEventCalls).toHaveLength(0)
+  })
+
+  it("follows the head for a fromBlock left unset, as forwarded options leave it", () => {
+    const h = harness()
+    const options: { fromBlock?: bigint } = {}
+    const params = { onEntityCreated: () => {}, fromBlock: options.fromBlock }
+    expect(() => watchEntityEvents(h.client, params as WatchEntityEventsParameters)).not.toThrow()
+    expect(h.watchEventCalls[0]).not.toHaveProperty("fromBlock")
   })
 
   it("stops the watcher when unwatched", () => {

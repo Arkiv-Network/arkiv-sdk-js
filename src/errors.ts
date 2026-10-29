@@ -10,13 +10,6 @@ export class EntityMutationError extends Error {
     this.txHash = options?.txHash
   }
 }
-export class NoMoreResultsError extends Error {
-  constructor() {
-    super("No more results — the last page carried no cursor. Check hasNextPage() before next().")
-    this.name = "NoMoreResultsError"
-  }
-}
-
 export class NoEntityFoundError extends Error {
   /** The key that matched nothing, when the lookup was by key. */
   readonly entityKey: string | undefined

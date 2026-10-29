@@ -64,9 +64,7 @@ export class InvalidPredicateError extends Error {
 }
 
 /**
- * What a node rejected a query for. Part of the frozen RPC surface, so it is safe to branch on —
- * a `"cursor"` failure means start the query again, and the rest mean the query itself needs
- * fixing.
+ * What a node rejected a query for. Part of the frozen RPC surface, so it is safe to branch on.
  */
 export type QueryErrorKind =
   /** The query string does not parse. `data` locates it: `{ position, expected, got }`. */
@@ -77,8 +75,6 @@ export type QueryErrorKind =
   | "literal"
   /** A node budget was exceeded — query length, predicate count, nesting depth, bitmap operations. */
   | "limits"
-  /** The cursor expired, is malformed, or belongs to a different query, block or selection. */
-  | "cursor"
 
 /** The JSON-RPC error codes `arkiv_query` answers with, and what each one means. */
 const QUERY_ERROR_KINDS: Readonly<Record<number, QueryErrorKind>> = {
@@ -86,7 +82,6 @@ const QUERY_ERROR_KINDS: Readonly<Record<number, QueryErrorKind>> = {
   [-32002]: "type",
   [-32003]: "literal",
   [-32004]: "limits",
-  [-32005]: "cursor",
 }
 
 /**
@@ -98,10 +93,10 @@ const QUERY_ERROR_KINDS: Readonly<Record<number, QueryErrorKind>> = {
  *
  * @example
  * try {
- *   await result.next()
+ *   await client.query("category = 'docs'")
  * } catch (error) {
- *   if (error instanceof QueryError && error.kind === "cursor") {
- *     // The page is gone — start the query over.
+ *   if (error instanceof QueryError && error.kind === "parse") {
+ *     console.log(error.data) // { position, expected, got }
  *   }
  * }
  */

@@ -24,8 +24,13 @@ export type QueryOptions<
   orderBy?: (TOrder & OrderCheck<TOrder, undefined>) | undefined
   /** Page size, up to the node maximum of 100. */
   limit?: number | undefined
-  /** Cursor from a previous page. */
-  cursor?: string | undefined
+  /**
+   * How many matches to skip before the page. Defaults to none. Each request reads the latest
+   * block, so writes between two requests shift the matches, and a row can repeat or be missed.
+   * Sort by a key that does not change, such as `asc("$key")`, so that pages line up at least while
+   * nothing is written.
+   */
+  offset?: number | undefined
   /** Whether to also count every entity the query matches, returned as `count`. */
   count?: boolean | undefined
 }
@@ -39,8 +44,6 @@ export type QueryRow<S> = ResultOf<SelectionOf<S>, undefined>
 
 export type QueryReturnType<TResult = FullEntity> = {
   entities: TResult[]
-  /** The cursor for the next page, or `undefined` when no pages remain. */
-  cursor: string | undefined
   /** The block the page was read at. */
   blockNumber: bigint
   /** How many entities the query matches, if `count` was set. */
@@ -60,6 +63,7 @@ export type QueryReturnType<TResult = FullEntity> = {
  * after the string as its `ORDER BY` clause, so a raw string must not end in one of its own.
  *
  * @throws If the selection asks for nothing, or names an attribute outside the name grammar.
+ * @throws If `limit` is not an integer from 1 to 100, or `offset` is not a non-negative integer.
  * @throws {InvalidPredicateError} If `orderBy` is not a key `asc` or `desc` would build, or names a
  * user attribute without its type.
  * @throws {QueryError} If the node rejects the query.
@@ -79,7 +83,7 @@ export async function query<const S extends SelectArg = "*", const K extends Ord
     query: order === undefined ? filters : `${filters} ${order}`,
     select: projection.select,
     limit: options.limit,
-    cursor: options.cursor,
+    offset: options.offset,
     count: options.count,
   })
   return {

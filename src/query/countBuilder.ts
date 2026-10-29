@@ -52,7 +52,7 @@ export class CountQueryBuilder<
    * @throws If the node returns no count — it predates the count projection.
    */
   async fetch(): Promise<bigint> {
-    // Nothing but the count is selected, so the node returns no rows and no cursor.
+    // Nothing but the count is selected, so the node returns no rows.
     const response = await runQuery(this._client, {
       query: this.toString(),
       select: {},

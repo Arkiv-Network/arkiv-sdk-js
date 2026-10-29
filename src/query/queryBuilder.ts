@@ -1,8 +1,7 @@
 import type { ArkivClient } from "../clients/baseClient"
 import { isSchema, type Schema, SchemaDefinitionError, SchemaMismatchError } from "../schema"
-import type { Entity } from "../types/entity"
 import { QueryBuilderBase } from "./builderBase"
-import { type QueryRequest, runQuery } from "./engine"
+import { runQuery } from "./engine"
 import { InvalidPredicateError } from "./errors"
 import type { or } from "./expression"
 import {
@@ -99,7 +98,7 @@ export class SelectQueryBuilder<
   private _projection: Projection
   private _onMismatch: "throw" | "skip" = "skip"
   private _limit: number | undefined
-  private _cursor: string | undefined
+  private _offset: number | undefined
   private _withCount = false
   private _orderBy: OrderTerm | undefined
 
@@ -164,9 +163,10 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * Sorts the results by one attribute, with an {@link asc} or {@link desc} key. The whole walk is
-   * sorted, not each page on its own, and ties come in the node's own order. Calling it again
-   * replaces the order.
+   * Sorts the results by one attribute, with an {@link asc} or {@link desc} key. All the matches
+   * are sorted, not each page on its own, and ties come in the node's own order. Calling it again
+   * replaces the order. To page with {@link offset}, sort by a key that does not change, such as
+   * `asc("$key")`.
    *
    * Any attribute but a bytes one can be sorted on, indexed or not. After `from()`, the key takes
    * its type from the column, and naming anything but a non-bytes column or a queryable system
@@ -220,25 +220,36 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * Starts from a cursor returned by an earlier page.
+   * Skips the first `offset` matches. With {@link limit}, this takes one page: page `n` of size
+   * `size` is `.limit(size).offset(n * size)`.
    *
-   * Pagination normally goes through {@link QueryResult.next}, which carries the cursor for you;
-   * this is for resuming a walk in a later process. A cursor is bound to the query, block and
-   * selection it came from, so it must be used with an identically-built query.
+   * Every request reads the latest block, so an entity created or deleted between two requests
+   * shifts the matches after it, and a row can repeat or be missed. Sort by a key that does not
+   * change, such as `asc("$key")`, so that pages line up at least while nothing is written; without
+   * {@link orderBy}, the order is the node's own. Through a schema, the offset counts the entities a
+   * page skips as well as its rows.
+   *
+   * To read every match exactly once while others write, page by key instead: sort by
+   * `asc("$key")` and filter on `gt("$key", key(lastKey))`, with `lastKey` the last `$key` of the
+   * previous page. Through a schema, use `{ onMismatch: "throw" }` for that: a page of skipped
+   * entities returns no rows, so no key to continue from.
+   *
+   * @example
+   * builder.orderBy(asc("$key")).limit(20).offset(40) // the third page of 20
    */
-  cursor(cursor: string): this {
-    this._cursor = cursor
+  offset(offset: number): this {
+    this._offset = offset
     return this
   }
 
   /**
-   * Also counts every entity the query matches, regardless of the page size. Each page then carries
-   * the total as {@link QueryResult.count}, typed `bigint`, so a paginated list can show it without
-   * a second query. To count without fetching rows, use `client.count()` instead.
+   * Also counts every entity the query matches, regardless of the limit and offset. The page then
+   * carries the total as {@link QueryResult.count}, typed `bigint`, so a paginated list can show it
+   * without a second query. To count without fetching rows, use `client.count()` instead.
    *
-   * The node counts what the filters match. Through a schema, that includes entities the pages
-   * leave out for not fitting it, so the rows of a whole walk can add up to less than the count:
-   * the difference is the sum of every page's {@link QueryResult.skipped}.
+   * The node counts what the filters match, at the block the page was read at. Through a schema,
+   * that includes entities the page leaves out for not fitting it. Later pages read later blocks,
+   * so the count can be out of date by the time they arrive.
    *
    * @throws If, when fetched, the node returns no count — it predates the count projection.
    *
@@ -255,108 +266,51 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * Runs the query and returns the first page.
+   * Runs the query and returns one page: up to {@link limit} matches, past the first
+   * {@link offset}.
    *
    * @throws {InvalidPredicateError} If no filter has been added, or a filter or sort key does not
    * fit the schema.
-   * @throws If the {@link limit} is not an integer from 1 to 100.
+   * @throws If the {@link limit} is not an integer from 1 to 100, or the {@link offset} is not a
+   * non-negative integer.
    * @throws {SchemaMismatchError} If, through a schema, a matching entity does not fit the selected
    * columns or a named schema's tag, and `from()` was given `{ onMismatch: "throw" }`.
    * @throws {QueryError} If the node rejects the query.
    *
    * @example
    * const page = await client.select({ $key: true }).where(eq("category", "docs")).fetch()
-   * page.entities        // this page
-   * await page.next()    // the next one
+   * page.entities
    */
-  fetch(): Promise<QueryResult<ResultOf<TSelection, TSchema>, TCount>> {
-    return this.fetchFirstPage()
-  }
-
   // Async so that a builder with no filter rejects like every other failure here, rather than
   // throwing synchronously out of a call the caller is awaiting.
-  private async fetchFirstPage(): Promise<QueryResult<ResultOf<TSelection, TSchema>, TCount>> {
-    // Snapshot the request here, so the pages of one walk are all pages of the *same* query. The
-    // builder stays mutable and reusable; a cursor is bound to the query, block and selection it
-    // was issued for, so re-reading a since-edited builder would page with a mismatched cursor.
+  async fetch(): Promise<QueryResult<ResultOf<TSelection, TSchema>, TCount>> {
     const projection = this._projection
-    const request = Object.freeze({
+    const response = await runQuery(this._client, {
       query: this.toString(),
       select: projection.select,
       limit: this._limit,
+      offset: this._offset,
       count: this._withCount,
     })
-    // Every entity is laid out as a row of the selection — and, through a schema, checked against it.
-    // The static narrowing to the selected fields comes from `client.select()`'s inference and
-    // nothing at runtime depends on it.
-    const skip = this._onMismatch === "skip"
-    const decode = ((entity: Entity) => {
-      try {
-        return toRow(entity, projection)
-      } catch (error) {
-        if (skip && error instanceof SchemaMismatchError) return SKIPPED
-        throw error
-      }
-    }) as (entity: Entity) => ResultOf<TSelection, TSchema> | typeof SKIPPED
-    return fetchPage(this._client, request, this._cursor, decode) as Promise<
-      QueryResult<ResultOf<TSelection, TSchema>, TCount>
-    >
-  }
-
-  /**
-   * Walks every page, yielding one row at a time.
-   *
-   * @example
-   * for await (const row of client.select({ $key: true }).where(eq("category", "docs"))) {
-   *   console.log(row.$key)
-   * }
-   */
-  async *[Symbol.asyncIterator](): AsyncGenerator<ResultOf<TSelection, TSchema>> {
-    let page: QueryResult<ResultOf<TSelection, TSchema>, TCount> | undefined =
-      await this.fetchFirstPage()
-    while (page) {
-      yield* page.entities
-      page = page.hasNextPage() ? await page.next() : undefined
+    // withCount() types the count as present, so a node that leaves it out is an error, not a page
+    // whose count is silently undefined.
+    if (this._withCount && response.count === undefined) {
+      throw new Error("The node returned no count. It may predate the count projection.")
     }
+
+    // Every entity is laid out as a row of the selection — and, through a schema, checked against
+    // it. The static narrowing to the selected fields comes from `client.select()`'s inference and
+    // nothing at runtime depends on it.
+    const rows: ResultOf<TSelection, TSchema>[] = []
+    let skipped = 0
+    for (const entity of response.entities) {
+      try {
+        rows.push(toRow(entity, projection) as ResultOf<TSelection, TSchema>)
+      } catch (error) {
+        if (this._onMismatch === "skip" && error instanceof SchemaMismatchError) skipped++
+        else throw error
+      }
+    }
+    return new QueryResult(rows, response.blockNumber, skipped, response.count as TCount)
   }
-}
-
-/** What `decode` returns for an entity `{ onMismatch: "skip" }` leaves out of its page. */
-const SKIPPED: unique symbol = Symbol("skipped")
-
-/**
- * Fetches one page and wires up the next.
- *
- * Free-standing rather than a method: a page holds this closure for its lifetime, and closing over
- * a frozen request keeps the builder — and everything it references — out of that reference.
- */
-async function fetchPage<TResult>(
-  client: ArkivClient,
-  request: Readonly<Omit<QueryRequest, "cursor">>,
-  cursor: string | undefined,
-  decode: (entity: Entity) => TResult | typeof SKIPPED,
-): Promise<QueryResult<TResult>> {
-  const response = await runQuery(client, { ...request, cursor })
-  // withCount() types the count as present, so a node that leaves it out is an error, not a page
-  // whose count is silently undefined.
-  if (request.count && response.count === undefined) {
-    throw new Error("The node returned no count. It may predate the count projection.")
-  }
-
-  const results: TResult[] = []
-  let skipped = 0
-  for (const entity of response.entities) {
-    const result = decode(entity)
-    if (result === SKIPPED) skipped++
-    else results.push(result)
-  }
-
-  return new QueryResult<TResult>(
-    results,
-    response.blockNumber,
-    response.cursor,
-    skipped,
-    response.count,
-    (next) => fetchPage(client, request, next, decode),
-  )
 }

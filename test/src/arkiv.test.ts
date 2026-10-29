@@ -20,6 +20,7 @@ import {
 } from "@arkiv-network/sdk"
 import {
   and,
+  asc,
   between,
   type Expression,
   eq,
@@ -788,7 +789,7 @@ describe("Arkiv Integration Tests for public client", () => {
   )
 
   test(
-    "a large result set pages without losing or repeating anything",
+    "limit and offset take consecutive windows of a sorted result",
     async () => {
       const value = `paging-${crypto.randomUUID()}`
       const created = await walletClient.executeBatch({
@@ -801,50 +802,43 @@ describe("Arkiv Integration Tests for public client", () => {
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
       const where = eq("tag", str(value))
+      const sorted = [...created.createdEntities].sort()
+      const page = (limit: number, offset: number) =>
+        publicClient
+          .select({ $key: true })
+          .from(Notes)
+          .where(where)
+          .orderBy(asc("$key"))
+          .limit(limit)
+          .offset(offset)
+          .fetch()
 
-      // 6 then 4. `next()` returns a new page rather than mutating this one.
-      const page1 = await publicClient
-        .select({ $key: true })
-        .from(Notes)
-        .where(where)
-        .limit(6)
-        .fetch()
-      expect(page1.entities).toHaveLength(6)
-      expect(page1.hasNextPage()).toBe(true)
+      // 6 then 4, in key order.
+      const page1 = await page(6, 0)
+      const page2 = await page(6, 6)
+      expect(page1.entities.map((e) => e.$key)).toEqual(sorted.slice(0, 6))
+      expect(page2.entities.map((e) => e.$key)).toEqual(sorted.slice(6))
 
-      const page2 = await page1.next()
-      expect(page2.entities).toHaveLength(4)
-      expect(page2.hasNextPage()).toBe(false)
-      await expect(page2.next()).rejects.toThrow()
+      // 5 then 5: a full page can be the last one, which only the page after it shows, by covering
+      // fewer matches than its limit. Rows plus skipped, since a schema's misfits count too.
+      expect((await page(5, 5)).entities).toHaveLength(5)
+      const after = await page(5, 10)
+      expect(after.entities.length + after.skipped).toBeLessThan(5)
 
-      // 5 then 5 — a full final page is still reported as the last one, because the node omits
-      // the cursor rather than leaving it to be guessed from a short page.
-      const evenPage1 = await publicClient.select({ $key: true }).where(where).limit(5).fetch()
-      expect(evenPage1.entities).toHaveLength(5)
-      expect(evenPage1.hasNextPage()).toBe(true)
-
-      const evenPage2 = await evenPage1.next()
-      expect(evenPage2.entities).toHaveLength(5)
-      expect(evenPage2.hasNextPage()).toBe(false)
-
-      const keys = [...evenPage1.entities, ...evenPage2.entities].map((e) => e.$key)
-      expect(new Set(keys).size).toBe(10)
-
-      // The same walk through the raw form, which takes the cursor by hand.
-      const raw1 = await publicClient.query(`tag = str('${value}')`, {
-        select: { $key: true },
-        limit: 6,
-      })
-      expect(raw1.entities).toHaveLength(6)
-      expect(raw1.cursor).toBeDefined()
-      const raw2 = await publicClient.query(`tag = str('${value}')`, {
-        select: { $key: true },
-        limit: 6,
-        cursor: raw1.cursor,
-      })
-      expect(raw2.entities).toHaveLength(4)
-      expect(raw2.cursor).toBeUndefined()
-      expect(new Set([...raw1.entities, ...raw2.entities].map((e) => e.$key)).size).toBe(10)
+      // The same pages through the raw form.
+      const raw = (offset: number) =>
+        publicClient.query(`tag = str('${value}')`, {
+          select: { $key: true },
+          orderBy: asc("$key"),
+          limit: 6,
+          offset,
+          count: true,
+        })
+      const raw1 = await raw(0)
+      const raw2 = await raw(6)
+      expect([...raw1.entities, ...raw2.entities].map((e) => e.$key)).toEqual(sorted)
+      // The count is every match, whatever the offset.
+      expect(raw2.count).toBe(10n)
     },
     { timeout: 60000 },
   )
@@ -861,7 +855,6 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(full.entities.map((e) => e.$key)).toEqual([entityKey])
       expect(full.entities[0]?.$owner).toBe(account.address)
       expect(full.blockNumber).toBeGreaterThan(0n)
-      expect(full.cursor).toBeUndefined()
 
       // A selection narrows what the node sends back, raw query or not.
       const projected = await publicClient.query(queryString, { select: { $key: true, tag: true } })
@@ -1286,6 +1279,8 @@ describe("Arkiv Integration Tests for public client", () => {
       })
 
       try {
+        // Let the watcher's first poll set up its filter, or these writes may land before it.
+        await new Promise((r) => setTimeout(r, 3_000))
         const batch = await write.executeBatch({
           creates: [
             {

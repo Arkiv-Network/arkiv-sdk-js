@@ -30,7 +30,7 @@ describe("CountQueryBuilder", () => {
     expect(total).toBe(42n)
     expect(sent(request).method).toBe("arkiv_query")
     expect(sent(request).query).toBe("category = str('news')")
-    // Nothing but the count is selected, so the node sends no rows and no cursor.
+    // Nothing but the count is selected, so the node sends no rows.
     expect(sent(request).options).toEqual({ select: { count: true } })
   })
 

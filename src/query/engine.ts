@@ -18,8 +18,8 @@ export type QueryRequest = {
   select: RpcSelect
   /** Page size, up to {@link MAX_LIMIT}. Defaults to the node's own page size. */
   limit?: number | undefined
-  /** Cursor from a previous page. */
-  cursor?: string | undefined
+  /** How many matches to skip before the page. Defaults to none. */
+  offset?: number | undefined
   /** Whether to also count every entity the query matches. */
   count?: boolean | undefined
 }
@@ -27,10 +27,8 @@ export type QueryRequest = {
 /** One page of results. */
 export type QueryResponse = {
   entities: Entity[]
-  /** The block the page was read at — the same for every page of a paginated query. */
+  /** The block the page was read at. */
   blockNumber: bigint
-  /** The cursor for the next page, or `undefined` when this was the last one. */
-  cursor: string | undefined
   /** How many entities the query matches, if the request asked to count them. */
   count: bigint | undefined
 }
@@ -38,11 +36,12 @@ export type QueryResponse = {
 /**
  * Runs one query and decodes the page it returns.
  *
- * @throws If `limit` is not an integer from 1 to {@link MAX_LIMIT}.
+ * @throws If `limit` is not an integer from 1 to {@link MAX_LIMIT}, or `offset` is not a
+ * non-negative integer.
  * @throws {QueryError} If the node rejects the query.
  */
 export async function runQuery(client: ArkivClient, request: QueryRequest): Promise<QueryResponse> {
-  const { query, select, limit, cursor, count } = request
+  const { query, select, limit, offset, count } = request
 
   if (limit !== undefined) {
     if (!Number.isInteger(limit) || limit < 1) {
@@ -51,15 +50,19 @@ export async function runQuery(client: ArkivClient, request: QueryRequest): Prom
     if (limit > MAX_LIMIT) {
       throw new Error(
         `limit ${limit} exceeds the node maximum of ${MAX_LIMIT}. Page through the results with ` +
-          "the cursor instead.",
+          "an offset instead.",
       )
     }
+  }
+  // Safe, not just whole: an offset has no maximum that would catch one too large to send exactly.
+  if (offset !== undefined && (!Number.isSafeInteger(offset) || offset < 0)) {
+    throw new Error(`offset must be a non-negative integer, got ${offset}.`)
   }
 
   const queryOptions: RpcQueryOptions = {
     select: count ? { ...select, count: true } : select,
     ...(limit !== undefined && { limit: numberToHex(limit) }),
-    ...(cursor !== undefined && { cursor }),
+    ...(offset !== undefined && { offset: numberToHex(offset) }),
   }
 
   logger("arkiv_query %s %o", query, queryOptions)
@@ -75,7 +78,6 @@ export async function runQuery(client: ArkivClient, request: QueryRequest): Prom
   return {
     entities: result.data.map((rpcEntity) => entityFromRpcResult(rpcEntity)),
     blockNumber: BigInt(result.blockNumber),
-    cursor: result.cursor,
     count: result.count === undefined ? undefined : BigInt(result.count),
   }
 }

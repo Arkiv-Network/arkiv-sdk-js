@@ -69,7 +69,7 @@ export type RpcSelect = {
   attributes?: boolean | Record<string, boolean>
   /**
    * Not a field of each entity but of the page: the number of entities the query matches at the
-   * block, regardless of `limit` and `cursor`, returned as the response's `count`.
+   * block, regardless of `limit` and `offset`, returned as the response's `count`.
    */
   count?: boolean
 }
@@ -80,8 +80,8 @@ export type RpcQueryOptions = {
   select?: RpcSelect
   /** Page size, as a hex quantity. Node maximum is 100. */
   limit?: Hex
-  /** Opaque cursor from a previous response; bound to that query, block and selection. */
-  cursor?: string
+  /** How many matches to skip before the page, as a hex quantity. Defaults to none. */
+  offset?: Hex
 }
 
 export type ArkivRpcSchema = [
@@ -91,8 +91,6 @@ export type ArkivRpcSchema = [
     ReturnType: {
       data: RpcEntity[]
       blockNumber: Hex
-      /** Omitted when no pages remain. */
-      cursor?: string
       /** How many entities the query matches, as a hex quantity. Present only when selected. */
       count?: Hex
     }

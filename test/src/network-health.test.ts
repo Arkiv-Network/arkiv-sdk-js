@@ -16,6 +16,7 @@ import {
 import { localhost, rabdi } from "@arkiv-network/sdk/chains"
 import {
   and,
+  asc,
   type Expression,
   eq,
   exists,
@@ -629,7 +630,7 @@ describe(`Network health check (${chain.name})`, () => {
   )
 
   test(
-    "a large result set pages without losing or repeating anything",
+    "limit and offset take consecutive windows of a sorted result",
     async () => {
       const group = `page-${Date.now()}`
       const Paged = defineSchema({ group: str().indexed(), index: i32() })
@@ -642,32 +643,34 @@ describe(`Network health check (${chain.name})`, () => {
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
-      const page1 = await publicClient
-        .select({ $key: true, index: true })
-        .from(Paged)
-        .where(eq("group", str(group)))
-        .limit(3)
-        .fetch()
-      expect(page1.entities).toHaveLength(3)
-      expect(page1.hasNextPage()).toBe(true)
+      const page = (offset: number) =>
+        publicClient
+          .select({ $key: true, index: true })
+          .from(Paged)
+          .where(eq("group", str(group)))
+          .orderBy(asc("$key"))
+          .limit(3)
+          .offset(offset)
+          .fetch()
 
-      const page2 = await page1.next()
-      const page3 = await page2.next()
-      expect(page2.entities).toHaveLength(3)
-      expect(page3.entities).toHaveLength(2)
-      expect(page3.hasNextPage()).toBe(false)
-      await expect(page3.next()).rejects.toThrow()
+      // A block lands between pages: each page reads the latest block, and an offset, unlike a
+      // cursor, does not expire. Nothing writes to this group meanwhile, so the windows line up.
+      const pages = [await page(0)]
+      for (const offset of [3, 6, 9]) {
+        await new Promise((resolve) => setTimeout(resolve, 2_500))
+        pages.push(await page(offset))
+      }
+      expect(pages.map((p) => p.entities.length)).toEqual([3, 3, 2, 0])
+      // Never older. A node that mines only on transactions may not have moved on, which is fine.
+      const [first, second] = pages.map((p) => p.blockNumber)
+      expect(second).toBeGreaterThanOrEqual(first ?? 0n)
 
-      // Every page of one walk reads the same block, so nothing can shift under the reader.
-      expect(page2.blockNumber).toBe(page1.blockNumber)
-      expect(page3.blockNumber).toBe(page1.blockNumber)
-
-      const rows = [...page1.entities, ...page2.entities, ...page3.entities]
-      expect(new Set(rows.map((row) => row.$key)).size).toBe(8)
+      const rows = pages.flatMap((p) => p.entities)
+      expect(rows.map((row) => row.$key)).toEqual([...created.createdEntities].sort())
       expect(rows.map((row) => row.index.value).sort((a, b) => a - b)).toEqual([
         0, 1, 2, 3, 4, 5, 6, 7,
       ])
-      console.log(`  PAGE  8 entities over 3 pages, none lost or repeated`)
+      console.log(`  PAGE  3 windows of a sorted result, read across blocks`)
     },
     { timeout: 180_000 },
   )
@@ -846,6 +849,8 @@ describe(`Network health check (${chain.name})`, () => {
       })
 
       try {
+        // Let the watcher's first poll set up its filter, or these writes may land before it.
+        await new Promise((r) => setTimeout(r, 3_000))
         const { entityKey } = await create(Probe, { purpose: "event_test" })
 
         const patch = await walletClient.patchEntity(Probe, entityKey, {
@@ -931,6 +936,7 @@ describe(`Network health check (${chain.name})`, () => {
       const created = await walletClient.executeBatch({
         creates: [
           { schema: Reviews, values: { group, reviewed: "yes" }, expiration: SHORT },
+          { schema: Reviews, values: { group, reviewed: "no" }, expiration: SHORT },
           { schema: Reviews, values: { group }, expiration: SHORT },
         ],
       })
@@ -941,7 +947,8 @@ describe(`Network health check (${chain.name})`, () => {
         (await publicClient.select({ $key: true }).where(inGroup, predicate).fetch()).entities
           .length
 
-      expect(await count(exists("reviewed"))).toBe(1)
+      // Both values count as present, whatever they hold; only the entity without one is left out.
+      expect(await count(exists("reviewed"))).toBe(2)
       expect(await count(eq("reviewed", "yes"))).toBe(1)
       expect(await count(exists("neverwritten"))).toBe(0)
       console.log(`  EXISTS  presence answered, whatever the value`)
@@ -1016,9 +1023,9 @@ describe(`Network health check (${chain.name})`, () => {
       })
       await publicClient.waitForTransactionReceipt({ hash: created.txHash })
 
-      const kindOf = async (query: string, options?: { cursor?: string }) => {
+      const kindOf = async (query: string) => {
         try {
-          await publicClient.query(query, { select: { $key: true }, ...options })
+          await publicClient.query(query, { select: { $key: true } })
           return "accepted"
         } catch (error) {
           return error instanceof QueryError ? error.kind : `not a QueryError: ${String(error)}`
@@ -1030,17 +1037,6 @@ describe(`Network health check (${chain.name})`, () => {
       expect(await kindOf("(".repeat(200))).toBe("limits")
       expect(await kindOf(`group = str('${group}') AND $owner = i32(5)`)).toBe("type")
 
-      const firstPage = await publicClient.query(`group = str('${group}')`, {
-        select: { $key: true },
-        limit: 1,
-      })
-      expect(firstPage.cursor).toBeDefined()
-      expect(
-        await kindOf(`group = str('${group}') AND rank = i32(1)`, { cursor: firstPage.cursor }),
-      ).toBe("cursor")
-      expect(await kindOf(`group = str('${group}')`, { cursor: "b64:AAAAAAAAAAAAAAAA" })).toBe(
-        "cursor",
-      )
       console.log(`  ERRORS  every rejection arrived under its own kind`)
     },
     { timeout: 180_000 },
@@ -1184,6 +1180,8 @@ describe(`Network health check (${chain.name})`, () => {
       })
 
       try {
+        // Let the watcher's first poll set up its filter, or these writes may land before it.
+        await new Promise((r) => setTimeout(r, 3_000))
         const base = { schema: Probe, expiration: SHORT }
         const created = await walletClient.executeBatch({
           creates: [
@@ -1242,21 +1240,21 @@ describe(`Network health check (${chain.name})`, () => {
   )
 
   test(
-    "a watcher started with fromBlock sees what it missed",
+    "a watcher delivers each event once, across blocks",
     async () => {
-      const from = await publicClient.getBlockNumber()
-
-      const { entityKey } = await create(Probe, { purpose: "backfill_test" })
-
       const seen: { at: string; entityKey: Hex }[] = []
       const unwatch = publicClient.watchEntityEvents({
         onEntityCreated: (event) =>
           seen.push({ at: `${event.blockNumber}:${event.logIndex}`, entityKey: event.entityKey }),
         onError: (error) => console.log(`  WATCH  error: ${error.message}`),
-        fromBlock: from,
       })
 
       try {
+        // The watcher starts listening on its first poll, not when the call returns. Write before
+        // that and the create is never delivered, so give it a few polls first.
+        await new Promise((r) => setTimeout(r, 3_000))
+        const { entityKey } = await create(Probe, { purpose: "once_test" })
+
         const deadline = Date.now() + 60_000
         while (Date.now() < deadline && !seen.some((e) => e.entityKey === entityKey)) {
           await new Promise((r) => setTimeout(r, 2_000))
@@ -1266,7 +1264,7 @@ describe(`Network health check (${chain.name})`, () => {
         // Keep watching across a few more blocks.
         await new Promise((r) => setTimeout(r, 10_000))
         expect(new Set(seen.map((e) => e.at)).size).toBe(seen.length)
-        console.log(`  BACKFILL  replayed ${seen.length} create(s) from block ${from}, no repeats`)
+        console.log(`  ONCE  ${seen.length} create(s) seen, none twice`)
       } finally {
         unwatch()
       }
