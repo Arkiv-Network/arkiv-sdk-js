@@ -22,8 +22,6 @@ export type QueryOptions<
    * is no schema here, so a key on a user attribute names its type, as in `desc("score", "dec")`.
    */
   orderBy?: (TOrder & OrderCheck<TOrder, undefined>) | undefined
-  /** Block height to read at. Defaults to the head. */
-  atBlock?: bigint | undefined
   /** Page size, up to the node maximum of 100. */
   limit?: number | undefined
   /** Cursor from a previous page. */
@@ -82,7 +80,6 @@ export async function query<const S extends SelectArg = "*", const K extends Ord
     select: projection.select,
     limit: options.limit,
     cursor: options.cursor,
-    atBlock: options.atBlock,
     count: options.count,
   })
   return {

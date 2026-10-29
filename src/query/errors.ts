@@ -8,7 +8,7 @@ import type { TypeTag } from "../schema"
  * an empty result. Catching it here turns a round trip and an RPC error code into a stack trace
  * pointing at the call site.
  *
- * | | `=` `!=` `<` `<=` `>` `>=` `BETWEEN` | `STARTSWITH` |
+ * | | `=` `<` `<=` `>` `>=` `BETWEEN` | `STARTSWITH` |
  * | --- | --- | --- |
  * | `str` | yes | yes |
  * | every other indexable type | yes | no |
@@ -65,8 +65,8 @@ export class InvalidPredicateError extends Error {
 
 /**
  * What a node rejected a query for. Part of the frozen RPC surface, so it is safe to branch on —
- * a `"cursor"` failure means start the query again, a `"block"` failure means the node no longer
- * retains that height, and the rest mean the query itself needs fixing.
+ * a `"cursor"` failure means start the query again, and the rest mean the query itself needs
+ * fixing.
  */
 export type QueryErrorKind =
   /** The query string does not parse. `data` locates it: `{ position, expected, got }`. */
@@ -79,8 +79,6 @@ export type QueryErrorKind =
   | "limits"
   /** The cursor expired, is malformed, or belongs to a different query, block or selection. */
   | "cursor"
-  /** `atBlock` is outside the range the node retains. */
-  | "block"
 
 /** The JSON-RPC error codes `arkiv_query` answers with, and what each one means. */
 const QUERY_ERROR_KINDS: Readonly<Record<number, QueryErrorKind>> = {
@@ -89,7 +87,6 @@ const QUERY_ERROR_KINDS: Readonly<Record<number, QueryErrorKind>> = {
   [-32003]: "literal",
   [-32004]: "limits",
   [-32005]: "cursor",
-  [-32006]: "block",
 }
 
 /**

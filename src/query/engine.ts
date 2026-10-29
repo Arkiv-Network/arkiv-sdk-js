@@ -20,8 +20,6 @@ export type QueryRequest = {
   limit?: number | undefined
   /** Cursor from a previous page. */
   cursor?: string | undefined
-  /** Block height to read at. Defaults to the head. */
-  atBlock?: bigint | undefined
   /** Whether to also count every entity the query matches. */
   count?: boolean | undefined
 }
@@ -44,7 +42,7 @@ export type QueryResponse = {
  * @throws {QueryError} If the node rejects the query.
  */
 export async function runQuery(client: ArkivClient, request: QueryRequest): Promise<QueryResponse> {
-  const { query, select, limit, cursor, atBlock, count } = request
+  const { query, select, limit, cursor, count } = request
 
   if (limit !== undefined) {
     if (!Number.isInteger(limit) || limit < 1) {
@@ -60,7 +58,6 @@ export async function runQuery(client: ArkivClient, request: QueryRequest): Prom
 
   const queryOptions: RpcQueryOptions = {
     select: count ? { ...select, count: true } : select,
-    ...(atBlock !== undefined && { atBlock: numberToHex(atBlock) }),
     ...(limit !== undefined && { limit: numberToHex(limit) }),
     ...(cursor !== undefined && { cursor }),
   }

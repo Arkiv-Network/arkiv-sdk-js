@@ -174,9 +174,9 @@ export type PublicArkivActions<
   /**
    * Returns a CountQueryBuilder: counts the entities a query matches, without fetching any of them.
    *
-   * It filters exactly as {@link select} does — `.from(schema)`, `.where(...)`, `.ownedBy(...)`,
-   * `.createdBy(...)` and `.atBlock(...)` — and `.fetch()` resolves to a `bigint`. To show the total
-   * next to a page of rows, use `select(...).withCount()` instead.
+   * It filters exactly as {@link select} does — `.from(schema)`, `.where(...)`, `.ownedBy(...)` and
+   * `.createdBy(...)` — and `.fetch()` resolves to a `bigint`. To show the total next to a page of
+   * rows, use `select(...).withCount()` instead.
    *
    * - JSON-RPC Methods: `arkiv_query`, with the `count` projection
    *

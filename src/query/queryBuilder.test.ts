@@ -113,24 +113,22 @@ describe("the options it sends", () => {
 
     const { options } = sent(request)
     expect(options).toEqual({ select: expect.objectContaining({ key: true, attributes: true }) })
-    // No limit, cursor or atBlock unless asked for — the node picks its own page size.
+    // No limit or cursor unless asked for — the node picks its own page size.
     expect(Object.keys(options).sort()).toEqual(["select"])
   })
 
-  it("sends limit, cursor and atBlock as the RPC spells them", async () => {
+  it("sends limit and cursor as the RPC spells them", async () => {
     const { client, request } = makeClient()
     await new SelectQueryBuilder(client, { $key: true })
       .where(eq("a", 1))
       .limit(100)
       .cursor("b64:abc")
-      .atBlock(1_297_000n)
       .fetch()
 
     const { options } = sent(request)
     expect(options).toMatchObject({
       limit: "0x64",
       cursor: "b64:abc",
-      atBlock: "0x13ca68",
     })
   })
 
@@ -331,12 +329,11 @@ describe("pagination", () => {
     // The builder stays mutable and reusable. Re-reading it per page would send page 2 under a
     // different query than the cursor was issued for, which the node answers with a "cursor" error
     // — or, worse, with rows from another result set.
-    builder.where(eq("b", 2)).limit(50).atBlock(9n)
+    builder.where(eq("b", 2)).limit(50)
     await first.next()
 
     expect(sent(request, 1).query).toBe("a = i32(1)")
     expect(sent(request, 1).options).not.toHaveProperty("limit")
-    expect(sent(request, 1).options).not.toHaveProperty("atBlock")
   })
 
   it("walks every page through the async iterator", async () => {
@@ -590,7 +587,6 @@ describe("node rejections", () => {
       [-32003]: "literal",
       [-32004]: "limits",
       [-32005]: "cursor",
-      [-32006]: "block",
     }
     for (const [code, kind] of Object.entries(kinds)) {
       const { client } = makeClient()
@@ -786,19 +782,18 @@ describe("through a schema", () => {
     expect(sent(request).options.select).toMatchObject({ attributes: { title: true } })
   })
 
-  it("carries the filters, owner, limit, cursor and block across from()", async () => {
+  it("carries the filters, owner, limit and cursor across from()", async () => {
     const { client, request } = makeClient()
     await new SelectQueryBuilder(client, { $key: true })
       .where(eq("category", "docs"))
       .ownedBy(ACCOUNT)
       .limit(5)
       .cursor("0xc0")
-      .atBlock(7n)
       .from(Posts)
       .fetch()
     const { query, options } = sent(request)
     expect(query).toBe(`category = str('docs') AND $owner = addr(${ACCOUNT})`)
-    expect(options).toMatchObject({ limit: "0x5", cursor: "0xc0", atBlock: "0x7" })
+    expect(options).toMatchObject({ limit: "0x5", cursor: "0xc0" })
   })
 
   it("reads the same selection without a schema, untyped and unchecked", async () => {

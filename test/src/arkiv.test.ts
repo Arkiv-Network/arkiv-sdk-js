@@ -29,7 +29,6 @@ import {
   InvalidPredicateError,
   lt,
   lte,
-  not,
   or,
   type SchemaRef,
   startsWith,
@@ -781,7 +780,6 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(await scores(or(lt("rangescore", i32(200)), gt("rangescore", i32(400))))).toEqual([
         100, 500,
       ])
-      expect(await scores(not(eq("rangescore", i32(100))))).toEqual([200, 300, 400, 500])
       // Inclusive at both ends, like gte AND lte.
       expect(await scores(between("rangescore", i32(200), i32(400)))).toEqual([200, 300, 400])
       expect(await scores(startsWith("label", "score-1"))).toEqual([100])
@@ -868,41 +866,6 @@ describe("Arkiv Integration Tests for public client", () => {
       // A selection narrows what the node sends back, raw query or not.
       const projected = await publicClient.query(queryString, { select: { $key: true, tag: true } })
       expect(projected.entities).toEqual([{ $key: entityKey, tag: str(value) }])
-    },
-    { timeout: 30000 },
-  )
-
-  test(
-    "a query reads the state a past block had",
-    async () => {
-      const value = `history-${crypto.randomUUID()}`
-      const History = defineSchema({ historygroup: str().indexed(), version: i32().indexed() })
-      const { entityKey, blockNumber: createdAt } = await create("http", History, {
-        historygroup: str(value),
-        version: i32(1),
-      })
-
-      const { txHash } = await walletClient.patchEntity(History, entityKey, {
-        set: { version: i32(2) },
-      })
-      const { blockNumber: patchedAt } = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      })
-
-      const at = async (block: bigint) => {
-        const page = await publicClient
-          .select({ version: true })
-          .from(History)
-          .where(eq("historygroup", str(value)))
-          .atBlock(block)
-          .fetch()
-        return { block: page.blockNumber, versions: page.entities.map((row) => row.version) }
-      }
-
-      // Before the entity existed, at the block it was created in, and after the patch.
-      expect(await at(createdAt - 1n)).toEqual({ block: createdAt - 1n, versions: [] })
-      expect(await at(createdAt)).toEqual({ block: createdAt, versions: [i32(1)] })
-      expect(await at(patchedAt)).toEqual({ block: patchedAt, versions: [i32(2)] })
     },
     { timeout: 30000 },
   )
@@ -1140,7 +1103,11 @@ describe("Arkiv Integration Tests for public client", () => {
       const batch = await walletClient.executeBatch({
         creates: [
           { schema: Docs, values: { group }, expiration: LIFETIME },
-          { schema: Docs, values: { group, mimeType: "text/html", version: 3 }, expiration: LIFETIME },
+          {
+            schema: Docs,
+            values: { group, mimeType: "text/html", version: 3 },
+            expiration: LIFETIME,
+          },
         ],
       })
       await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
@@ -1186,15 +1153,15 @@ describe("Arkiv Integration Tests for public client", () => {
         "title",
       ])
 
-      const openOnes = async () =>
+      const closedOnes = async () =>
         (
           await publicClient
             .select({ $key: true })
             .from(Tasks)
-            .where(eq("group", group), not(exists("closedAt")))
+            .where(eq("group", group), exists("closedAt"))
             .fetch()
         ).entities.map((row) => row.$key)
-      expect(await openOnes()).toEqual([entityKey])
+      expect(await closedOnes()).toEqual([])
 
       const close = await walletClient.patchEntity(Tasks, entityKey, {
         set: { closedAt: u64(await publicClient.getBlockNumber()), note: "done" },
@@ -1203,7 +1170,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const closed = await publicClient.getEntity(entityKey, Tasks)
       expect(closed.closedAt?.type).toBe("u64")
       expect(closed.note).toEqual(str("done"))
-      expect(await openOnes()).toEqual([])
+      expect(await closedOnes()).toEqual([entityKey])
 
       const reopen = await walletClient.patchEntity(Tasks, entityKey, {
         unset: ["closedAt", "note"],
@@ -1213,7 +1180,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(reopened.closedAt).toBeUndefined()
       expect(reopened.note).toBeUndefined()
       expect(reopened.title).toEqual(str("write the SDK side"))
-      expect(await openOnes()).toEqual([entityKey])
+      expect(await closedOnes()).toEqual([])
     },
     { timeout: 30000 },
   )
@@ -1514,18 +1481,6 @@ describe("Arkiv Integration Tests for public client", () => {
         .where(eq("tag", str(value)))
         .fetch()
       expect(live.entities).toHaveLength(0)
-
-      const at = async (block: bigint) =>
-        (
-          await publicClient
-            .select({ $key: true })
-            .from(Notes)
-            .where(eq("tag", str(value)))
-            .atBlock(block)
-            .fetch()
-        ).entities.length
-      expect(await at(expiresAt - 1n)).toBe(1)
-      expect(await at(expiresAt)).toBe(0)
     },
     { timeout: 90000 },
   )

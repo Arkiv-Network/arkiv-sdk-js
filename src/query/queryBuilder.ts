@@ -284,7 +284,6 @@ export class SelectQueryBuilder<
       query: this.toString(),
       select: projection.select,
       limit: this._limit,
-      atBlock: this._atBlock,
       count: this._withCount,
     })
     // Every entity is laid out as a row of the selection — and, through a schema, checked against it.

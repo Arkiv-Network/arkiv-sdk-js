@@ -76,8 +76,6 @@ export type RpcSelect = {
 
 /** The second parameter of `arkiv_query` — what to return, and where in the results to start. */
 export type RpcQueryOptions = {
-  /** Block height to read at, as a hex quantity. Defaults to the head, and must be within the node's retained range. */
-  atBlock?: Hex
   /** What to return. Defaults to `{ key: true }`. */
   select?: RpcSelect
   /** Page size, as a hex quantity. Node maximum is 100. */
