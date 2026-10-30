@@ -39,7 +39,7 @@ import { describeEntityRevert } from "./revert"
 
 const logger = getLogger("utils:arkiv-transactions")
 
-export const ENTITY_ERRORS_ABI = parseAbi([
+const ENTITY_ERRORS_ABI = parseAbi([
   // Batch and operation framing.
   "error EmptyBatch()",
   "error InvalidOpType(uint8 operation)",
@@ -61,9 +61,10 @@ export const ENTITY_ERRORS_ABI = parseAbi([
   "error NotOwner(bytes32 entityKey, address caller, address owner)",
   "error ReadOnlyEntity(bytes32 entityKey)",
   "error ReservedCreationFlags(uint8 creationFlags)",
-  // Expiry. The engine bounds an expiry only by the width of the field and by liveness — there is
-  // no MAX_EXPIRES_AT or MAX_LIFETIME, so there is no error for exceeding one.
+  // Expiry. The uint64 width of the field bounds it on the wire (the SDK's MAX_EXPIRES_AT), and the
+  // chain caps how far ahead of the current block it may land, so nothing lives forever.
   "error ExpiryDeadOnArrival(uint64 target, uint64 currentBlock)",
+  "error ExpiryBeyondMaxLifetime(uint64 target, uint64 currentBlock, uint64 maxLifetime)",
   "error ExpiryNotExtended(bytes32 entityKey, uint64 newExpiresAt, uint64 currentExpiresAt)",
   // Ownership transfer.
   "error TransferToZeroAddress(bytes32 entityKey)",
@@ -123,7 +124,7 @@ export async function sendArkivTransaction(
 
   const createOps = encodedCreates.map(({ item, attributes }) => {
     const salt = item.salt === undefined ? randomSalt() : resolveSalt(item.salt)
-    const expiry = resolveExpiry(item.expires, expiryContext)
+    const expiry = resolveExpiry(item.expiration, expiryContext)
 
     return createOperation({
       salt,
@@ -137,7 +138,7 @@ export async function sendArkivTransaction(
   // `max(expiresAt, currentBlock + minLifetime)` to both — so the same bounds are checked here
   // rather than left to a revert.
   const extendOps = (extensions ?? []).map((item) => {
-    const expiry = resolveExpiry(item.expires, expiryContext)
+    const expiry = resolveExpiry(item.expiration, expiryContext)
     return extendExpiryOperation({ entityKey: item.entityKey, expiry })
   })
 

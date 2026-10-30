@@ -1,9 +1,9 @@
 import { createPublicClient } from "@arkiv-network/sdk"
-import { tiramisu } from "@arkiv-network/sdk/chains"
+import { rabdi } from "@arkiv-network/sdk/chains"
 import { http } from "viem"
 
 const client = createPublicClient({
-  chain: tiramisu,
+  chain: rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" }),
   transport: http(),
 })
 

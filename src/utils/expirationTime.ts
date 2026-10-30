@@ -1,6 +1,5 @@
 import { InvalidExpiryError } from "../entity/errors"
 import { type Expiry, type Lifetime, makeExpiry, toBlocks } from "../entity/expiry"
-import { MAX_EXPIRES_AT } from "../entity/params"
 
 /**
  * The optional floor a deadline can carry.
@@ -23,7 +22,7 @@ function deadlineOf(expiresAt: bigint | Date, options?: DeadlineOptions): Expiry
 }
 
 /**
- * Builds the `expires` of a create or an extension.
+ * Builds the `expiration` of a create or an extension.
  *
  * Every helper returns the `{ minLifetime, expiresAt }` pair the ABI carries, so what you write is
  * what goes on the wire. The `from*` helpers fill `minLifetime` and leave `expiresAt` at `0n`;
@@ -34,14 +33,14 @@ function deadlineOf(expiresAt: bigint | Date, options?: DeadlineOptions): Expiry
  * object.
  *
  * @example The 90% case: a duration, and nothing else to think about.
- * await client.createEntity(Posts, values, { expires: ExpirationTime.fromDays(30) })
+ * await client.createEntity(Posts, values, { expiration: ExpirationTime.fromDays(30) })
  *
  * @example An exact block, or a wall-clock date.
- * expires: ExpirationTime.atBlock(1_200_000n)
- * expires: ExpirationTime.atDate(new Date("2027-01-01"))
+ * expiration: ExpirationTime.atBlock(1_200_000n)
+ * expiration: ExpirationTime.atDate(new Date("2027-01-01"))
  *
  * @example A deadline that still guarantees a minimum life.
- * expires: ExpirationTime.atBlock(1_200_000n, { atLeast: ExpirationTime.fromDays(1) })
+ * expiration: ExpirationTime.atBlock(1_200_000n, { atLeast: ExpirationTime.fromDays(1) })
  */
 export const ExpirationTime = {
   /**
@@ -144,13 +143,4 @@ export const ExpirationTime = {
     }
     return deadlineOf(date, options)
   },
-
-  /**
-   * An entity that should never expire.
-   *
-   * This is `atBlock(MAX_EXPIRES_AT)` — the largest expiry the `uint64` field holds — and the
-   * engine treats it as an ordinary deadline rather than a special case. There is no permanence
-   * flag; a block height no chain will reach is what permanence is.
-   */
-  permanent: (): Expiry => deadlineOf(MAX_EXPIRES_AT),
 }

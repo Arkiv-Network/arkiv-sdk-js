@@ -25,7 +25,6 @@ export type {
   OptionalColumnName,
   PatchEntityValues,
   Schema,
-  SystemField,
 } from "./schema"
 export {
   defineSchema,
@@ -34,13 +33,11 @@ export {
   lookupColumn,
   MAX_ATTRIBUTES,
   SCHEMA_ATTRIBUTE,
-  SYSTEM_FIELDS,
 } from "./schema"
 export type {
   AddrValue,
   ArkivValue,
   BoolValue,
-  Bytes32Value,
   BytesValue,
   DecValue,
   I32Value,
@@ -59,7 +56,6 @@ export {
   addr,
   bool,
   bytes,
-  bytes32,
   dec,
   decFromUnits,
   decUnits,
