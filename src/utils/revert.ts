@@ -91,6 +91,11 @@ function explain(name: string, args: readonly unknown[]): string | undefined {
         `the expiry resolves to block ${String(args[0])}, which is not after the current block ` +
         `${String(args[1])}`
       )
+    case "ExpiryBeyondMaxLifetime":
+      return (
+        `the expiry resolves to block ${String(args[0])}, more than the chain's maximum lifetime ` +
+        `of ${String(args[2])} blocks after the current block ${String(args[1])}`
+      )
     case "ExpiryNotExtended":
       return (
         `entity ${short(args[0])} already expires at block ${String(args[2])}, so extending it ` +

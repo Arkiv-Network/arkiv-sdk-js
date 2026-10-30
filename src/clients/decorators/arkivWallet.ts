@@ -62,33 +62,36 @@ export type WalletArkivActions<
      * defaulted ones left out are written with their default. {@link CreateEntityValues}
      * @param options - The entity's lifetime, plus its flags and salt. {@link CreateEntityOptions}
      * @param txParams - Optional transaction parameters
-     * @returns The new entity's key, the transaction hash, and the block it is expected to
-     * expire at. {@link CreateEntityReturnType}
+     * @returns The new entity's key, the transaction hash, and the block it expires at, as the
+     * engine recorded it. {@link CreateEntityReturnType}
      *
      * @throws {InvalidExpiryError} If the expiry exceeds a protocol bound or would leave the
      * entity dead on arrival.
      * @throws {SchemaMismatchError} If the values do not fit the schema.
      * @throws {InvalidValueError} If a value does not fit its type.
+     * @throws {EntityTooLargeError} If the `bytes` values add up to more than `MAX_ENTITY_BYTES`.
+     * @throws {EntityMutationError} If the transaction fails or reverts.
      *
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
      * import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const Posts = defineSchema("posts", {
-     *   author:   addr().indexed(),
-     *   category: str().indexed(),
-     *   score:    dec().indexed(),
-     *   title:    str(),
-     *   body:     bytes(),
-     *   mimeType: str().default("text/markdown"),
+     *   author:    addr().indexed(),
+     *   category:  str().indexed(),
+     *   score:     dec().indexed(),
+     *   title:     str(),
+     *   body:      bytes(),
+     *   thumbnail: bytes().optional(),
+     *   mimeType:  str().default("text/markdown"),
      * })
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
      * const { entityKey, txHash, expiresAt } = await client.createEntity(
@@ -100,7 +103,7 @@ export type WalletArkivActions<
      *     title: "Cells, not entities",
      *     body: new TextEncoder().encode("# Hello"),
      *   },
-     *   { expires: ExpirationTime.fromDays(30) },
+     *   { expiration: ExpirationTime.fromDays(30) },
      * )
      */
     createEntity: <S extends Schema>(
@@ -126,8 +129,12 @@ export type WalletArkivActions<
      * @throws {ConflictingMutationError} If a name appears in both `set` and `unset`.
      * @throws {SchemaMismatchError} If the changes do not fit the schema.
      * @throws {InvalidValueError} If a value does not fit its type.
+     * @throws {EntityTooLargeError} If the `bytes` values in `set` add up to more than
+     * `MAX_ENTITY_BYTES`.
+     * @throws {EntityMutationError} If the transaction fails or reverts.
      *
      * @example
+     * // Posts is the schema from the createEntity example.
      * // One column changes, an optional one goes away.
      * const { txHash } = await client.patchEntity(Posts, entityKey, {
      *   set: { score: dec("4.5") },
@@ -152,13 +159,13 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient } from "@arkiv-network/sdk"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
      * // entityKey is the bytes32 key returned by createEntity.
@@ -174,32 +181,33 @@ export type WalletArkivActions<
      *
      * The new lifetime is resolved the same way a create's is: a duration counts from now rather
      * than adding to what the entity has left, and `atBlock` / `atDate` pin an absolute deadline.
-     * The engine rejects an extension that would not move the expiry later.
+     * The engine rejects an extension that would move the expiry earlier; one that resolves to the
+     * current expiry changes nothing.
      *
      * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
      * @param data - The entity key and its new lifetime
      * @param txParams - Optional transaction parameters
-     * @returns The entity's key, the transaction hash, and the block it is now expected to expire
-     * at. {@link ExtendEntityReturnType}
+     * @returns The entity's key, the transaction hash, and the block it now expires at, as the
+     * engine recorded it. {@link ExtendEntityReturnType}
      *
      * @throws {InvalidExpiryError} If the expiry is malformed, exceeds a protocol bound, or would
      * leave the entity dead on arrival.
      *
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
      * const { txHash, expiresAt } = await client.extendEntity({
      *   entityKey,
-     *   expires: ExpirationTime.fromDays(30),
+     *   expiration: ExpirationTime.fromDays(30),
      * })
      */
     extendEntity: (
@@ -236,33 +244,41 @@ export type WalletArkivActions<
      * @returns The transaction hash, plus the keys touched by each kind of operation.
      * {@link ExecuteBatchReturnType}
      *
+     * @throws {Error} If the batch has no operations.
      * @throws {InvalidExpiryError} If an expiry exceeds a protocol bound or would leave the entity
      * dead on arrival.
      * @throws {SchemaMismatchError} If a create's or patch's values do not fit its schema.
      * @throws {InvalidValueError} If a value does not fit its type.
+     * @throws {EmptyPatchError} If a patch has nothing to apply.
+     * @throws {ConflictingMutationError} If a patch names a column in both `set` and `unset`.
+     * @throws {EntityTooLargeError} If the `bytes` values of one create or patch add up to more
+     * than `MAX_ENTITY_BYTES`.
+     * @throws {EntityMutationError} If the transaction fails or reverts.
      *
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { dec } from "@arkiv-network/sdk/schema"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
+     * // Posts is the schema from the createEntity example.
      * const { txHash, createdEntities } = await client.executeBatch({
      *   creates: [{
      *     schema: Posts,
      *     values: { author, category: "docs", score: dec("4.1"), title: "Hi", body: new Uint8Array() },
-     *     expires: ExpirationTime.fromDays(30),
+     *     expiration: ExpirationTime.fromDays(30),
      *   }],
      *   patches: [{ schema: Posts, entityKey: keyToRevise, set: { category: "archive" } }],
      *   deletes: [{ entityKey: staleKey }],
      *   extensions: [{
      *     entityKey: keyToKeepAlive,
-     *     expires: ExpirationTime.atBlock(1_200_000n),
+     *     expiration: ExpirationTime.atBlock(1_200_000n),
      *   }],
      *   ownershipChanges: [{ entityKey: keyToHandOver, newOwner }],
      * })

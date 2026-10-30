@@ -21,14 +21,19 @@ const EVERY_FIELD = {
   updatedAt: true,
   expiresAt: true,
   creationFlags: true,
-  attributeSchema: true,
+  attributeSchema: false,
   attributes: true,
 }
 
 describe("toRpcSelect", () => {
-  it("selects everything for no argument or a star", () => {
+  it("selects every field and attribute for no argument or a star, but not the schema", () => {
+    // The attribute schema describes an entity's shape rather than the entity, so it is only
+    // returned when asked for by name.
     expect(toRpcSelect()).toEqual(EVERY_FIELD)
     expect(toRpcSelect("*")).toEqual(EVERY_FIELD)
+    expect(toRpcSelect({ $key: true, $attributeSchema: true })).toMatchObject({
+      attributeSchema: true,
+    })
   })
 
   it("sends every field, so what was asked for is legible in the request", () => {

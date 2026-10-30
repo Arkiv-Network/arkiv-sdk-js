@@ -1,8 +1,6 @@
 import {
   type ColumnsOf,
-  type DecValue,
   describeColumns,
-  type I32Value,
   type IndexableTypeTag,
   type IndexableValue,
   type IndexedColumnName,
@@ -13,8 +11,6 @@ import {
   type TagOf,
   type TypeTag,
   toValue,
-  type U64Value,
-  type U256Value,
   validateAttributeName,
 } from "../schema"
 // Internal seam: the typeId table is the protocol's, not part of the package's public surface.
@@ -22,10 +18,11 @@ import { isIndexable, TYPE_IDS } from "../schema/types"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 
 /**
- * The comparison operators the query language defines. `<` `<=` `>` `>=` need an ordered type —
- * `i32`, `u64`, `u256` or `dec`; every type accepts `=` and `!=`.
+ * The comparison operators the query language defines. Every indexable type accepts all of them;
+ * `<` `<=` `>` `>=` compare in index order — numerically for `i32`, `u64`, `u256` and `dec`,
+ * `false < true` for `bool`, and by unsigned bytes for `str`, `addr` and `key`.
  */
-export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
+export type ComparisonOperator = "=" | "<" | "<=" | ">" | ">="
 
 /**
  * A value a predicate can compare against: a value of any indexable type, or a bare boolean,
@@ -33,19 +30,14 @@ export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
  */
 export type PredicateValue = IndexableValue | boolean | number | bigint | string
 
-/** A value of a type with an ordered index, which is what `<` `<=` `>` `>=` need. */
-export type OrderedValue = I32Value | U64Value | U256Value | DecValue | number | bigint
-
 /**
- * `gt`/`gte`/`lt`/`lte`'s check that the value has an ordered type — `unknown` when it does, and
- * otherwise an object whose one property is named after the problem. No value has that property,
- * so the compiler reports the sentence as the property it is missing.
+ * `between`'s check that both bounds have one type — `unknown` when they do, and otherwise an
+ * object whose one property is named after the problem. No value has that property, so the
+ * compiler reports the sentence as the property it is missing.
  */
-type OrderedCheck<V> = [V] extends [OrderedValue]
+type SameTypeCheck<L, H> = [TagOf<L>, TagOf<H>] extends [TagOf<H>, TagOf<L>]
   ? unknown
-  : {
-      [K in `range comparisons are not supported for ${TagOf<Exclude<V, OrderedValue>>}. Only i32, u64, u256 and dec can be compared with < <= > >=`]: never
-    }
+  : { [K in `BETWEEN bounds must have one type, got ${TagOf<L>} and ${TagOf<H>}`]: never }
 
 /**
  * The attribute a predicate names, and the type it asserts — `never` when it asserts none, as
@@ -58,7 +50,7 @@ export type AttributeRef = { readonly name: string; readonly type: IndexableType
 declare const refs: unique symbol
 
 /** The type-level record of the attributes an expression names. Never present at runtime. */
-type Refs<R extends AttributeRef> = { readonly [refs]?: R }
+export type Refs<R extends AttributeRef> = { readonly [refs]?: R }
 
 /** A comparison between an attribute and a typed literal. */
 export interface ComparisonNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
@@ -66,6 +58,14 @@ export interface ComparisonNode<R extends AttributeRef = AttributeRef> extends R
   readonly name: string
   readonly operator: ComparisonOperator
   readonly value: IndexableValue
+}
+
+/** An inclusive range test, `name BETWEEN low AND high`. Both bounds have one type. */
+export interface BetweenNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
+  readonly kind: "between"
+  readonly name: string
+  readonly low: IndexableValue
+  readonly high: IndexableValue
 }
 
 /** A `STARTSWITH` prefix test, the language's only pattern operator. */
@@ -88,12 +88,6 @@ export interface TypeOfNode<R extends AttributeRef = AttributeRef> extends Refs<
   readonly tag: IndexableTypeTag
 }
 
-/** The complement of an expression, evaluated against the active-entity set. */
-export interface NotNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
-  readonly kind: "not"
-  readonly expression: Expression
-}
-
 /** A conjunction. */
 export interface AndNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "and"
@@ -114,15 +108,15 @@ export interface OrNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
  * combinators, and checked against the schema by `select(...).from(schema).where(...)`.
  *
  * @example
- * const q = and(gte("level", i32(10)), or(eq("status", str("open")), not(exists("closedAt"))))
- * String(q) // level >= i32(10) AND (status = str('open') OR NOT EXISTS(closedAt))
+ * const q = and(gte("level", i32(10)), or(eq("status", str("open")), exists("reviewedBy")))
+ * String(q) // level >= i32(10) AND (status = str('open') OR EXISTS(reviewedBy))
  */
 export type Expression<R extends AttributeRef = AttributeRef> =
   | ComparisonNode<R>
+  | BetweenNode<R>
   | StartsWithNode<R>
   | ExistsNode<R>
   | TypeOfNode<R>
-  | NotNode<R>
   | AndNode<R>
   | OrNode<R>
 
@@ -139,9 +133,10 @@ type ValueRef<N extends string, V> = {
  * The system attributes a query may filter on, and the type each one carries.
  *
  * Every other system attribute (`$createdAt`, `$updatedAt`, `$creationFlags`) is returned in
- * query results but is not indexed, so it cannot appear in a predicate.
+ * query results — selected and read back as `createdAt`, `updatedAt` and `creationFlags` — but is
+ * not indexed, so it cannot appear in a predicate.
  */
-export const QUERYABLE_SYSTEM_ATTRIBUTES = {
+const QUERYABLE_SYSTEM_ATTRIBUTES = {
   $key: "key",
   $owner: "addr",
   $creator: "addr",
@@ -175,23 +170,18 @@ export type SchemaRef<S extends Schema> =
 /** System attributes a query can ask for but not filter on — they carry no index. */
 const RESULT_ONLY_SYSTEM_ATTRIBUTES = ["$createdAt", "$updatedAt", "$creationFlags"]
 
-/** The types that carry an ordered index, and so accept `<` `<=` `>` `>=`. */
-const ORDERED_TAGS: ReadonlySet<TypeTag> = new Set<TypeTag>(["i32", "u64", "u256", "dec"])
-
-const RANGE_OPERATORS: ReadonlySet<ComparisonOperator> = new Set<ComparisonOperator>([
-  "<",
-  "<=",
-  ">",
-  ">=",
-])
-
 /**
  * Checks an attribute reference, returning its fixed type when it names a system attribute.
  *
  * User attribute names go through the same grammar the write path enforces, so a name that could
  * never have been written is rejected here rather than matching nothing.
+ *
+ * @param use - What the reference is for, `"filter"` or `"sort"`, which the error messages name.
  */
-function resolveReference(name: string): TypeTag | undefined {
+export function resolveReference(
+  name: string,
+  use: "filter" | "sort" = "filter",
+): TypeTag | undefined {
   if (typeof name !== "string" || !name.startsWith("$")) {
     validateAttributeName(name)
     return undefined
@@ -200,9 +190,13 @@ function resolveReference(name: string): TypeTag | undefined {
   if (system !== undefined) return system
 
   if (RESULT_ONLY_SYSTEM_ATTRIBUTES.includes(name)) {
+    // Selected, and read back, as the entity field of the same name without the `$`.
+    const field = name.slice(1)
+    const reason =
+      use === "filter" ? "carries no index, so it cannot be filtered on" : "cannot be sorted on"
     throw new InvalidPredicateError(
-      `"${name}" is returned in query results but carries no index, so it cannot be filtered ` +
-        "on. Select it and filter the results in JavaScript instead.",
+      `"${name}" is returned in query results but ${reason}. Select it as \`${field}\` and ${use} ` +
+        "the results in JavaScript instead.",
       name,
     )
   }
@@ -220,10 +214,13 @@ function resolveReference(name: string): TypeTag | undefined {
  * Takes a `string` rather than an `IndexableTypeTag` on purpose — the callers' static types
  * already say as much, and this is the runtime check for the code that has no types.
  */
-function isIndexableTag(tag: string): tag is IndexableTypeTag {
+export function isIndexableTag(tag: string): tag is IndexableTypeTag {
   // `Object.hasOwn` rather than `in`, which would also accept every Object.prototype key.
   return Object.hasOwn(TYPE_IDS, tag) && isIndexable(tag as TypeTag)
 }
+
+/** The indexable type tags, listed for error messages: "bool, i32, u64, …". */
+export const INDEXABLE_TAGS = (Object.keys(TYPE_IDS) as TypeTag[]).filter(isIndexable).join(", ")
 
 /** Freezes a node and gives it a (non-enumerable, so still `toEqual`-able) rendering. */
 function node<T extends Expression>(value: T): T {
@@ -234,18 +231,20 @@ function node<T extends Expression>(value: T): T {
   return Object.freeze(value)
 }
 
-function comparison<R extends AttributeRef>(
+/**
+ * Resolves a value a predicate compares `name` against, and checks it can be: not `bytes`, which is
+ * never indexed, and of the fixed type when `name` is a system attribute.
+ */
+function predicateValue(
   name: string,
-  operator: ComparisonOperator,
+  system: TypeTag | undefined,
   input: PredicateValue,
-): ComparisonNode<R> {
-  const system = resolveReference(name)
+): IndexableValue {
   const value = toValue(input, name)
-
   if (value.type === "bytes") {
     throw new InvalidPredicateError(
       `"${name}" is compared against a bytes value, and bytes are stored but never indexed, so ` +
-        "they cannot be filtered on. Index a str, bytes32 or key derived from them instead.",
+        "they cannot be filtered on. Index a hash of them, as a hex str, instead.",
       name,
     )
   }
@@ -256,14 +255,15 @@ function comparison<R extends AttributeRef>(
       name,
     )
   }
-  if (RANGE_OPERATORS.has(operator) && !ORDERED_TAGS.has(value.type)) {
-    throw new UnsupportedOperatorError(
-      name,
-      operator,
-      value.type,
-      `Only i32, u64, u256 and dec carry an ordered index; ${value.type} is equality-only.`,
-    )
-  }
+  return value
+}
+
+function comparison<R extends AttributeRef>(
+  name: string,
+  operator: ComparisonOperator,
+  input: PredicateValue,
+): ComparisonNode<R> {
+  const value = predicateValue(name, resolveReference(name), input)
   return node({ kind: "comparison", name, operator, value })
 }
 
@@ -273,8 +273,9 @@ function comparison<R extends AttributeRef>(
  * Bare booleans, numbers, bigints and strings take the same default types they take when written
  * (`number` is an `i32`, `bigint` a `u256`, `string` a `str`); anything else names its type.
  *
- * @throws {InvalidPredicateError} If the name is not a queryable attribute, or a system attribute
- * is compared against the wrong type.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  *
  * @example
  * eq("status", str("open"))     // status = str('open')
@@ -289,26 +290,11 @@ export function eq<N extends string, V extends PredicateValue>(
 }
 
 /**
- * Attribute is set with this type and holds a **different** value.
+ * Attribute is greater than value, in index order — see {@link ComparisonOperator}.
  *
- * This is typed value-negation, not the complement: an entity that never set the attribute, or set
- * it with another type, does not match. Use `not(eq(...))` for the full complement.
- *
- * @example
- * ne("status", str("closed"))          // status != str('closed')
- * not(eq("status", str("closed")))     // NOT status = str('closed') — also matches entities with no status
- */
-export function ne<N extends string, V extends PredicateValue>(
-  name: N,
-  value: V,
-): ComparisonNode<ValueRef<N, V>> {
-  return comparison(name, "!=", value)
-}
-
-/**
- * Attribute is greater than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
- *
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  *
  * @example
  * gt("level", i32(10))              // level > i32(10)
@@ -316,54 +302,92 @@ export function ne<N extends string, V extends PredicateValue>(
  */
 export function gt<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">", value)
 }
 
 /**
- * Attribute is greater than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
+ * Attribute is greater than or equal to value, in index order — see {@link ComparisonOperator}.
  *
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  *
  * @example
  * gte("score", dec("3.5")) // score >= dec(3.5)
  */
 export function gte<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, ">=", value)
 }
 
 /**
- * Attribute is less than value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
+ * Attribute is less than value, in index order — see {@link ComparisonOperator}.
  *
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  *
  * @example
  * lt("level", i32(10)) // level < i32(10)
  */
 export function lt<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<", value)
 }
 
 /**
- * Attribute is less than or equal to value. Ordered types only (`i32`, `u64`, `u256`, `dec`).
+ * Attribute is less than or equal to value, in index order — see {@link ComparisonOperator}.
  *
- * @throws {UnsupportedOperatorError} If the value's type carries no ordered index.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
  *
  * @example
  * lte("score", dec("5")) // score <= dec(5)
  */
 export function lte<N extends string, V extends PredicateValue>(
   name: N,
-  value: V & OrderedCheck<V>,
+  value: V,
 ): ComparisonNode<ValueRef<N, V>> {
   return comparison(name, "<=", value)
+}
+
+/**
+ * Attribute lies between two values, **inclusive** at both ends: it matches exactly what
+ * `and(gte(name, low), lte(name, high))` matches, in one predicate. Both bounds must have one type,
+ * and a `low` above `high` matches nothing.
+ *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the bounds have different types, the name starts with `$` but
+ * is not a queryable system attribute, a system attribute is compared against the wrong type, or a
+ * bound is `bytes`.
+ *
+ * @example
+ * between("score", dec("3.5"), dec("5"))  // score BETWEEN dec(3.5) AND dec(5)
+ * between("$expiresAt", u64(100n), u64(200n))
+ */
+export function between<N extends string, L extends PredicateValue, H extends PredicateValue>(
+  name: N,
+  low: L,
+  high: H & SameTypeCheck<L, H>,
+): BetweenNode<ValueRef<N, L>> {
+  const system = resolveReference(name)
+  const lowValue = predicateValue(name, system, low)
+  const highValue = predicateValue(name, system, high)
+  if (lowValue.type !== highValue.type) {
+    throw new InvalidPredicateError(
+      `BETWEEN on "${name}" has a ${lowValue.type} and a ${highValue.type} bound. Both bounds ` +
+        "must have one type, the type the attribute is compared as.",
+      name,
+    )
+  }
+  return node({ kind: "between", name, low: lowValue, high: highValue })
 }
 
 /**
@@ -373,7 +397,9 @@ export function lte<N extends string, V extends PredicateValue>(
  * `startsWith("name", "é")` matches only the same byte sequence, not another normal form of it.
  *
  * @param prefix - The prefix, as a bare string or a `str` value.
- * @throws {InvalidPredicateError} If the name is not a queryable attribute.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
+ * attribute.
  * @throws {UnsupportedOperatorError} If given a value that is not a `str`, or a system attribute
  * (none of which is a `str`).
  *
@@ -408,12 +434,12 @@ export function startsWith<N extends string>(
 /**
  * The attribute is set, with any type.
  *
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
  * @throws {InvalidPredicateError} If given a system attribute — every entity has all of them, so
- * the test would be a constant.
+ * the test would be a constant — or a `$` name that is not one.
  *
  * @example
  * exists("reviewedBy")        // EXISTS(reviewedBy)
- * not(exists("closedAt"))     // NOT EXISTS(closedAt)
  */
 export function exists<N extends string>(
   name: N,
@@ -434,10 +460,11 @@ export function exists<N extends string>(
  * Useful when the same name is written with different types across entities — a comparison already
  * asserts the type, so this is for asking about the type alone.
  *
- * @param tag - The type tag: `bool`, `i32`, `u64`, `u256`, `dec`, `bytes32`, `str`, `addr` or
- * `key` — any type but `bytes`, which is never indexed.
- * @throws {InvalidPredicateError} If the tag is not an indexable type, or the name is a system
- * attribute (whose type is fixed).
+ * @param tag - The type tag: `bool`, `i32`, `u64`, `u256`, `dec`, `str`, `addr` or `key` — any
+ * type but `bytes`, which is never indexed.
+ * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
+ * @throws {InvalidPredicateError} If the tag is not an indexable type, the name is a system
+ * attribute (whose type is fixed), or the name starts with `$` but is not a system attribute.
  *
  * @example
  * hasType("age", "i32") // TYPEOF(age) = i32
@@ -456,24 +483,11 @@ export function hasType<N extends string, T extends IndexableTypeTag>(
   }
   if (!isIndexableTag(tag)) {
     throw new InvalidPredicateError(
-      `"${tag}" is not an indexable attribute type. Use one of ` +
-        "bool, i32, u64, u256, dec, bytes32, str, addr, key.",
+      `"${tag}" is not an indexable attribute type. Use one of ${INDEXABLE_TAGS}.`,
       name,
     )
   }
   return node({ kind: "typeOf", name, tag })
-}
-
-/**
- * The complement of an expression, evaluated against the set of live entities — unlike `!=`, it
- * matches entities that never set the attribute at all.
- *
- * @example
- * not(exists("closedAt"))            // NOT EXISTS(closedAt)
- * not(and(eq("a", 1), eq("b", 2)))   // NOT (a = i32(1) AND b = i32(2))
- */
-export function not<R extends AttributeRef>(expression: Expression<R>): NotNode<R> {
-  return node({ kind: "not", expression })
 }
 
 /**
@@ -508,7 +522,7 @@ export function and(...expressions: (Expression | readonly Expression[])[]): Exp
  * @throws {InvalidPredicateError} If given nothing to combine.
  *
  * @example
- * or(eq("status", "open"), not(exists("closedAt")))
+ * or(eq("status", "open"), exists("reviewedBy"))
  */
 export function or<const E extends readonly Expression[]>(
   expressions: E,
@@ -524,7 +538,9 @@ function combine(kind: "and" | "or", expressions: Expression[]): Expression {
   if (expressions.length === 0) {
     throw new InvalidPredicateError(
       `${kind}() needs at least one expression. An empty ${kind === "and" ? "conjunction" : "disjunction"} ` +
-        `has no query-language spelling — leave the ${kind}() out, or omit the filter entirely to match everything.`,
+        `has no query-language spelling — leave the ${kind}() out. A query still needs at least one ` +
+        "filter, so to match broadly narrow by owner or creator, or read through a named schema, " +
+        "whose tag counts as one.",
     )
   }
   // A one-element conjunction *is* its element; keeping the wrapper would only add parentheses.
@@ -546,9 +562,6 @@ function combine(kind: "and" | "or", expressions: Expression[]): Expression {
  */
 export function checkAgainstSchema(expression: Expression, schema: Schema): void {
   switch (expression.kind) {
-    case "not":
-      checkAgainstSchema(expression.expression, schema)
-      return
     case "and":
     case "or":
       for (const sub of expression.expressions) checkAgainstSchema(sub, schema)
@@ -559,14 +572,7 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
   // System attributes were checked against their fixed types when the predicate was built.
   if (name.startsWith("$")) return
 
-  const column = lookupColumn(schema, name)
-  if (column === undefined) {
-    throw new InvalidPredicateError(
-      `"${name}" is not a column of the schema, so a predicate on it can only match entities ` +
-        `written some other way. Its columns are ${describeColumns(schema)}.`,
-      name,
-    )
-  }
+  const column = sortableColumn(schema, name, "filter")
   if (!column.isIndexed) {
     throw new InvalidPredicateError(
       `"${name}" is not indexed, and only indexed attributes can be filtered on. Declare it ` +
@@ -575,26 +581,68 @@ export function checkAgainstSchema(expression: Expression, schema: Schema): void
       name,
     )
   }
+  const columnType = column.type
   const asserted =
     expression.kind === "comparison" || expression.kind === "startsWith"
       ? expression.value.type
-      : expression.kind === "typeOf"
-        ? expression.tag
-        : undefined
-  if (asserted !== undefined && asserted !== column.type) {
+      : expression.kind === "between"
+        ? expression.low.type
+        : expression.kind === "typeOf"
+          ? expression.tag
+          : undefined
+  if (asserted !== undefined && asserted !== columnType) {
     throw new InvalidPredicateError(
-      `"${name}" is a ${column.type} column, but the predicate asserts a ${asserted}, so it could ` +
-        `never match. Write ${column.type}(...) around the value.`,
+      `"${name}" is a ${columnType} column, but the predicate asserts a ${asserted}, so it could ` +
+        `never match. Write ${columnType}(...) around the value.`,
       name,
     )
   }
 }
 
 /**
- * Binding strength, tightest last — `NOT` binds tighter than `AND`, which binds tighter than `OR`.
- * A leaf never needs parentheses, so it sits above them all.
+ * The column a filter or sort through a schema names, which must be of any type but bytes. A sort
+ * reads it whether or not it is indexed; a filter also needs it indexed, which the caller checks.
+ *
+ * @param use - What the column is for, `"filter"` or `"sort"`, which the error messages name.
+ * @throws {InvalidPredicateError} If the name is not a column of the schema, or names a bytes one.
  */
-const PRECEDENCE = { or: 1, and: 2, not: 3, leaf: 4 } as const
+export function sortableColumn(
+  schema: Schema,
+  name: string,
+  use: "filter" | "sort",
+): { readonly type: IndexableTypeTag; readonly isIndexed: boolean } {
+  const column = lookupColumn(schema, name)
+  if (column === undefined) {
+    const consequence =
+      use === "filter"
+        ? "a predicate on it can only match entities written some other way"
+        : "it cannot be sorted on"
+    throw new InvalidPredicateError(
+      `"${name}" is not a column of the schema, so ${consequence}. Its columns are ` +
+        `${describeColumns(schema)}.`,
+      name,
+    )
+  }
+  if (column.type === "bytes") {
+    // A hash of the bytes can be filtered on for equality, but sorting by one orders nothing useful.
+    throw new InvalidPredicateError(
+      use === "filter"
+        ? `"${name}" is a bytes column, and bytes are stored but never indexed, so it cannot be ` +
+            "filtered on. Index a hash of it, as a hex str, instead, or select it and filter the " +
+            "results in JavaScript."
+        : `"${name}" is a bytes column, and bytes cannot be sorted on. Select it and sort the ` +
+            "results in JavaScript.",
+      name,
+    )
+  }
+  return { type: column.type, isIndexed: column.isIndexed }
+}
+
+/**
+ * Binding strength, tightest last — `AND` binds tighter than `OR`. A leaf never needs parentheses,
+ * so it sits above them both.
+ */
+const PRECEDENCE = { or: 1, and: 2, leaf: 3 } as const
 
 function precedenceOf(expression: Expression): number {
   switch (expression.kind) {
@@ -602,8 +650,6 @@ function precedenceOf(expression: Expression): number {
       return PRECEDENCE.or
     case "and":
       return PRECEDENCE.and
-    case "not":
-      return PRECEDENCE.not
     default:
       return PRECEDENCE.leaf
   }
@@ -626,14 +672,16 @@ export function render(expression: Expression): string {
   switch (expression.kind) {
     case "comparison":
       return `${expression.name} ${expression.operator} ${renderLiteral(expression.value)}`
+    case "between":
+      // A leaf, never parenthesised: the AND inside BETWEEN belongs to it, so
+      // `a BETWEEN 1 AND 5 AND b = 2` already reads as `(a BETWEEN 1 AND 5) AND b = 2`.
+      return `${expression.name} BETWEEN ${renderLiteral(expression.low)} AND ${renderLiteral(expression.high)}`
     case "startsWith":
       return `${expression.name} STARTSWITH ${renderLiteral(expression.value)}`
     case "exists":
       return `EXISTS(${expression.name})`
     case "typeOf":
       return `TYPEOF(${expression.name}) = ${expression.tag}`
-    case "not":
-      return `NOT ${nested(expression.expression, PRECEDENCE.not)}`
     case "and":
       return expression.expressions.map((sub) => nested(sub, PRECEDENCE.and)).join(" AND ")
     case "or":
@@ -654,8 +702,6 @@ function renderLiteral(value: IndexableValue): string {
       return `u256(${value.value})`
     case "dec":
       return `dec(${value.value})`
-    case "bytes32":
-      return `bytes32(${value.value})`
     case "key":
       return `key(${value.value})`
     case "addr":

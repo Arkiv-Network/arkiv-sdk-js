@@ -23,8 +23,9 @@ Below is a tutorial to help you create simple scripts that use Arkiv to query an
 
 ### Prerequisites
 
-For this tutorial, we recommend using Node.js version 22.10.0 or newer (see [nodejs.org](https://nodejs.org)).  
-Alternatively, you can use [`bun`](https://bun.sh/), a JavaScript/TypeScript runtime and package manager that natively supports TypeScript without transpilation.
+- **Node.js 22.10.0 or newer** (see [nodejs.org](https://nodejs.org)), or [`bun`](https://bun.sh/), a JavaScript/TypeScript runtime and package manager that natively supports TypeScript without transpilation.
+- **An Arkiv access key.** Arkiv's public RPC is heavily rate limited to prevent abuse, so we recommend getting a free access key at [hub.arkiv.network/access-keys](https://hub.arkiv.network/access-keys).
+- **Some testnet funds.** Writing an entity is a transaction, and its gas is paid in testnet tGLM. Get some for your account's address from the faucet at [hub.arkiv.network/faucet](https://hub.arkiv.network/faucet). [Project Setup](#project-setup) shows how to create an account if you don't have one.
 
 ### Project Setup
 
@@ -34,9 +35,9 @@ mkdir arkiv-sample
 cd arkiv-sample
 ```
 
-Create an empty `read_example.ts` file:
+Create an empty `example.ts` file:
 ```bash
-touch read_example.ts schema.ts
+touch example.ts
 ```
 
 Initialize a new JavaScript/TypeScript project:
@@ -61,7 +62,7 @@ After this step, a `package.json` file will be created with content similar to:
 }
 ```
 
-Modify the `"main"` entry to `"read_example.ts"` and set `"type"` to `"module"` so your `package.json` looks like this:
+Modify the `"main"` entry to `"example.ts"` and set `"type"` to `"module"` so your `package.json` looks like this:
 
 ```json
 {
@@ -71,7 +72,7 @@ Modify the `"main"` entry to `"read_example.ts"` and set `"type"` to `"module"` 
   "license": "ISC",
   "author": "",
   "type": "module",
-  "main": "read_example.ts",
+  "main": "example.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   }
@@ -85,11 +86,23 @@ npm install @arkiv-network/sdk viem
 This command will update your `package.json` with a section like:
 ```json
 "dependencies": {
-  "@arkiv-network/sdk": "^0.6.0",
+  "@arkiv-network/sdk": "^0.9.0",
   "viem": "^2.38.2"
 }
 ```
 It will also create a `node_modules` directory with all dependencies installed.
+
+If you don't have a testnet account yet, create one with viem. This prints a new private key and its address:
+```bash
+node --input-type=module -e "import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'; const key = generatePrivateKey(); console.log('Private key:', key); console.log('Address:', privateKeyToAccount(key).address)"
+```
+Fund the address at the [faucet](https://hub.arkiv.network/faucet).
+
+Finally, create a `.env` file with your access key and private key. The example reads them from there, so neither ends up in your code:
+```bash
+ARKIV_ACCESS_KEY=your-access-key
+PRIVATE_KEY=0x-your-private-key
+```
 
 ### Define a Schema
 
@@ -98,13 +111,14 @@ schema, much as you would describe a table's columns in SQL, and choose per colu
 indexes it. Only indexed columns can be filtered on; the rest are stored and selectable, and do not
 pay for an index.
 
-Create a `schema.ts` file next to your examples:
+The examples below use this schema for blog posts. Each example declares it at the top of its own
+file, so that it runs as a single file under Node.js, Bun or `tsc` alike:
 
 ```typescript
 import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
 
 // Called with no arguments, a type constructor describes a column.
-export const Posts = defineSchema("posts", {
+const Posts = defineSchema("posts", {
   author:    addr().indexed(),
   category:  str().indexed(),
   score:     dec().indexed(),
@@ -115,8 +129,8 @@ export const Posts = defineSchema("posts", {
 })
 ```
 
-The type constructors are `bool`, `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32` and
-`bytes`. Each column may be refined with `.indexed()` (every type but `bytes`), `.optional()` and
+The type constructors are `bool`, `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key` and `bytes`.
+Each column may be refined with `.indexed()` (every type but `bytes`), `.optional()` and
 `.default(...)`.
 
 The same constructors, called with a value, make a typed value: `dec("4.1")` is a decimal, the way SQL
@@ -130,61 +144,95 @@ an indexed `arkiv.schema` attribute holding its name, and a query through it onl
 with that tag — the way a collection keeps one model's documents apart from another's. For that
 reason `arkiv.schema` cannot be used as a column name.
 
-### Public Client Example (Query Data)
+### Create an Entity
 
-You can now use Arkiv's public client to query data. Paste the following in `read_example.ts`:
+Paste the following in `example.ts`. It sets up a public client, which reads, and a wallet client, which signs and sends transactions, then creates a post through the schema:
 
 ```typescript
-import { createPublicClient } from "@arkiv-network/sdk"
-import { tiramisu } from "@arkiv-network/sdk/chains"
+import { createPublicClient, createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
+import { rabdi } from "@arkiv-network/sdk/chains"
 import { and, eq, gt } from "@arkiv-network/sdk/query"
-import { dec } from "@arkiv-network/sdk/schema"
-import { http } from "viem"
-import { Posts } from "./schema"
+import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
+import { hexToString, http, isHex, stringToBytes } from "viem"
+import { privateKeyToAccount } from "viem/accounts"
 
-const publicClient = createPublicClient({
-  chain: tiramisu, // "tiramisu" is Arkiv's testnet
-  transport: http(),
-});
+// The schema from "Define a Schema" above
+const Posts = defineSchema("posts", {
+  author:    addr().indexed(),
+  category:  str().indexed(),
+  score:     dec().indexed(),
+  title:     str(),
+  body:      bytes(),
+  thumbnail: bytes().optional(),
+  mimeType:  str().default("text/markdown"),
+})
 
-// Get an entity by key, read through the schema
-const post = await publicClient.getEntity('0xcadb830a3414251d65e5c92cd28ecb648d9e73d85f2203eff631839d5421f9d7', Posts);
-console.log('Title:', post.title.value);
+// Rabdi is the Arkiv testnet
+const chain = rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" })
 
-// Build and execute a query: select what to return, name the schema, then filter
+const privateKey = process.env.PRIVATE_KEY
+if (!privateKey || !isHex(privateKey)) {
+  throw new Error("Set PRIVATE_KEY in .env to the private key of a funded testnet account")
+}
+const account = privateKeyToAccount(privateKey)
+
+const publicClient = createPublicClient({ chain, transport: http() })
+const walletClient = createWalletClient({ chain, transport: http(), account })
+
+// Create an entity. Every required column must be given; a defaulted one (mimeType) left out is
+// written with its default. Values carry their type: use the constructors from
+// "@arkiv-network/sdk/schema", or a bare string, boolean, number, bigint or Uint8Array where it is
+// unambiguous (string -> str, Uint8Array -> bytes, ...). createEntity resolves once the
+// transaction is in a block.
+const { entityKey, txHash } = await walletClient.createEntity(
+  Posts,
+  {
+    author: addr(account.address),
+    category: "docs",
+    score: dec("4.5"),
+    title: "Hello from Arkiv",
+    body: stringToBytes("# Hello\n\nArkiv wishes you all the best!"),
+  },
+  { expiration: ExpirationTime.fromDays(1) }, // the entity expires in a day
+)
+console.log("Created entity:", entityKey)
+console.log("Transaction hash:", txHash)
+
+// Change one column, leaving the rest alone
+await walletClient.patchEntity(Posts, entityKey, { set: { score: dec("4.7") } })
+```
+
+### Query It
+
+Now read the post back. Add the following to the end of `example.ts`:
+
+```typescript
+// Get the entity by key, read through the schema
+const post = await publicClient.getEntity(entityKey, Posts)
+console.log("Title:", post.title.value, "score:", post.score.value)
+
+// Or find it with a query: select what to return, name the schema, then filter
 const result = await publicClient
-  .select({ $key: true, author: true, title: true, body: true })
+  .select({ $key: true, title: true, score: true, body: true })
   .from(Posts)
-  .where(and(eq('category', 'docs'), gt('score', dec('4.0'))))
+  .where(and(eq("category", "docs"), gt("score", dec("4.0"))))
+  .ownedBy(account.address)
   .limit(10)
-  .fetch();
+  .fetch()
 
 for (const row of result.entities) {
-  console.log(row.$key, row.author.value, row.title.value);
-}
-
-// Pagination
-if (result.hasNextPage()) {
-  const nextPage = await result.next();
-  console.log('Next page:', nextPage.entities);
-}
-
-// Or walk every page at once
-for await (const row of publicClient
-  .select({ $key: true, title: true })
-  .from(Posts)
-  .where(eq('category', 'docs'))) {
-  console.log(row.$key, row.title.value);
+  console.log(row.$key, row.title.value, row.score.value, hexToString(row.body.value))
 }
 ```
 
 #### Selecting fields with `select()`
 
-Pass nothing (or `"*"`) to fetch everything, or pass an object to fetch only specific fields. The
-selection names entity fields and attributes side by side, and each result is a flat row. Entity
-fields start with `$`, as they do in `where`: `$key`, `$owner`, `$creator`, `$createdAt`,
-`$updatedAt`, `$expiresAt` and `$creationFlags`. Any other name is an attribute. An attribute name
-cannot start with `$`, so the two never collide — an attribute called `owner` is just `owner`:
+Pass nothing (or `"*"`) to fetch everything — through a schema, every entity field and every
+column — or pass an object to fetch only specific fields. The selection names entity fields and
+attributes side by side, and each result is a flat row. Entity fields start with `$`, as they do in
+`where`: `$key`, `$owner`, `$creator`, `$createdAt`, `$updatedAt`, `$expiresAt` and
+`$creationFlags`. Any other name is an attribute. An attribute name cannot start with `$`, so the
+two never collide — an attribute called `owner` is just `owner`:
 
 ```typescript
 // Every entity field and every column
@@ -201,54 +249,108 @@ The result type is inferred from your selection and schema: each column is typed
 declares it, and reading a field you didn't select is a compile error.
 
 ```typescript
-const [row] = (
+const row = (
   await publicClient.select({ $owner: true, score: true }).from(Posts).where(eq("category", "docs")).fetch()
-).entities;
+).entities[0]!;
 row.$owner;   // ✅ Hex
 row.score;    // ✅ DecValue — row.score.value is "4.1"
 row.title;    // ❌ compile error — not selected
 ```
 
-`where` is checked against the schema too. Filtering on a column the schema does not index, or
-comparing a column against a value of another type, is a compile error:
+`where` is checked against the schema too. It takes the schema's indexed columns and the system
+attributes `$key`, `$owner`, `$creator` and `$expiresAt`. Filtering on a column the schema does not
+index, or comparing a column against a value of another type, is a compile error:
 
 ```typescript
 .where(eq("title", "x"))   // ❌ title is not indexed
 .where(eq("score", 5))     // ❌ score is a dec, 5 is an i32 — write dec(5)
-.where(gt("author", ...))  // ❌ addr has no ordering
+.where(between("score", dec(1), 5))  // ❌ both bounds need one type
 ```
 
-A named schema needs no `where` at all — `select().from(Posts).fetch()` lists every post. An
-unnamed schema types a query without filtering it, so `where` alone decides which entities match.
-
-An entity that matches but does not fit the schema — a required column missing, a column of another
-type, or another schema's tag — fails the fetch with a `SchemaMismatchError`. Pass
-`{ onMismatch: "skip" }` to leave such entities out instead; a page can then hold fewer rows than its
-limit, and reports how many it left out as `skipped`:
+Sort with `orderBy`, passing one key: an `asc(...)` or a `desc(...)`. Calling `orderBy` again
+replaces the order. The node sorts the attribute as one type, so the key has a type: through a schema it is
+the column's, and the system attributes `$key`, `$owner`, `$creator` and `$expiresAt` have fixed
+ones. Without a schema, write it. Call `orderBy` after `from(...)`, so the compiler can check the
+key against the schema; a key given before it is checked only when the query is sent:
 
 ```typescript
-const page = await publicClient.select().from(Posts, { onMismatch: "skip" }).where(eq("category", "docs")).fetch();
+import { asc, desc } from "@arkiv-network/sdk/query"
+
+.from(Posts).orderBy(desc("score"))      // score:dec DESC
+.from(Posts).orderBy(asc("title"))       // title:str ASC, indexed or not
+.from(Posts).orderBy(asc("$expiresAt"))  // $expiresAt:u64 ASC
+.where(eq("category", "docs")).orderBy(desc("score", "dec"))  // without a schema
+.from(Posts).orderBy(asc("body"))    // ❌ bytes cannot be sorted on
+.from(Posts).orderBy(desc("$createdAt"))  // ❌ $createdAt cannot be sorted on
+.from(Posts).orderBy(desc("score"), asc("$key"))  // ❌ one key only
+```
+
+Any column but a `bytes` one can be sorted on, indexed or not. An entity where the attribute is unset, or set with
+another type, has no value to sort by, and sorts below every value: first with `asc`, last with
+`desc`. The order holds across all the matches, not each page on its own.
+
+Page with `limit` and `offset`. A page holds up to 100 rows, and `offset` skips the matches before
+it. Sort by a key that does not change, such as `$key`, so the pages line up:
+
+```typescript
+const page3 = await publicClient
+  .select({ $key: true, title: true })
+  .from(Posts)
+  .orderBy(asc("$key"))
+  .limit(20)
+  .offset(40)
+  .fetch()
+```
+
+An entity created or deleted between two requests shifts the offsets after it, so a row can repeat
+or be missed. To read every match exactly once while others write, page by key instead: keep the
+`asc("$key")` sort and filter on `gt("$key", key(lastKey))`, where `lastKey` is the last `$key` of
+the previous page. Through a schema, pass `{ onMismatch: "throw" }`: a page of skipped entities
+has no rows, so no key to continue from.
+
+A named schema needs no `where` at all — `select().from(Posts)` matches every post. An unnamed schema types a query without
+filtering it, so `where` alone decides which entities match.
+
+Only what you select is checked. An entity that matches but does not fit the schema — a selected
+column that is required but missing or holds another type, or, for a named schema, another schema's
+tag — is left out of the page. Anyone can write an entity a query matches, so one that does not
+fit never fails the read of the others. A page can then hold fewer rows than its limit, and reports
+how many it left out as `skipped`. Pass `{ onMismatch: "throw" }` to fail the fetch with a
+`SchemaMismatchError` instead:
+
+```typescript
+const page = await publicClient.select().from(Posts).where(eq("category", "docs")).fetch();
 page.skipped; // matching entities on this page that did not fit Posts
 ```
 
 A query reads the same without a schema — say, to explore what a node holds. Leave out
-`.from(...)` and the selection means what it did, and the rows keep their shape. Only the checking is
-gone: each attribute comes back as whatever value the entity holds, or `undefined`, and `where` takes
-any attribute:
+`.from(...)` and the selection means what it did (save `"*"`, below), and the rows keep their
+shape. Only the checking is gone, along with a named schema's tag filter: each attribute comes back
+as whatever value the entity holds, or `undefined`, and `where` takes any attribute:
 
 ```typescript
-const [row] = (
+const row = (
   await publicClient.select({ $key: true, title: true }).where(eq("category", "docs")).fetch()
-).entities;
+).entities[0]!;
 row.title;    // ArkivValue | undefined — e.g. { type: "str", value: "Hello" }
 ```
 
-To read every attribute without naming them, select `$attributes` — a map of all of them — and
-`$attributeSchema` for their types and indexing. Both work through a schema too:
+To read every attribute without naming them, select `$attributes`, a map of all of them. `"*"` (or
+nothing) fetches it alongside the entity fields when there is no schema, since there are no columns
+to list.
+
+`$attributeSchema` is for finding out what entities hold without fetching their values: each
+attribute's name, its type, and whether it is indexed. Values can be large — a `bytes` attribute
+holds up to 128 KiB — and an RPC endpoint may cap how big a response it sends, so a page of 100
+entities with every attribute can be more than it will return. Fetch the schema first, then select
+the attributes you need by name. It is never part of `"*"`; select it by name:
 
 ```typescript
-await publicClient.select({ $key: true, $attributes: true, $attributeSchema: true }).where(eq("category", "docs")).fetch();
+const page = await publicClient.select({ $key: true, $attributeSchema: true }).where(eq("category", "docs")).fetch();
+page.entities[0]?.$attributeSchema; // { title: { type: "str", indexed: false }, body: { type: "bytes", indexed: false } }
 ```
+
+Both work through a schema too.
 
 > **Footgun:** pass the selection inline. A selection stored in a variable widens its `true` values
 > to `boolean`, so which fields come back is only known at runtime and every field of the result is
@@ -260,117 +362,38 @@ await publicClient.select({ $key: true, $attributes: true, $attributeSchema: tru
 
 ### Running the Example
 
-You have several options to run your TypeScript sample:
+You have several options to run your TypeScript sample. Each loads your `.env` file:
 
 - **With Node.js (using experimental TypeScript support):**
   ```bash
-  node --experimental-strip-types read_example.ts
+  node --env-file=.env --experimental-strip-types example.ts
   ```
 
-- **With Bun (native TypeScript support):**
+- **With Bun (native TypeScript support, loads `.env` on its own):**
   ```bash
-  bun read_example.ts
+  bun example.ts
   ```
 
 - **Classic Node.js (using transpilation to JavaScript):**
 
-  1. Install TypeScript if you haven't already:
+  1. Install TypeScript and the Node.js type definitions if you haven't already:
      ```bash
-     npm install typescript
+     npm install typescript @types/node
      ```
   2. Initialize a TypeScript config with default settings:
      ```bash
      npx tsc --init
      ```
-     This will create a `tsconfig.json` file. You do not need to change its contents.
+     This will create a `tsconfig.json` file. Set `"types": ["node"]` in it, so that `process.env` type-checks.
   3. Transpile your `.ts` files into `.js`:
      ```bash
      npx tsc --outDir dist
      ```
-     This creates a `dist` directory containing `read_example.js` (the transpiled code), along with corresponding type declaration and source map files.
+     This creates a `dist` directory containing `example.js` (the transpiled code), along with corresponding type declaration and source map files.
   4. Run the transpiled script:
      ```bash
-     node dist/read_example.js
+     node --env-file=.env dist/example.js
      ```
-
-### Wallet Client Example (Create an Entity)
-
-Now let's add storage (write) functionality.  
-Create a file named `write_example.ts` with the following content:
-
-```typescript
-import { createPublicClient, createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
-import { tiramisu } from "@arkiv-network/sdk/chains"
-import { addr, dec } from "@arkiv-network/sdk/schema"
-import { http, stringToBytes } from "viem"
-import { privateKeyToAccount } from "viem/accounts"
-import { Posts } from "./schema"
-
-// Create a public client
-const publicClient = createPublicClient({
-  chain: tiramisu, // tiramisu is the Arkiv testnet
-  transport: http(),
-})
-// Create a wallet client with an account
-const client = createWalletClient({
-  chain: tiramisu,
-  transport: http(),
-  account: privateKeyToAccount('0x...'), // Replace with your private key
-});
-
-// Create an entity. Every required column must be given; a defaulted one (mimeType) left out is
-// written with its default. Values carry their type: use the constructors from
-// "@arkiv-network/sdk/schema", or a bare string, boolean, number, bigint or Uint8Array where it is
-// unambiguous (string -> str, Uint8Array -> bytes, ...).
-const { entityKey, txHash } = await client.createEntity(
-  Posts,
-  {
-    author: addr(client.account.address),
-    category: 'docs',
-    score: dec('4.5'),
-    title: 'Hello from Arkiv',
-    body: stringToBytes('# Hello\n\nArkiv wishes you all the best!'),
-  },
-  { expires: ExpirationTime.fromDays(30) }, // Entity expires in 30 days
-);
-
-console.log('Created entity:', entityKey);
-console.log('Transaction hash:', txHash);
-
-// Change one column, leaving the rest alone
-await client.patchEntity(Posts, entityKey, { set: { score: dec('4.7') } });
-
-const post = await publicClient.getEntity(entityKey, Posts);
-console.log('Post:', post);
-```
-
-Now you can run it in the same way as in the previous example:
-- **With Node.js (using experimental TypeScript support):**
-  ```bash
-  node --experimental-strip-types write_example.ts
-  ```
-
-- **With Bun (native TypeScript support):**
-  ```bash
-  bun write_example.ts
-  ```
-
-- **Classic Node.js (using transpilation to JavaScript):**
-  ```bash
-  npx tsc --outDir dist
-  node dist/write_example.js
-  ```
-
-**Note:**  
-You must provide your own private key with a minimum balance on the Arkiv L3 network.  
-You can generate a private key using any tool, for example: https://vanity-eth.tk/  
-Once you have a key, you can paste it into the example above and fund its address on the Arkiv Tiramisu testnet.
-
-For quick testing, you may use this example key:
-```
-0x3d05798f7d11bb1c10b83fed8d3b4d76570c31cd66c8e0a8d8d991434c6d7a5e
-```
-However, funds may not always be available for this key.
 
 Sample code can also be found in the [`sample`](./sample) directory of this repository.
 
@@ -439,12 +462,10 @@ For more information about refer to:
 
 ## Verbose Logging
 
-The SDK uses [debug](https://www.npmjs.com/package/debug) under the hood. Set the `DEBUG` environment variable to view verbose logs:
+Set the `DEBUG` environment variable (or, in a browser, the `DEBUG` key in `localStorage`) to view verbose logs:
 
 ```bash
 DEBUG=arkiv:* bun run your-script
 ```
 
-Adjust the namespace (for example, `arkiv:rpc` or `arkiv:query`) to target specific log sources. Unset `DEBUG` to silence debug output.
-
-
+Adjust the namespace (for example, `arkiv:query:*` or `arkiv:actions:wallet:*`) to target specific log sources, and prefix one with `-` to exclude it. Unset `DEBUG` to silence debug output.

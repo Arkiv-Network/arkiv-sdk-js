@@ -28,16 +28,20 @@ const RESERVED = new Set([
   "not",
   "true",
   "false",
+  "between",
   "startswith",
   "exists",
   "typeof",
+  "order",
+  "by",
+  "asc",
+  "desc",
   // type tags
   "bool",
   "i32",
   "u64",
   "u256",
   "dec",
-  "bytes32",
   "bytes",
   "str",
   "addr",
@@ -49,8 +53,9 @@ const RESERVED = new Set([
  * reserved words.
  *
  * @param name - The attribute name.
- * @throws {InvalidAttributeNameError} If the name is empty, too long, uses characters outside the
- * grammar, or collides with a reserved word.
+ * @throws {InvalidAttributeNameError} If the name is empty, starts with `$` (reserved for system
+ * attributes), too long, uses characters outside the grammar, contains `--` (which opens a query
+ * comment), or collides with a reserved word.
  */
 export function validateAttributeName(name: string): void {
   if (typeof name !== "string" || name.length === 0) {

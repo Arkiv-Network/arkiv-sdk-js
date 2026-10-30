@@ -14,11 +14,11 @@ const logger = getLogger("actions:wallet:create-entity")
  * How an created entity lives: its lifetime, plus the flags and salt it is created with.
  *
  * @example
- * { expires: ExpirationTime.fromDays(30) }
+ * { expiration: ExpirationTime.fromDays(30) }
  *
- * @example Pin an absolute deadline, but refuse to create something nearly dead:
+ * @example Pin an absolute deadline, but never let it leave the entity with less than a day:
  * {
- *   expires: ExpirationTime.atDate(someDeadline, {
+ *   expiration: ExpirationTime.atDate(someDeadline, {
  *     atLeast: ExpirationTime.fromDays(1),    // ...but live at least a day regardless
  *   }),
  *   flags: { readonly: true },
@@ -31,7 +31,7 @@ export type CreateEntityOptions = {
    * `ExpirationTime.fromDays(30)` is the everyday form. `atBlock` / `atDate` pin an absolute
    * deadline instead, and either can carry `{ atLeast }` to guarantee a minimum life on top of it.
    */
-  expires: Expiry
+  expiration: Expiry
   /**
    * Properties fixed at creation: `readonly` and `permissionlessExtension`. No operation changes
    * them afterwards, so an entity is whatever it was created as for life. Both default to `false`.
@@ -70,12 +70,8 @@ export type CreateEntityReturnType = {
   entityKey: Hex
   txHash: Hash
   /**
-   * The block the entity is expected to expire at, resolved against the block the transaction was
-   * built on.
-   *
-   * The engine resolves a duration against the block the transaction actually lands in, so for
-   * `ExpirationTime.fromDays(30)` and friends this is a lower bound: the real expiry is later by
-   * however many blocks passed between building and inclusion. An `atBlock` deadline is exact.
+   * The block the entity expires at, as the engine recorded it — read from the `EntityCreated`
+   * event, so a duration is already resolved against the block the transaction landed in.
    */
   expiresAt: bigint
 }
