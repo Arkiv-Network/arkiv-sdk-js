@@ -1,6 +1,6 @@
-## [Unreleased]
+## [1.0.0-dev.0] - 2026-10-30
 
-This release implements user-defined entity columns. An entity is no longer a payload plus indexed attributes: it is any number of named, typed attributes, each of which the writer marks indexed or not. The SDK describes them with schemas. It needs a node that speaks the new protocol (the indexed flag in bit 7 of `typeId`, no `$payload`/`$contentType`), so it does not work against current nodes.
+This release implements user-defined entity columns. An entity is no longer a payload plus indexed attributes: it is any number of named, typed attributes, each of which the writer marks indexed or not. The SDK describes them with schemas. It needs a node running arkiv-reth 1.0.0 or later, which speaks the new protocol (the indexed flag in bit 7 of `typeId`, no `$payload`/`$contentType`) and answers `offset` and `ORDER BY`.
 
 ### Added
 - Schemas, exported from `@arkiv-network/sdk/schema`. `defineSchema({ ... })` declares an entity's columns. Each column is a type constructor called with no arguments (`str()`, `dec()`, `bytes()`, ...) and refined with `.indexed()`, `.optional()` and `.default(...)`. Called with a value, the same constructor still makes a typed value: `dec()` is a column, `dec("4.1")` is a value
@@ -46,6 +46,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - `str()` checks a value as the node does: at most 128 UTF-8 bytes, and valid UTF-8. Control characters are now accepted, and a lone surrogate, which has no UTF-8 encoding, throws `InvalidValueError`
 
 ### Removed
+- **Breaking:** `ExpirationTime.permanent()`. The chain caps how long an entity lives, so an expiry past that cap reverts with `ExpiryBeyondMaxLifetime`, which the SDK decodes into a message naming the cap
 - **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead
 - **Breaking:** `AttributeInputs`, and writing attributes without a schema. A schema built at runtime with `defineSchema` covers dynamic attribute sets
 - **Breaking:** the `EntitySelection` and `ProjectedEntity` types. Use `Selection` and `Row`
@@ -54,7 +55,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - **Breaking:** the `bytes32` type, its constructor and `Bytes32Value`. typeId 6 is reserved. Use `key` for an entity key, and a hex `str` for other indexed bytes of up to 64 bytes. A `bytes32` value the node returns is read as a `key`, and `bytes32` is no longer a reserved attribute name
 - **Breaking:** `not()`, `ne()` and the `NotNode` type, along with `!=` in `ComparisonOperator`. The network does not support `NOT` or `!=`. Filter on what you want rather than what you do not: an indexed value marking the state, or an `or()` of the values to keep
 - **Breaking:** historical reads: `atBlock()` on the select and count builders, and the `atBlock` option of `query()`, along with the `"block"` `QueryErrorKind`. The network only answers at the head. `ExpirationTime.atBlock()`, which sets an expiry, is unaffected
-- **Breaking:** the `fromBlock` option of `watchEntityEvents()`. A watcher follows the head, since the network does not serve historical reads. Passing `fromBlock` throws rather than being ignored
+- **Breaking:** the `fromBlock` option of `watchEntityEvents()`. A watcher follows the head, since the network does not serve historical reads. `fromBlock` is gone from the parameters' type, and is ignored if passed anyway
 - **Breaking:** cursors and built-in pagination: `cursor()` on the select builder, the `cursor` option of `query()`, `cursor` on `QueryResult` and `QueryReturnType`, `QueryResult.next()` and `hasNextPage()`, `for await` over a select builder, `NoMoreResultsError`, and the `"cursor"` `QueryErrorKind`. Page with `limit()` and `offset()` instead, and sort by `$key` to keep the order fixed
 - The `brotli-wasm` dependency, which nothing in the SDK used
 

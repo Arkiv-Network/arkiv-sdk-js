@@ -174,9 +174,6 @@ describe("bounds and misuse", () => {
     expect(() => resolveExpiry(ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n), ctx)).toThrow(
       /does not fit the uint64/,
     )
-    expect(() => resolveExpiry(ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n), ctx)).toThrow(
-      /ExpirationTime\.permanent\(\)/,
-    )
   })
 })
 

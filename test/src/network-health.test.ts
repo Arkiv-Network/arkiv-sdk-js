@@ -413,22 +413,6 @@ describe(`Network health check (${chain.name})`, () => {
   )
 
   test(
-    "a permanent entity is written with an expiry no chain will reach",
-    async () => {
-      const { entityKey, expiresAt } = await create(
-        Probe,
-        { purpose: "permanent_test", body: new Uint8Array() },
-        { expiration: ExpirationTime.permanent() },
-      )
-
-      expect(expiresAt).toBe(2n ** 64n - 1n)
-      expect((await publicClient.getEntity(entityKey)).$expiresAt).toBe(2n ** 64n - 1n)
-      console.log(`  EXPIRY  permanent entity stored at ${expiresAt}`)
-    },
-    { timeout: 120_000 },
-  )
-
-  test(
     "a batch applies every one of its operations, or none",
     async () => {
       const tag = `batch-${Date.now()}`
