@@ -70,7 +70,6 @@ export type WatchEntityEventsParameters = {
  *
  * @param parameters - Handlers and options. {@link WatchEntityEventsParameters}
  * @returns A function that stops the watcher.
- * @throws If `parameters` sets a `fromBlock`: the watcher only follows the head.
  *
  *
  * @example
