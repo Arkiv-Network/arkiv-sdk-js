@@ -65,6 +65,31 @@ describe("describeEntityRevert", () => {
     })
   })
 
+  describe("the indexed flag", () => {
+    it("says an indexed bytes attribute is the problem, not an unknown type", () => {
+      // bytes is typeId 7; bit 7 is the indexed flag.
+      expect(describeEntityRevert(reverted("InvalidValueType", [ident("body"), 0x87]))).toBe(
+        '"body" is a bytes attribute flagged as indexed, and bytes are stored but never indexed',
+      )
+    })
+
+    it("names the type and the flag when the node refuses an indexed attribute", () => {
+      // str is typeId 8; with bit 7 set, a node that predates the flag sees 0x88.
+      const message = describeEntityRevert(reverted("InvalidValueType", [ident("category"), 0x88]))
+      expect(message).toContain('"category" has type str and is flagged as indexed (type id 136)')
+      expect(message).toContain("may not support the indexed flag")
+    })
+    it("names the type when the node refuses an unindexed one", () => {
+      const message = describeEntityRevert(reverted("InvalidValueType", [ident("title"), 0x08]))
+      expect(message).toContain('"title" has type str (type id 8), which the node does not accept')
+    })
+    it("still reports a type id it cannot read as unknown", () => {
+      expect(describeEntityRevert(reverted("InvalidValueType", [ident("x"), 0xff]))).toContain(
+        "type id 255, which is not a known type",
+      )
+    })
+  })
+
   describe("entity state", () => {
     it("abbreviates the key so it does not bury the sentence", () => {
       const message = describeEntityRevert(reverted("EntityNotFound", [KEY]))
@@ -89,6 +114,14 @@ describe("describeEntityRevert", () => {
       const message = describeEntityRevert(reverted("ExpiryNotExtended", [KEY, 100n, 500n]))
       expect(message).toContain("already expires at block 500")
       expect(message).toContain("shorten")
+    })
+
+    it("names the chain's maximum lifetime", () => {
+      const message = describeEntityRevert(
+        reverted("ExpiryBeyondMaxLifetime", [9_000_100n, 100n, 7_884_000n]),
+      )
+      expect(message).toContain("block 9000100")
+      expect(message).toContain("maximum lifetime of 7884000 blocks")
     })
   })
 

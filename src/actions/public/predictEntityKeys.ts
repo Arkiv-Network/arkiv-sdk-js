@@ -97,18 +97,19 @@ type Repeat<T, TLength extends number, TAcc extends T[] = []> = number extends T
  * @returns One `{ key, salt }` pair per create, in batch order. {@link PredictEntityKeysReturnType}
  *
  * @example A batch whose second entity points at its first.
- * import { key } from "@arkiv-network/sdk/attr"
+ * import { defineSchema, key, str } from "@arkiv-network/sdk/schema"
+ *
+ * const Nodes = defineSchema("nodes", { name: str(), parent: key().indexed().optional() })
  *
  * const [parent, child] = await client.predictEntityKeys({ owner: account.address, count: 2 })
- * await client.executeBatch({
+ * await wallet.executeBatch({
  *   creates: [
- *     { payload, contentType, expires, salt: parent.salt },
+ *     { schema: Nodes, values: { name: "root" }, expiration, salt: parent.salt },
  *     {
- *       payload,
- *       contentType,
- *       expires,
+ *       schema: Nodes,
+ *       values: { name: "leaf", parent: key(parent.key) },
+ *       expiration,
  *       salt: child.salt,
- *       attributes: { parent: key(parent.key) },
  *     },
  *   ],
  * })

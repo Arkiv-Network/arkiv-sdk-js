@@ -1,6 +1,6 @@
-import { bytesToString, type Hex } from "viem"
-import type { AttributeSchema, Attributes } from "../attr"
+import type { Hex } from "viem"
 import type { ResolvedCreationFlags } from "../entity/flags"
+import type { AttributeSchema, Attributes } from "../schema"
 
 /**
  * The fields an {@link Entity} can carry. Every one is optional: a query returns exactly the parts
@@ -18,20 +18,20 @@ export type EntityFields = {
   expiresAt?: bigint | undefined
   /** The immutable properties the entity was created with. */
   creationFlags?: ResolvedCreationFlags | undefined
-  contentType?: string | undefined
-  payload?: Uint8Array | undefined
-  /** Attribute names and types, with no values. */
+  /** Attribute names, types and indexing, with no values. */
   attributeSchema?: AttributeSchema | undefined
   /** Attribute names, types and values. */
   attributes?: Attributes | undefined
 }
 
 /**
- * An entity as it comes back from a query.
+ * An entity as the node returns it, decoded: the fields a query selected, with its attributes as a
+ * map keyed by name. Which fields are populated is decided by the selection, so each may be
+ * `undefined`.
  *
- * Which fields are populated is decided by the query's selection — `select({ key: true })` gives
- * back an entity carrying only its key. The static type of a `select()` result is narrowed to
- * exactly the selected fields, so in typed code the `undefined`s here are not reachable.
+ * Queries do not return these: `select()`, `query()` and `getEntity()` lay each one out as a flat
+ * row — the selected entity fields and attributes side by side, typed by the selection and, through
+ * a schema, by its columns.
  */
 export class Entity implements EntityFields {
   key: Hex | undefined
@@ -41,8 +41,6 @@ export class Entity implements EntityFields {
   updatedAt: bigint | undefined
   expiresAt: bigint | undefined
   creationFlags: ResolvedCreationFlags | undefined
-  contentType: string | undefined
-  payload: Uint8Array | undefined
   attributeSchema: AttributeSchema | undefined
   attributes: Attributes | undefined
 
@@ -54,51 +52,7 @@ export class Entity implements EntityFields {
     this.updatedAt = fields.updatedAt
     this.expiresAt = fields.expiresAt
     this.creationFlags = fields.creationFlags
-    this.contentType = fields.contentType
-    this.payload = fields.payload
     this.attributeSchema = fields.attributeSchema
     this.attributes = fields.attributes
-  }
-
-  /**
-   * The payload decoded as UTF-8 text.
-   *
-   * @throws If the payload was not selected, or is not valid UTF-8.
-   */
-  toText(): string {
-    if (this.payload === undefined) {
-      throw new Error(
-        "Entity has no payload — the query did not select it. Use select({ payload: true }).",
-      )
-    }
-    try {
-      return bytesToString(this.payload)
-    } catch (e) {
-      throw new Error(
-        `Failed to convert entity payload to text: ${e instanceof Error ? e.message : String(e)}`,
-        { cause: e },
-      )
-    }
-  }
-
-  /**
-   * The payload parsed as JSON.
-   *
-   * @throws If the payload was not selected, is empty, or is not valid JSON.
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: JSON.parse returns whatever the payload holds.
-  toJson(): any {
-    const text = this.toText()
-    if (!text) {
-      throw new Error("Entity has empty payload, cannot parse as JSON")
-    }
-    try {
-      return JSON.parse(text)
-    } catch (e) {
-      throw new Error(
-        `Failed to parse entity payload as JSON: ${e instanceof Error ? e.message : String(e)}`,
-        { cause: e },
-      )
-    }
   }
 }

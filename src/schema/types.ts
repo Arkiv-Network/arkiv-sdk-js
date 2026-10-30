@@ -9,18 +9,23 @@ import type { decUnits } from "./values"
  * The typeIds are consensus-critical: they are written into entity records and mixed into index
  * keys, so this table must never drift from the node's `AttributeType`.
  *
- * | tag       | typeId | ABI wire type       | indexing          |
- * | --------- | ------ | ------------------- | ----------------- |
- * | `bool`    | 1      | `bool`              | equality          |
- * | `i32`     | 2      | `int32`             | equality + range  |
- * | `u64`     | 3      | `uint64`            | equality + range  |
- * | `u256`    | 4      | `uint256`           | equality + range  |
- * | `dec`     | 5      | `int256` (18 dp)    | equality + range  |
- * | `bytes32` | 6      | `bytes32`           | equality          |
- * | `bytes`   | 7      | `bytes`             | none — system-only |
- * | `str`     | 8      | `string` (<= 128 B) | equality + prefix |
- * | `addr`    | 9      | `address`           | equality          |
- * | `key`     | 10     | `bytes32`           | equality          |
+ * | tag     | typeId | ABI wire type        | when indexed              |
+ * | ------- | ------ | -------------------- | ------------------------- |
+ * | `bool`  | 1      | `bool`               | equality + range          |
+ * | `i32`   | 2      | `int32`              | equality + range          |
+ * | `u64`   | 3      | `uint64`             | equality + range          |
+ * | `u256`  | 4      | `uint256`            | equality + range          |
+ * | `dec`   | 5      | `int256` (18 dp)     | equality + range          |
+ * | —       | 6      | `bytes32`            | reserved                  |
+ * | `bytes` | 7      | `bytes` (<= 128 KiB) | never indexed             |
+ * | `str`   | 8      | `string` (<= 128 B)  | equality + range + prefix |
+ * | `addr`  | 9      | `address`            | equality + range          |
+ * | `key`   | 10     | `bytes32`            | equality + range          |
+ *
+ * typeId 6 is the node's `bytes32` type, which this SDK does not expose: it is reserved here, so
+ * `TYPE_IDS` leaves it out, and a value of that type is read as a `key`.
+ *
+ * On the wire the typeId shares its byte with the indexed flag — see {@link INDEXED_FLAG}.
  */
 export const TYPE_IDS = {
   bool: 1,
@@ -28,27 +33,29 @@ export const TYPE_IDS = {
   u64: 3,
   u256: 4,
   dec: 5,
-  bytes32: 6,
   bytes: 7,
   str: 8,
   addr: 9,
   key: 10,
 } as const
 
-/** Every type tag, including the system-only `bytes`. */
+/**
+ * Bit 7 of the `typeId` byte: set when the node should index the attribute. The low seven bits are
+ * the type itself, so `str` travels as `8` unindexed and `0x88` indexed.
+ */
+export const INDEXED_FLAG = 0x80
+
+/** Every type tag. */
 export type TypeTag = keyof typeof TYPE_IDS
 
-/** Every typeId, including the system-only `7` (`bytes`). */
-export type TypeId = (typeof TYPE_IDS)[TypeTag]
-
 /**
- * The tags a client may set on an attribute. `bytes` is excluded: it backs the system `$payload`
- * cell, which travels in its own operation field and is never carried in an attribute array.
+ * The tags an attribute may be indexed with — every type except `bytes`, which is stored but never
+ * indexed, and so can never be filtered on.
  */
-export type UserTypeTag = Exclude<TypeTag, "bytes">
+export type IndexableTypeTag = Exclude<TypeTag, "bytes">
 
-/** Whether a client may set an attribute of this type — everything except `bytes`. */
-export function isUserSettable(tag: TypeTag): tag is UserTypeTag {
+/** Whether attributes of this type may be indexed — everything except `bytes`. */
+export function isIndexable(tag: TypeTag): tag is IndexableTypeTag {
   return tag !== "bytes"
 }
 
@@ -61,7 +68,7 @@ declare const validated: unique symbol
 
 /**
  * A typed attribute value: the tag it was created with, plus the JavaScript representation of that
- * type. Constructed only by the tagged constructors in `@arkiv-network/sdk/attr`.
+ * type. Constructed only by the tagged constructors in `@arkiv-network/sdk/schema`.
  *
  * @typeParam tag - The type tag, which also discriminates the {@link ArkivValue} union.
  * @typeParam value - The decoded JavaScript representation.
@@ -87,40 +94,38 @@ export type U256Value = Value<"u256", bigint>
  * Use {@link decUnits} for the exact scaled integer when you need to do arithmetic.
  */
 export type DecValue = Value<"dec", string>
-/** 32 opaque bytes, as lowercase `0x` hex. */
-export type Bytes32Value = Value<"bytes32", Hex>
-/** A UTF-8 string of at most 128 bytes, free of C0 control characters and DEL. */
+/** A UTF-8 string of at most 128 bytes. */
 export type StrValue = Value<"str", string>
 /** A 20-byte Ethereum address, as EIP-55 checksummed hex. */
 export type AddrValue = Value<"addr", Address>
 /** A reference to another entity. Weak by spec: dangling references are permitted. */
 export type KeyValue = Value<"key", Hex>
 /**
- * Opaque variable-length bytes, as lowercase `0x` hex. System-only — it backs `$payload` and is
- * never settable as an attribute, so it is produced by decoding but has no constructor.
+ * Opaque variable-length bytes, as lowercase `0x` hex — a blob. Stored but never indexed, so it can
+ * be selected but not filtered on.
  */
 export type BytesValue = Value<"bytes", Hex>
 
-/** Any value a client may set on an attribute. */
+/** Any attribute value. */
 export type ArkivValue =
   | BoolValue
   | I32Value
   | U64Value
   | U256Value
   | DecValue
-  | Bytes32Value
+  | BytesValue
   | StrValue
   | AddrValue
   | KeyValue
 
-/** Any value that can come back from the node, including the system-only `bytes`. */
-export type AnyArkivValue = ArkivValue | BytesValue
+/** Any value of a type that can be indexed, and so can appear in a query — everything but `bytes`. */
+export type IndexableValue = Exclude<ArkivValue, BytesValue>
 
 /** The value type for a given tag — e.g. `ValueOf<"u256">` is {@link U256Value}. */
-export type ValueOf<tag extends TypeTag> = Extract<AnyArkivValue, { type: tag }>
+export type ValueOf<tag extends TypeTag> = Extract<ArkivValue, { type: tag }>
 
 /** The JavaScript representation carried by a value — e.g. `Decoded<U256Value>` is `bigint`. */
-export type Decoded<value extends AnyArkivValue> = value["value"]
+export type Decoded<value extends ArkivValue> = value["value"]
 
 /**
  * Builds a validated value. Module-internal: the constructors in `values.ts` call this **after**
@@ -136,7 +141,7 @@ export function makeValue<tag extends TypeTag>(
 /**
  * Whether `input` has the *shape* of an {@link ArkivValue} — a known type tag and a value.
  */
-export function isArkivValue(input: unknown): input is AnyArkivValue {
+export function isArkivValue(input: unknown): input is ArkivValue {
   return (
     typeof input === "object" &&
     input !== null &&
