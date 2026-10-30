@@ -23,8 +23,8 @@ export class InvalidValueError extends Error {
 
 /**
  * A bare JavaScript value could not be given a type. Raised when an attribute or predicate is
- * handed something that is neither a tagged value nor one of the four bare forms
- * (`boolean`, `number`, `bigint`, `string`).
+ * handed something that is neither a tagged value nor one of the five bare forms
+ * (`boolean`, `number`, `bigint`, `string`, `Uint8Array`).
  */
 export class UntypedValueError extends Error {
   readonly input: unknown
@@ -32,8 +32,8 @@ export class UntypedValueError extends Error {
   constructor(input: unknown) {
     super(
       `Cannot infer an Arkiv type for ${describe(input)}. ` +
-        "Attribute values must be a tagged value (i32, u64, u256, dec, str, addr, key, bytes32, " +
-        "bool) or a bare boolean, number, bigint or string.",
+        "Attribute values must be a tagged value (i32, u64, u256, dec, str, addr, key, bytes, " +
+        "bool) or a bare boolean, number, bigint, string or Uint8Array.",
     )
     this.name = "UntypedValueError"
     this.input = input
@@ -44,8 +44,12 @@ export class UntypedValueError extends Error {
  * An attribute was given `undefined` or `null` as its value.
  *
  * There is no such thing as an attribute with no value: an attribute either exists with a type, or
- * is not set. The fix is always to leave the name out of the map rather than to write an empty
- * value, so this is called out separately from {@link UntypedValueError} — the remedy is different.
+ * is not set. The fix is always to leave the name out rather than to write an empty value — or, to
+ * remove a column from an existing entity, to `unset` it in a patch — so this is called out
+ * separately from {@link UntypedValueError}: the remedy is different.
+ *
+ * `createEntity` and `patchEntity` already treat a column given as `undefined` as left out, so
+ * through them only `null` raises this.
  */
 export class MissingValueError extends Error {
   /** The attribute whose value was missing, when raised from an attribute map. */
@@ -57,8 +61,9 @@ export class MissingValueError extends Error {
       `The ${subject} is ${input === null ? "null" : "undefined"}. An attribute is either set ` +
         "with a value and a type or not set at all, so there is nothing to write here. " +
         (attributeName
-          ? `Omit "${attributeName}" from the attributes instead — e.g. build the map ` +
-            "conditionally, or drop the key when the value is absent."
+          ? `Leave "${attributeName}" out of the values (or a patch's "set") instead — e.g. ` +
+            "build the object conditionally, or drop the key when the value is absent. To remove " +
+            `the column from an existing entity, list it in a patch's "unset".`
           : "Omit the attribute instead of giving it an empty value."),
     )
     this.name = "MissingValueError"
@@ -97,11 +102,63 @@ export class ConflictingMutationError extends Error {
   }
 }
 
-/** More attributes were supplied than an entity operation can carry. */
+/**
+ * More attributes were supplied than an entity operation can carry — raised by `defineSchema` for a
+ * schema with more columns than one create could write.
+ */
 export class TooManyAttributesError extends Error {
-  constructor(count: number, max: number) {
-    super(`An entity may carry at most ${max} attributes, got ${count}.`)
+  /**
+   * @param tagged - Whether `count` includes a named schema's tag, which the message then calls out:
+   * the tag is not among the declared columns, so the count would otherwise look off by one.
+   */
+  constructor(count: number, max: number, tagged = false) {
+    super(
+      `An entity may carry at most ${max} attributes, got ${count}.` +
+        (tagged
+          ? ` A named schema's tag counts as one of them, so it may declare at most ${max - 1} ` +
+            "columns."
+          : ""),
+    )
     this.name = "TooManyAttributesError"
+  }
+}
+
+/** The `bytes` values of one create or patch add up to more than `MAX_ENTITY_BYTES`. */
+export class EntityTooLargeError extends Error {
+  constructor(total: number, max: number) {
+    super(
+      `The bytes columns of one create or patch may hold at most ${max} bytes in total, got ` +
+        `${total}. Split the data across entities, or store it elsewhere and keep a reference`,
+    )
+    this.name = "EntityTooLargeError"
+  }
+}
+
+/** A schema, or one of its columns, was defined in a way the SDK or the protocol cannot honour. */
+export class SchemaDefinitionError extends Error {
+  /** The column at fault, when there is one. */
+  readonly columnName: string | undefined
+
+  constructor(reason: string, columnName?: string) {
+    super(`Invalid schema${columnName === undefined ? "" : ` column "${columnName}"`}: ${reason}.`)
+    this.name = "SchemaDefinitionError"
+    this.columnName = columnName
+  }
+}
+
+/**
+ * Data did not fit its schema: a write named a column the schema does not have, left out one it
+ * requires, or gave one a value of the wrong type — or an entity read back through a schema lacks a
+ * required column or holds one with a different type.
+ */
+export class SchemaMismatchError extends Error {
+  /** The column at fault. */
+  readonly columnName: string
+
+  constructor(columnName: string, reason: string) {
+    super(`Column "${columnName}": ${reason}.`)
+    this.name = "SchemaMismatchError"
+    this.columnName = columnName
   }
 }
 

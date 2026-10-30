@@ -1,5 +1,6 @@
 import type { Hash, Hex } from "viem"
 import type { ArkivClient } from "../../clients/baseClient"
+import type { Schema } from "../../schema"
 import type { TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import { getLogger } from "../../utils/logger"
@@ -16,18 +17,27 @@ const logger = getLogger("actions:wallet:execute-batch")
  *
  * At least one operation is required; a batch with nothing in it throws rather than spending gas on
  * an empty transaction.
+ *
+ * Each create and patch names its own schema, and is typed by it — a batch can write entities of
+ * several schemas at once.
+ *
+ * @typeParam TCreates - The schema of each create, in order. Inferred.
+ * @typeParam TPatches - The schema of each patch, in order. Inferred.
  */
-export type ExecuteBatchParameters = {
+export type ExecuteBatchParameters<
+  TCreates extends readonly Schema[] = readonly Schema[],
+  TPatches extends readonly Schema[] = readonly Schema[],
+> = {
   /** The entities to create. */
-  creates?: CreateEntityParameters[]
+  creates?: { readonly [I in keyof TCreates]: CreateEntityParameters<TCreates[I]> } | undefined
   /** The patches to apply. */
-  patches?: PatchEntityParameters[]
+  patches?: { readonly [I in keyof TPatches]: PatchEntityParameters<TPatches[I]> } | undefined
   /** The entities to delete. */
-  deletes?: DeleteEntityParameters[]
+  deletes?: readonly DeleteEntityParameters[] | undefined
   /** The expiries to set. */
-  extensions?: ExtendEntityParameters[]
+  extensions?: readonly ExtendEntityParameters[] | undefined
   /** The ownership transfers to perform. */
-  ownershipChanges?: ChangeOwnershipParameters[]
+  ownershipChanges?: readonly ChangeOwnershipParameters[] | undefined
 }
 
 /** Return type for the executeBatch function. */
@@ -46,12 +56,19 @@ export type ExecuteBatchReturnType = {
   ownershipChanges: Hex[]
 }
 
-export async function executeBatch(
+export async function executeBatch<
+  const TCreates extends readonly Schema[] = [],
+  const TPatches extends readonly Schema[] = [],
+>(
   client: ArkivClient,
-  data: ExecuteBatchParameters,
+  data: ExecuteBatchParameters<TCreates, TPatches>,
   txParams?: TxParams,
 ): Promise<ExecuteBatchReturnType> {
-  const { receipt, createdEntityKeys } = await sendArkivTransaction(client, data, txParams)
+  const { receipt, createdEntityKeys } = await sendArkivTransaction(
+    client,
+    data as ExecuteBatchParameters,
+    txParams,
+  )
 
   logger("Receipt from executeBatch %o", receipt)
 

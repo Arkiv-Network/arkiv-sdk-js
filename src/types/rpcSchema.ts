@@ -1,10 +1,10 @@
-import type { Hex, PublicRpcSchema } from "viem"
+import type { Hex } from "viem"
 
 /**
  * An attribute as the node renders it: the name, the type **tag** (not the wire typeId), and the
  * value in the JSON encoding that type prescribes — a JSON number for `i32`, a `0x` QUANTITY for
- * `u64` and `u256`, a decimal string for `dec`, `0x` DATA for the byte-shaped types, and a string for
- * `str`.
+ * `u64` and `u256`, a decimal string for `dec`, `0x` DATA for the byte-shaped types (`bytes`
+ * included), and a string for `str`.
  *
  * The encoding follows the *declared type*, never the magnitude, so a decoder dispatches on `type`
  * and never has to guess from the shape of the value.
@@ -15,10 +15,14 @@ export type RpcAttribute = {
   value: unknown
 }
 
-/** An entry of the `attributeSchema` projection — a name and its type, with no value. */
+/**
+ * An entry of the `attributeSchema` projection — a name, its type, and whether the node indexes
+ * it, with no value.
+ */
 export type RpcAttributeSchemaEntry = {
   name: string
   type: string
+  indexed?: boolean
 }
 
 /**
@@ -42,8 +46,6 @@ export type RpcEntity = {
   updatedAt?: Hex
   expiresAt?: Hex
   creationFlags?: RpcCreationFlags | number
-  contentType?: string
-  payload?: Hex
   attributeSchema?: RpcAttributeSchemaEntry[]
   attributes?: RpcAttribute[]
 }
@@ -63,22 +65,23 @@ export type RpcSelect = {
   updatedAt?: boolean
   expiresAt?: boolean
   creationFlags?: boolean
-  contentType?: boolean
-  payload?: boolean
   attributeSchema?: boolean
   attributes?: boolean | Record<string, boolean>
+  /**
+   * Not a field of each entity but of the page: the number of entities the query matches at the
+   * block, regardless of `limit` and `offset`, returned as the response's `count`.
+   */
+  count?: boolean
 }
 
 /** The second parameter of `arkiv_query` — what to return, and where in the results to start. */
 export type RpcQueryOptions = {
-  /** Block height to read at, as a hex quantity. Defaults to the head, and must be within the node's retained range. */
-  atBlock?: Hex
   /** What to return. Defaults to `{ key: true }`. */
   select?: RpcSelect
-  /** Page size, as a hex quantity. Node maximum is 200. */
+  /** Page size, as a hex quantity. Node maximum is 100. */
   limit?: Hex
-  /** Opaque cursor from a previous response; bound to that query, block and selection. */
-  cursor?: string
+  /** How many matches to skip before the page, as a hex quantity. Defaults to none. */
+  offset?: Hex
 }
 
 export type ArkivRpcSchema = [
@@ -88,9 +91,15 @@ export type ArkivRpcSchema = [
     ReturnType: {
       data: RpcEntity[]
       blockNumber: Hex
-      /** Omitted when no pages remain. */
-      cursor?: string
+      /** How many entities the query matches, as a hex quantity. Present only when selected. */
+      count?: Hex
     }
+  },
+  {
+    Method: "arkiv_getEntity"
+    Parameters: [entityKey: Hex]
+    /** Every field except `attributeSchema`, or `null` if no live entity has the key. */
+    ReturnType: RpcEntity | null
   },
   {
     Method: "arkiv_getBlockTiming"
@@ -101,11 +110,4 @@ export type ArkivRpcSchema = [
       duration: number
     }
   },
-  {
-    Method: "arkiv_getEntityCount"
-    Parameters?: []
-    ReturnType: number
-  },
 ]
-
-export type PublicArkivRpcSchema = [...PublicRpcSchema, ...ArkivRpcSchema]

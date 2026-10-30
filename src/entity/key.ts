@@ -1,5 +1,5 @@
 import { type Address, encodePacked, type Hex, keccak256 } from "viem"
-import type { CreateEntityParameters } from "../actions/wallet/createEntity"
+import type { CreateEntityOptions } from "../actions/wallet/createEntity"
 import { ARKIV_ADDRESS } from "../consts"
 import { InvalidSaltError, NoRandomSourceError } from "./errors"
 
@@ -7,7 +7,7 @@ import { InvalidSaltError, NoRandomSourceError } from "./errors"
 export const MAX_SALT = 2n ** 128n - 1n
 
 /**
- * Opts a create out of salting, as {@link CreateEntityParameters.salt}: the key is then derived
+ * Opts a create out of salting, as {@link CreateEntityOptions.salt}: the key is then derived
  * from the owner and its nonce alone, so anyone who knows both can work it out before the create
  * lands.
  */
@@ -19,7 +19,7 @@ export const NO_SALT = Symbol("NO_SALT")
 export type SaltInput = bigint | typeof NO_SALT
 
 /**
- * A cryptographically random 128-bit salt — what {@link CreateEntityParameters.salt} defaults to.
+ * A cryptographically random 128-bit salt — what {@link CreateEntityOptions.salt} defaults to.
  *
  * The salt exists for unpredictability, not uniqueness: the per-owner nonce already guarantees
  * distinct keys. Random bits mean only the creator can predict the key of an entity they are about

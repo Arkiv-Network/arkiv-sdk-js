@@ -7,14 +7,13 @@ import {
   stringToBytes,
   toHex,
 } from "viem"
+import { type AnyColumn, type Column, createColumn, isColumn } from "./column"
 import { DECIMAL_UNIT, decimalToUnits, unitsToDecimal } from "./decimal"
 import { InvalidValueError, MissingValueError, UntypedValueError } from "./errors"
 import {
   type AddrValue,
-  type AnyArkivValue,
   type ArkivValue,
   type BoolValue,
-  type Bytes32Value,
   type BytesValue,
   type DecValue,
   type I32Value,
@@ -22,6 +21,7 @@ import {
   type KeyValue,
   makeValue,
   type StrValue,
+  type TypeTag,
   type U64Value,
   type U256Value,
 } from "./types"
@@ -38,37 +38,56 @@ export const U256_MAX = 2n ** 256n - 1n
  * The longest `str`, in UTF-8 bytes
  */
 export const MAX_STRING_BYTES = 128
+/**
+ * The longest `bytes` value, in bytes. The cap applies to each `bytes` attribute separately, but
+ * all the `bytes` values of one create or patch also share the `MAX_ENTITY_BYTES` budget.
+ */
+export const MAX_BYTES_LENGTH = 128 * 1024
 
 /**
- * Finds the first C0 control or DEL — the characters a `str` may not contain.
+ * Finds the first lone UTF-16 surrogate — a string the node would reject, since it has no UTF-8
+ * encoding. `TextEncoder` would quietly replace it with U+FFFD instead.
  */
-function findControlChar(value: string): { index: number; code: number } | undefined {
+function findLoneSurrogate(value: string): number | undefined {
   for (let index = 0; index < value.length; index++) {
     const code = value.charCodeAt(index)
-    if (code <= 0x1f || code === 0x7f) return { index, code }
+    if (code < 0xd800 || code > 0xdfff) continue
+    const next = value.charCodeAt(index + 1)
+    if (code <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+      index++
+      continue
+    }
+    return index
   }
   return undefined
 }
 
+/** A `bool` column, indexed for equality once `.indexed()`. */
+export function bool(): Column<"bool", false, false, false>
 /**
  * A boolean.
  *
- * `bool` is the one type that may also be written bare — `{ flagged: true }` and
- * `{ flagged: bool(true) }` are the same attribute.
+ * This is the default type for a bare boolean, so `{ flagged: true }` and
+ * `{ flagged: bool(true) }` are the same value.
  *
  * @example
  * bool(true) // { type: "bool", value: true }
  */
-export function bool(value: boolean): BoolValue {
+export function bool(value: boolean): BoolValue
+export function bool(...args: [] | [boolean]): BoolValue | Column<"bool", false, false, false> {
+  if (args.length === 0) return createColumn("bool", toTypedValue)
+  const [value] = args
   if (typeof value !== "boolean") {
     throw new InvalidValueError("bool", value, "not a boolean")
   }
   return makeValue("bool", value)
 }
 
+/** An `i32` column, indexed for equality and range queries once `.indexed()`. */
+export function i32(): Column<"i32", false, false, false>
 /**
- * A 32-bit signed integer, indexed for equality and range queries. This is the default type for a
- * bare number, so `{ level: 10 }` and `{ level: i32(10) }` are the same attribute.
+ * A 32-bit signed integer. This is the default type for a bare number, so `{ level: 10 }` and
+ * `{ level: i32(10) }` are the same value.
  *
  * @param value - An integer in [-2147483648, 2147483647].
  * @throws {InvalidValueError} If the value is not an integer, or does not fit an `i32`.
@@ -77,7 +96,12 @@ export function bool(value: boolean): BoolValue {
  * i32(10)   // { type: "i32", value: 10 }
  * i32(-42)  // negative values are fine — i32 is the signed integer
  */
-export function i32(value: number | bigint): I32Value {
+export function i32(value: number | bigint): I32Value
+export function i32(
+  ...args: [] | [number | bigint]
+): I32Value | Column<"i32", false, false, false> {
+  if (args.length === 0) return createColumn("i32", toTypedValue)
+  const [value] = args
   if (typeof value === "bigint") {
     if (value > BigInt(I32_MAX) || value < BigInt(I32_MIN)) {
       throw new InvalidValueError("i32", value, outOfI32Range(value >= 0n))
@@ -109,10 +133,11 @@ function outOfI32Range(nonNegative: boolean): string {
     : `${range} — use dec(...) for values that need more range than an i32`
 }
 
+/** A `u256` column, indexed for equality and range queries once `.indexed()`. */
+export function u256(): Column<"u256", false, false, false>
 /**
- * A 256-bit unsigned integer, indexed for equality and range queries. The type for token amounts
- * and anything else that can outgrow 2⁶⁴ — reach for {@link u64} first for counters, timestamps
- * and block heights.
+ * A 256-bit unsigned integer. The type for token amounts and anything else that can outgrow 2⁶⁴ —
+ * reach for {@link u64} first for counters, timestamps and block heights.
  *
  * @param value - A non-negative integer, as a `bigint`, a safe `number`, or a decimal or `0x` hex
  * string.
@@ -123,12 +148,18 @@ function outOfI32Range(nonNegative: boolean): string {
  * u256(Date.now())        // safe integers are accepted
  * u256("0xf4240")         // hex, as it comes back over JSON-RPC
  */
-export function u256(value: bigint | number | string): U256Value {
-  return makeValue("u256", toUnsigned("u256", value, U256_MAX))
+export function u256(value: bigint | number | string): U256Value
+export function u256(
+  ...args: [] | [bigint | number | string]
+): U256Value | Column<"u256", false, false, false> {
+  if (args.length === 0) return createColumn("u256", toTypedValue)
+  return makeValue("u256", toUnsigned("u256", args[0], U256_MAX))
 }
 
+/** A `u64` column, indexed for equality and range queries once `.indexed()`. */
+export function u64(): Column<"u64", false, false, false>
 /**
- * A 64-bit unsigned integer, indexed for equality and range queries.
+ * A 64-bit unsigned integer.
  *
  * This is the width the protocol counts in: block heights, `$expiresAt` and the entity-nonce are
  * all `u64`, so it is the type to reach for when a value has to line up with one of them. Use
@@ -143,8 +174,12 @@ export function u256(value: bigint | number | string): U256Value {
  * u64(Date.now())     // safe integers are accepted
  * u64("0x124f80")     // hex, as it comes back over JSON-RPC
  */
-export function u64(value: bigint | number | string): U64Value {
-  return makeValue("u64", toUnsigned("u64", value, U64_MAX))
+export function u64(value: bigint | number | string): U64Value
+export function u64(
+  ...args: [] | [bigint | number | string]
+): U64Value | Column<"u64", false, false, false> {
+  if (args.length === 0) return createColumn("u64", toTypedValue)
+  return makeValue("u64", toUnsigned("u64", args[0], U64_MAX))
 }
 
 /**
@@ -205,9 +240,10 @@ function toUnsignedBigint(tag: "u64" | "u256", value: bigint | number | string):
   throw new InvalidValueError(tag, value, "not a bigint, number or string")
 }
 
+/** A `dec` column, indexed for equality and range queries once `.indexed()`. */
+export function dec(): Column<"dec", false, false, false>
 /**
- * A signed fixed-point decimal with exactly 18 decimal places, indexed for equality and range
- * queries.
+ * A signed fixed-point decimal with exactly 18 decimal places.
  *
  * Pass fractional values as **strings**. A JavaScript number cannot represent most decimals
  * exactly, so accepting `dec(0.1 + 0.2)` would quietly store `0.30000000000000004`; requiring the
@@ -221,9 +257,14 @@ function toUnsignedBigint(tag: "u64" | "u256", value: bigint | number | string):
  * @example
  * dec("3.5")
  * dec("-0.000000000000000001")  // the smallest step
- * dec(5)                        // integers may be passed bare
+ * dec(5)                        // integers may be passed as a number
  */
-export function dec(value: string | number | bigint): DecValue {
+export function dec(value: string | number | bigint): DecValue
+export function dec(
+  ...args: [] | [string | number | bigint]
+): DecValue | Column<"dec", false, false, false> {
+  if (args.length === 0) return createColumn("dec", toTypedValue)
+  const [value] = args
   if (typeof value === "string") {
     return makeValue("dec", unitsToDecimal(decimalToUnits(value)))
   }
@@ -266,34 +307,34 @@ export function decFromUnits(units: bigint): DecValue {
   return makeValue("dec", unitsToDecimal(units))
 }
 
+/** A `str` column, indexed for equality and prefix (`STARTSWITH`) matching once `.indexed()`. */
+export function str(): Column<"str", false, false, false>
 /**
- * A UTF-8 string of at most 128 bytes, indexed for equality and prefix (`STARTSWITH`) matching.
+ * A UTF-8 string of at most 128 bytes.
  *
- * The limit is on **bytes**, not characters: a string of 128 emoji does not fit.
+ * The limit is on **bytes**, not characters: a string of 128 emoji does not fit. Any character
+ * is allowed, control characters included. To store raw bytes, use {@link bytes}, or hex in a
+ * `str` when they must be indexed.
  *
- * C0 control characters and DEL are rejected: the query language writes a `str` as `str('...')`,
- * whose only escape is a doubled quote, so a control character could be stored but never queried.
- *
- * @throws {InvalidValueError} If the value is not a string, holds a control character, or exceeds
- * 128 UTF-8 bytes.
+ * @throws {InvalidValueError} If the value is not a string, holds a lone surrogate (so it has no
+ * UTF-8 encoding), or exceeds 128 UTF-8 bytes.
  *
  * @example
  * str("Bob")
  */
-export function str(value: string): StrValue {
+export function str(value: string): StrValue
+export function str(...args: [] | [string]): StrValue | Column<"str", false, false, false> {
+  if (args.length === 0) return createColumn("str", toTypedValue)
+  const [value] = args
   if (typeof value !== "string") {
     throw new InvalidValueError("str", value, "not a string")
   }
-  const control = findControlChar(value)
-  if (control !== undefined) {
-    const code = control.code.toString(16).padStart(4, "0").toUpperCase()
+  const surrogate = findLoneSurrogate(value)
+  if (surrogate !== undefined) {
     throw new InvalidValueError(
       "str",
       value,
-      `contains the control character U+${code} at index ${control.index}`,
-      "A str is written into a query as str('...'), whose only escape is a doubled quote — there " +
-        "is no spelling for a control character, so this value could be stored but never queried. " +
-        "Free-form text belongs in the entity payload; keep a short, printable key here.",
+      `contains a lone surrogate at index ${surrogate}, so it is not valid UTF-8`,
     )
   }
   const bytes = stringToBytes(value).length
@@ -302,14 +343,16 @@ export function str(value: string): StrValue {
       "str",
       value,
       `${bytes} UTF-8 bytes exceeds the ${MAX_STRING_BYTES}-byte limit on a str`,
-      "Store the long form in the entity payload and keep a short, queryable key here.",
+      "Store the long form in a bytes column and keep a short, queryable key here.",
     )
   }
   return makeValue("str", value)
 }
 
+/** An `addr` column, indexed for equality once `.indexed()`. */
+export function addr(): Column<"addr", false, false, false>
 /**
- * A 20-byte Ethereum address, indexed for equality.
+ * A 20-byte Ethereum address.
  *
  * All-lowercase and all-uppercase input carries no checksum and is accepted as-is; mixed-case
  * input is checked against its EIP-55 checksum, so a mistyped address is caught here rather than
@@ -320,7 +363,10 @@ export function str(value: string): StrValue {
  * @example
  * addr("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
  */
-export function addr(value: string): AddrValue {
+export function addr(value: string): AddrValue
+export function addr(...args: [] | [string]): AddrValue | Column<"addr", false, false, false> {
+  if (args.length === 0) return createColumn("addr", toTypedValue)
+  const [value] = args
   if (typeof value !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(value)) {
     throw new InvalidValueError("addr", value, "not a 20-byte 0x-prefixed hex address")
   }
@@ -338,8 +384,10 @@ export function addr(value: string): AddrValue {
   return makeValue("addr", checksumAddress(value as Address))
 }
 
+/** A `key` column — a reference to another entity — indexed for equality once `.indexed()`. */
+export function key(): Column<"key", false, false, false>
 /**
- * A reference to another entity, indexed for equality.
+ * A reference to another entity.
  *
  * References are **weak**: nothing checks that the target exists when you write it, and a
  * reference to a deleted or expired entity is allowed to dangle.
@@ -350,67 +398,141 @@ export function addr(value: string): AddrValue {
  * @example
  * key(parentEntityKey)
  */
-export function key(value: Hex | Uint8Array): KeyValue {
-  return makeValue("key", asFixedHex("key", value, 32))
+export function key(value: Hex | Uint8Array): KeyValue
+export function key(
+  ...args: [] | [Hex | Uint8Array]
+): KeyValue | Column<"key", false, false, false> {
+  if (args.length === 0) return createColumn("key", toTypedValue)
+  return makeValue("key", asFixedHex("key", args[0], 32))
 }
 
 /**
- * 32 opaque bytes — a hash, a digest, an identifier from another system — indexed for equality.
+ * A `bytes` column — a blob. Bytes are stored but never indexed, so a bytes column has no
+ * `.indexed()`: it can be selected, not filtered on. A schema may have several, within the
+ * `MAX_ATTRIBUTES` cap on columns — but the `bytes` values of one create or patch share a single
+ * `MAX_ENTITY_BYTES` budget.
+ */
+export function bytes(): Column<"bytes", false, false, false>
+/**
+ * Opaque bytes of any length up to 128 KiB — a document, an image, a serialized object. This is the
+ * default type for a bare `Uint8Array`, so `{ body: buf }` and `{ body: bytes(buf) }` are the same
+ * value.
  *
- * Use {@link key} instead when the bytes are an Arkiv entity key: same wire width, but the
- * distinct type makes the reference visible to readers and to the query language.
- *
- * @param value - 32 bytes, as `0x` hex or raw bytes.
- * @throws {InvalidValueError} If the value is not exactly 32 bytes.
+ * @param value - The bytes, raw or as `0x` hex. Hex is taken as the bytes it spells, never as text.
+ * @throws {InvalidValueError} If the value is not bytes or hex, or exceeds 128 KiB.
  *
  * @example
- * bytes32(keccak256(toBytes("hello")))
+ * bytes(new TextEncoder().encode("# Hello"))
+ * bytes("0xdeadbeef")
  */
-export function bytes32(value: Hex | Uint8Array): Bytes32Value {
-  return makeValue("bytes32", asFixedHex("bytes32", value, 32))
+export function bytes(value: Hex | Uint8Array): BytesValue
+export function bytes(
+  ...args: [] | [Hex | Uint8Array]
+): BytesValue | Column<"bytes", false, false, false> {
+  if (args.length === 0) return createColumn("bytes", toTypedValue)
+  const [value] = args
+  const hex = asHex("bytes", value)
+  const length = (hex.length - 2) / 2
+  if (length > MAX_BYTES_LENGTH) {
+    throw new InvalidValueError(
+      "bytes",
+      `<${length} bytes>`,
+      `${length} bytes exceeds the ${MAX_BYTES_LENGTH}-byte limit on a bytes value`,
+      "Split it across several entities, or store the bulk elsewhere and keep a reference.",
+    )
+  }
+  return makeValue("bytes", hex)
 }
 
 /** Normalizes hex-or-bytes input of a known width into lowercase `0x` hex. */
-function asFixedHex(tag: "key" | "bytes32", value: Hex | Uint8Array, size: number): Hex {
+function asFixedHex(tag: "key", value: Hex | Uint8Array, size: number): Hex {
   if (value instanceof Uint8Array) {
     if (value.length !== size) {
       throw new InvalidValueError(tag, `<${value.length} bytes>`, `not exactly ${size} bytes`)
     }
     return toHex(value)
   }
-  if (typeof value !== "string" || !isHex(value, { strict: true })) {
-    throw new InvalidValueError(tag, value, "not 0x-prefixed hex")
-  }
-  if (value.length !== 2 + size * 2) {
+  const hex = asHex(tag, value)
+  if (hex.length !== 2 + size * 2) {
     throw new InvalidValueError(
       tag,
       value,
-      `${(value.length - 2) / 2} bytes, not exactly ${size} bytes`,
+      `${(hex.length - 2) / 2} bytes, not exactly ${size} bytes`,
     )
+  }
+  return hex
+}
+
+/** Normalizes hex-or-bytes input into lowercase `0x` hex of a whole number of bytes. */
+function asHex(tag: "key" | "bytes", value: Hex | Uint8Array): Hex {
+  if (value instanceof Uint8Array) return toHex(value)
+  if (typeof value !== "string" || !isHex(value, { strict: true })) {
+    throw new InvalidValueError(tag, value, "not 0x-prefixed hex")
+  }
+  if (value.length % 2 !== 0) {
+    throw new InvalidValueError(tag, value, "an odd number of hex digits, so not whole bytes")
   }
   return value.toLowerCase() as Hex
 }
 
 /**
  * A JavaScript value accepted wherever a typed value is expected: either a tagged value, or one of
- * the four bare forms that map unambiguously onto a single type.
+ * the five bare forms that map unambiguously onto a single type.
  *
- * | bare form | type    |
- * | --------- | ------- |
- * | `boolean` | `bool`  |
- * | `number`  | `i32`   |
- * | `bigint`  | `u256`  |
- * | `string`  | `str`   |
+ * | bare form    | type    |
+ * | ------------ | ------- |
+ * | `boolean`    | `bool`  |
+ * | `number`     | `i32`   |
+ * | `bigint`     | `u256`  |
+ * | `string`     | `str`   |
+ * | `Uint8Array` | `bytes` |
  *
  * Anything else — a large number, a decimal, an address, an entity key — must name its type, which
  * is what keeps `"0x1234..."` a string rather than silently becoming a key.
  *
  * These defaults apply identically when writing and when querying, so a value written bare and
- * queried bare always agrees with itself. The mismatch to watch for is mixing the two: an attribute
- * written as {@link u64} does not match a bare `bigint` predicate, because that predicate asserts
- * `u256`. A type mismatch is not an error to the engine — it simply matches nothing.
+ * queried bare always agrees with itself. The mismatch to watch for is a bare value where its
+ * column has another type: a bare `bigint` is a `u256`, not a {@link u64}. Through a schema that is
+ * caught — a write throws `SchemaMismatchError` and a query throws `InvalidPredicateError` — but a
+ * query without a schema sends the predicate as written, and the engine, for which a type mismatch
+ * is not an error, simply matches nothing.
  */
-export type ValueInput = ArkivValue | boolean | number | bigint | string
+export type ValueInput = ArkivValue | boolean | number | bigint | string | Uint8Array
+
+/**
+ * The type a {@link ValueInput} resolves to — the tag of a tagged value, or the default of a bare
+ * form. `never` for anything else.
+ */
+export type TagOf<input> = input extends { readonly type: infer tag extends TypeTag }
+  ? tag
+  : input extends boolean
+    ? "bool"
+    : input extends number
+      ? "i32"
+      : input extends bigint
+        ? "u256"
+        : input extends string
+          ? "str"
+          : input extends Uint8Array
+            ? "bytes"
+            : never
+
+/**
+ * The bare JavaScript form that defaults to `tag`, where there is one — `boolean` for `bool`,
+ * `number` for `i32`, `bigint` for `u256`, `string` for `str`, `Uint8Array` for `bytes`. The other
+ * types — `u64`, `dec`, `addr` and `key` — must be written tagged.
+ */
+export type BareOf<tag extends TypeTag> = {
+  bool: boolean
+  i32: number
+  u64: never
+  u256: bigint
+  dec: never
+  bytes: Uint8Array
+  str: string
+  addr: never
+  key: never
+}[tag]
 
 /**
  * Resolves a {@link ValueInput} to a typed value, applying the bare-form defaults above. Tagged
@@ -421,8 +543,8 @@ export type ValueInput = ArkivValue | boolean | number | bigint | string
  *
  * @throws {MissingValueError} If the input is `undefined` or `null` — an attribute is either set
  * with a value and a type, or not set at all.
- * @throws {UntypedValueError} If the input is not a tagged value or a bare boolean, number, bigint
- * or string.
+ * @throws {UntypedValueError} If the input is not a tagged value or a bare boolean, number, bigint,
+ * string or `Uint8Array`.
  * @throws {InvalidValueError} If a bare value does not fit the type it defaults to.
  *
  * @example
@@ -449,24 +571,58 @@ export function toValue(input: ValueInput, attributeName?: string): ArkivValue {
     case "string":
       return str(input)
     default: {
-      // Widened to AnyArkivValue: `bytes` is not a member of ValueInput, but it is what a decoded
-      // `$payload` carries, so a round-trip through a decoded entity must be rejected by name
-      // rather than fall through to "cannot infer a type".
-      const candidate = input as AnyArkivValue
-      if (isArkivValue(candidate)) {
-        if (candidate.type === "bytes") {
-          throw new InvalidValueError(
-            "bytes",
-            candidate.value,
-            "system-only — bytes backs the entity payload and cannot be set as an attribute",
-            "Pass the bytes as the entity payload instead.",
-          )
-        }
-        return revalidate(candidate)
-      }
+      if (input instanceof Uint8Array) return bytes(input)
+      if (isArkivValue(input)) return revalidate(input)
+      // Widened: a column is not a ValueInput, but it is the one mix-up the dual-mode constructors
+      // invite — `str()` where `str("...")` was meant — so it is named rather than left untyped.
+      const candidate: unknown = input
+      if (isColumn(candidate)) throw columnGivenAsValue(candidate)
       throw new UntypedValueError(input)
     }
   }
+}
+
+/**
+ * Resolves `input` to a value of type `tag` — a tagged value of that type, or whatever `tag`'s
+ * constructor accepts. What a column's `.default(...)` runs its argument through.
+ *
+ * @throws {InvalidValueError} If the input does not make a valid value of type `tag`.
+ */
+function toTypedValue(tag: TypeTag, input: unknown): ArkivValue {
+  if (isArkivValue(input)) {
+    const value = revalidate(input)
+    if (value.type !== tag) {
+      throw new InvalidValueError(tag, input, `a ${value.type} value, not a ${tag}`)
+    }
+    return value
+  }
+  if (isColumn(input)) throw columnGivenAsValue(input)
+  // Through the constructor, so every type accepts exactly what its constructor does.
+  const construct = CONSTRUCTORS[tag] as (value: unknown) => ArkivValue
+  return construct(input)
+}
+
+function columnGivenAsValue(column: AnyColumn): InvalidValueError {
+  return new InvalidValueError(
+    column.type,
+    `<${column.type} column>`,
+    "a column, not a value",
+    `Pass the value itself, e.g. ${column.type}(...) with an argument — ${column.type}() with ` +
+      "none declares a schema column.",
+  )
+}
+
+/** Each tag's constructor, called with a value. */
+const CONSTRUCTORS: { readonly [tag in TypeTag]: (value: never) => ArkivValue } = {
+  bool,
+  i32,
+  u64,
+  u256,
+  dec,
+  bytes,
+  str,
+  addr,
+  key,
 }
 
 /**
@@ -482,7 +638,7 @@ export function toValue(input: ValueInput, attributeName?: string): ArkivValue {
  * has been range-, length- and format-checked" — true at runtime. For a value that really did come
  * from a constructor it is a no-op that returns an equal value.
  */
-function revalidate(value: Exclude<AnyArkivValue, BytesValue>): ArkivValue {
+function revalidate(value: ArkivValue): ArkivValue {
   switch (value.type) {
     case "bool":
       return bool(value.value)
@@ -494,8 +650,8 @@ function revalidate(value: Exclude<AnyArkivValue, BytesValue>): ArkivValue {
       return u256(value.value)
     case "dec":
       return dec(value.value)
-    case "bytes32":
-      return bytes32(value.value)
+    case "bytes":
+      return bytes(value.value)
     case "str":
       return str(value.value)
     case "addr":

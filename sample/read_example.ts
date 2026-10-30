@@ -1,46 +1,68 @@
 import { createPublicClient } from "@arkiv-network/sdk"
-import { tiramisu } from "@arkiv-network/sdk/chains"
-import { eq } from "@arkiv-network/sdk/query"
-import { http } from "viem"
+import { rabdi } from "@arkiv-network/sdk/chains"
+import { and, asc, eq, gt } from "@arkiv-network/sdk/query"
+import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
+import { hexToString, http } from "viem"
 
-// Create a public client
+// Reads the posts anyone has written, so it needs no account. Run write_example.ts first to add
+// one of your own. Set ARKIV_ACCESS_KEY to a free key from https://hub.arkiv.network/access-keys.
+
+// The same schema the writer used. A schema is an SDK-side convention: the node only sees typed
+// attributes, each flagged indexed or not.
+const Posts = defineSchema("posts", {
+  author: addr().indexed(),
+  category: str().indexed(),
+  score: dec().indexed(),
+  title: str(),
+  body: bytes(),
+  thumbnail: bytes().optional(),
+  mimeType: str().default("text/markdown"),
+})
+
+// Rabdi is the Arkiv testnet. Without an access key, it uses the rate-limited public endpoint.
 const publicClient = createPublicClient({
-  chain: tiramisu, // tiramisu is the Arkiv testnet
+  chain: rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" }),
   transport: http(),
 })
 
-// Get chain ID
-const chainId = await publicClient.getChainId()
-console.log("Chain ID:", chainId)
-
-// Get entity by key
-const entity = await publicClient.getEntity(
-  "0x5107170ed413324eba80a55d378a412e7ac4b067de3e2727a6783ed044cecd23",
-)
-console.log("Entity:", entity)
-
-// Build and execute a query using select().
-// select() declares up front what to return: select() / select("*") returns everything,
-// or pass an object to pick specific fields. The selection is flat and the result type is
-// narrowed to exactly the selected fields.
+// Query through the schema. select() names entity fields and columns side by side, and the
+// result rows are typed to exactly those. where() may only filter on indexed columns, compared
+// against values of their type — eq("title", ...) would not compile, since title is not indexed.
 const result = await publicClient
-  .select({ key: true, owner: true, attributes: true, payload: true })
-  .where(eq("category", "documentation"))
-  .ownedBy("0xF46E23f6a6F6336D4C64D5D1c95599bF77a536f0")
+  .select({ $key: true, author: true, title: true, body: true })
+  .from(Posts)
+  .where(and(eq("category", "docs"), gt("score", dec("4.0"))))
   .limit(10)
   .fetch()
 
-console.log("Found entities:", result.entities)
-
-// Pagination
-if (result.hasNextPage()) {
-  const nextPage = await result.next()
-  console.log("Next page:", nextPage.entities)
+for (const row of result.entities) {
+  console.log(row.$key, row.author.value, row.title.value, hexToString(row.body.value))
 }
 
-// Or walk every page, one entity at a time
-for await (const item of publicClient
-  .select({ key: true, attributes: true })
-  .where(eq("category", "documentation"))) {
-  console.log(item.key, item.attributes)
+// Read one of them by key, with every column
+const first = result.entities[0]
+if (first) {
+  const post = await publicClient.getEntity(first.$key, Posts)
+  console.log("First post:", post)
+}
+
+// Page through every post in the category, 20 at a time. Count them first to know how many pages
+// there are. The count includes entities that don't fit the schema, and so do the offsets, so the
+// two line up.
+const PAGE_SIZE = 20
+const total = await publicClient.count().from(Posts).where(eq("category", "docs")).fetch()
+const pageCount = Math.ceil(Number(total) / PAGE_SIZE)
+console.log(`${total} posts, ${PAGE_SIZE} per page`)
+
+for (let n = 0; n < pageCount; n++) {
+  const page = await publicClient
+    .select({ $key: true, title: true })
+    .from(Posts)
+    .where(eq("category", "docs"))
+    .orderBy(asc("$key"))
+    .limit(PAGE_SIZE)
+    .offset(n * PAGE_SIZE)
+    .fetch()
+  console.log(`Page ${n + 1}:`)
+  for (const row of page.entities) console.log(" ", row.$key, row.title.value)
 }

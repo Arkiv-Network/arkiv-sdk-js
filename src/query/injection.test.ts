@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes32, dec, i32, key, str, u256 } from "../attr"
-import { InvalidAttributeNameError, InvalidValueError } from "../attr/errors"
+import { addr, dec, i32, key, str, u256 } from "../schema"
+import { InvalidAttributeNameError, InvalidValueError } from "../schema/errors"
 import { and, eq, exists, gt, startsWith } from "./expression"
 import { toRpcSelect } from "./selection"
 
@@ -31,22 +31,17 @@ describe("string literals cannot break out of their quotes", () => {
     expect(String(eq("x", str("a -- comment")))).toBe("x = str('a -- comment')")
   })
 
-  it("rejects control characters, which have no spelling inside a literal", () => {
-    // The danger is a newline: `--` comments run to end of line, and a lexer that ends a string at
-    // a newline would read the rest of the value as query text. There is no escape for one, so a
-    // value carrying it could be stored but never queried — and might not fail loudly.
+  it("keeps control characters inside the quotes, where the node reads them verbatim", () => {
+    // The node's lexer takes every character up to the closing quote as part of the string, so a
+    // newline cannot end the literal and turn the rest of the value into query text.
     for (const code of [0x00, 0x09, 0x0a, 0x0d, 0x1f, 0x7f]) {
-      const hostile = `a${String.fromCharCode(code)}AND flagged = true`
-      expect(() => str(hostile)).toThrow(InvalidValueError)
-      expect(() => str(hostile)).toThrow(/control character U\+/)
-      // The bare-string path resolves through `str`, so it is closed too.
-      expect(() => eq("x", hostile)).toThrow(InvalidValueError)
-      expect(() => startsWith("x", hostile)).toThrow(InvalidValueError)
+      const char = String.fromCharCode(code)
+      const hostile = `a${char}' AND flagged = true`
+      expect(String(eq("x", hostile))).toBe(`x = str('a${char}'' AND flagged = true')`)
+      expect(String(startsWith("x", hostile))).toBe(
+        `x STARTSWITH str('a${char}'' AND flagged = true')`,
+      )
     }
-  })
-
-  it("names the offending character and where it is", () => {
-    expect(() => str(`ab${String.fromCharCode(10)}c`)).toThrow(/U\+000A at index 2/)
   })
 
   it("still allows every printable character, including the awkward ones", () => {
@@ -95,7 +90,6 @@ describe("typed literals are closed by construction", () => {
 
   it("renders the byte-shaped types as fixed-width hex", () => {
     expect(String(eq("x", key(ENTITY_KEY)))).toMatch(/^x = key\(0x[0-9a-f]{64}\)$/)
-    expect(String(eq("x", bytes32(ENTITY_KEY)))).toMatch(/^x = bytes32\(0x[0-9a-f]{64}\)$/)
     expect(String(eq("x", addr(ACCOUNT)))).toMatch(/^x = addr\(0x[0-9a-fA-F]{40}\)$/)
   })
 
@@ -138,14 +132,8 @@ describe("the assembled query", () => {
 
 describe("the selection", () => {
   it("checks named attributes rather than forwarding them", () => {
-    expect(() => toRpcSelect({ key: true, attributes: { "a' OR '1": true } })).toThrow(
-      InvalidAttributeNameError,
-    )
-    expect(() => toRpcSelect({ key: true, attributes: { "a--b": true } })).toThrow(
-      InvalidAttributeNameError,
-    )
-    expect(toRpcSelect({ key: true, attributes: { ok: true } })).toMatchObject({
-      attributes: { ok: true },
-    })
+    expect(() => toRpcSelect({ $key: true, "a' OR '1": true })).toThrow(InvalidAttributeNameError)
+    expect(() => toRpcSelect({ $key: true, "a--b": true })).toThrow(InvalidAttributeNameError)
+    expect(toRpcSelect({ $key: true, ok: true })).toMatchObject({ attributes: { ok: true } })
   })
 })

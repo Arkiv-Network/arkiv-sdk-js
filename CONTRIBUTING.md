@@ -54,7 +54,7 @@ bun run test:unit
 bun run build
 ```
 
-For integration tests, see the [test/README.md](./test/README.md) for setup instructions.
+Integration tests live in `test/` and run against a packed build of the SDK: run `bun run package:test` at the repository root, then `bun install` in `test/`. The scripts are in [test/package.json](./test/package.json): `test:smoke`, `test:component` (needs Docker) and `test:network-health`.
 
 ### 4. Submitting Changes
 
@@ -70,7 +70,7 @@ When you create a Pull Request to `develop`, the CI pipeline automatically runs:
 1. **Lint Checking** - Validates code style using Biome
 2. **Unit Tests** - Runs all unit tests in `src/**/*`
 3. **Smoke Tests** - Validates package compatibility across different module formats
-4. **Component Tests** - Integration tests with GolemDB using Docker containers
+4. **Component Tests** - Integration tests against an arkiv-reth dev node in Docker
 
 All checks must pass before a PR can be merged.
 
@@ -156,8 +156,8 @@ The continuous integration pipeline runs the following checks in sequence:
 - Runs in the `test/` directory
 
 ### 4. Component Tests
-- Integration tests with GolemDB using Docker containers
-- Validates full SDK functionality against a real GolemDB instance
+- Integration tests against an arkiv-reth dev node (`ghcr.io/arkiv-network/arkiv-reth-dev`) in Docker
+- Validates full SDK functionality against a real node
 - Uses Testcontainers for isolated testing environments
 
 ### 5. Publish

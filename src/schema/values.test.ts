@@ -1,10 +1,11 @@
 import { describe, expect, it } from "bun:test"
+import { isColumn } from "./column"
 import { InvalidValueError, MissingValueError, UntypedValueError } from "./errors"
 import { TYPE_IDS } from "./types"
 import {
   addr,
   bool,
-  bytes32,
+  bytes,
   dec,
   decFromUnits,
   decUnits,
@@ -12,6 +13,7 @@ import {
   I32_MIN,
   i32,
   key,
+  MAX_BYTES_LENGTH,
   str,
   toValue,
   U64_MAX,
@@ -32,7 +34,6 @@ describe("tagged constructors", () => {
       [dec("3.5"), "dec", "3.5"],
       [str("Bob"), "str", "Bob"],
       [key(KEY), "key", KEY],
-      [bytes32(KEY), "bytes32", KEY],
       [addr(VITALIK), "addr", VITALIK],
     ] as const
     for (const [value, tag, decoded] of built) {
@@ -45,7 +46,6 @@ describe("tagged constructors", () => {
     // The tag is what a client says; the typeId is what the wire carries.
     expect(TYPE_IDS[i32(1).type]).toBe(2)
     expect(TYPE_IDS[key(KEY).type]).toBe(10)
-    expect(TYPE_IDS[bytes32(KEY).type]).toBe(6)
   })
 })
 
@@ -162,6 +162,18 @@ describe("str", () => {
     expect(str("é".repeat(64)).value).toHaveLength(64)
     expect(() => str("é".repeat(65))).toThrow(/130 UTF-8 bytes/)
   })
+
+  it("allows any character, control characters included", () => {
+    for (const value of ["a\nb", "a\tb", "\u0000", "\u007f", "😀"]) {
+      expect(str(value).value).toBe(value)
+    }
+  })
+
+  it("rejects a lone surrogate, which has no UTF-8 encoding", () => {
+    expect(() => str("a\ud800b")).toThrow(/lone surrogate at index 1/)
+    expect(() => str("\udc00")).toThrow(/lone surrogate at index 0/)
+    expect(() => str("a\ud83d")).toThrow(/lone surrogate at index 1/)
+  })
 })
 
 describe("addr", () => {
@@ -183,16 +195,58 @@ describe("addr", () => {
   })
 })
 
-describe("key and bytes32", () => {
+describe("key", () => {
   it("accept hex or raw bytes and normalise to lowercase hex", () => {
     expect(key(`0x${"AB".repeat(32)}`).value).toBe(KEY)
-    expect(bytes32(new Uint8Array(32).fill(0xab)).value).toBe(KEY)
+    expect(key(new Uint8Array(32).fill(0xab)).value).toBe(KEY)
   })
 
   it("reject anything that is not exactly 32 bytes", () => {
     expect(() => key(`0x${"ab".repeat(31)}`)).toThrow(/31 bytes/)
-    expect(() => bytes32(new Uint8Array(31))).toThrow(/not exactly 32 bytes/)
+    expect(() => key(new Uint8Array(31))).toThrow(/not exactly 32 bytes/)
     expect(() => key("not hex" as `0x${string}`)).toThrow(/not 0x-prefixed hex/)
+  })
+})
+
+describe("bytes", () => {
+  it("accepts raw bytes or hex, and holds lowercase hex", () => {
+    expect(bytes(new Uint8Array([0xde, 0xad])).value).toBe("0xdead")
+    expect(bytes("0xDEAD").value).toBe("0xdead")
+    expect(bytes(new Uint8Array()).value).toBe("0x")
+  })
+
+  it("takes hex as the bytes it spells, never as text", () => {
+    expect(bytes("0xab").value).toBe("0xab")
+  })
+
+  it("rejects text, odd-length hex, and anything over 128 KiB", () => {
+    expect(() => bytes("hello" as `0x${string}`)).toThrow(/not 0x-prefixed hex/)
+    expect(() => bytes("0xabc")).toThrow(/odd number of hex digits/)
+    expect(bytes(new Uint8Array(MAX_BYTES_LENGTH)).type).toBe("bytes")
+    expect(() => bytes(new Uint8Array(MAX_BYTES_LENGTH + 1))).toThrow(/131073 bytes exceeds/)
+  })
+})
+
+describe("dual-mode constructors", () => {
+  const constructors = { bool, i32, u64, u256, dec, bytes, str, addr, key } as const
+
+  it("describe a column when called with no arguments", () => {
+    for (const [tag, construct] of Object.entries(constructors)) {
+      const column = (construct as () => unknown)()
+      expect(isColumn(column)).toBe(true)
+      expect(column).toMatchObject({ type: tag, isIndexed: false, isOptional: false })
+    }
+  })
+
+  it("throw for an explicit undefined rather than silently making a column", () => {
+    for (const construct of Object.values(constructors)) {
+      expect(() => (construct as (value: unknown) => unknown)(undefined)).toThrow(InvalidValueError)
+    }
+  })
+
+  it("make a value, not a column, when given one", () => {
+    expect(isColumn(dec("4.1"))).toBe(false)
+    expect(dec("4.1")).toEqual(dec("4.10"))
   })
 })
 
@@ -202,6 +256,12 @@ describe("toValue", () => {
     expect(toValue(10)).toEqual(i32(10))
     expect(toValue(10n)).toEqual(u256(10n))
     expect(toValue("hello")).toEqual(str("hello"))
+    expect(toValue(new Uint8Array([1]))).toEqual(bytes("0x01"))
+  })
+
+  it("rejects a column where a value belongs, saying which call was meant", () => {
+    expect(() => toValue(dec() as unknown as string)).toThrow(/a column, not a value/)
+    expect(() => toValue(dec() as unknown as string)).toThrow(/dec\(\.\.\.\) with an argument/)
   })
 
   it("leaves a hex-looking string a string, rather than guessing at a key", () => {
@@ -209,7 +269,15 @@ describe("toValue", () => {
   })
 
   it("leaves a tagged value's type and value alone", () => {
-    for (const tagged of [dec("3.5"), i32(-42), u256(10n), str("hi"), bool(true), key(KEY)]) {
+    for (const tagged of [
+      dec("3.5"),
+      i32(-42),
+      u256(10n),
+      str("hi"),
+      bool(true),
+      key(KEY),
+      bytes(KEY),
+    ]) {
       expect(toValue(tagged)).toEqual(tagged)
     }
   })
@@ -239,7 +307,7 @@ describe("toValue", () => {
     expect(() => toValue({ type: "nope", value: 1 } as unknown as string)).toThrow(
       UntypedValueError,
     )
-    expect(() => toValue(new Uint8Array(32) as unknown as string)).toThrow(UntypedValueError)
+    expect(() => toValue(new ArrayBuffer(32) as unknown as string)).toThrow(UntypedValueError)
     // `in` would have walked the prototype chain and accepted these as type tags.
     for (const inherited of ["constructor", "toString", "valueOf", "hasOwnProperty"]) {
       expect(() => toValue({ type: inherited, value: 1 } as unknown as string)).toThrow(
@@ -253,7 +321,7 @@ describe("toValue", () => {
     // runtime — from a spread of an optional-shaped object, or from data that never saw a type.
     for (const absent of [undefined, null]) {
       expect(() => toValue(absent as unknown as string)).toThrow(MissingValueError)
-      expect(() => toValue(absent as unknown as string, "score")).toThrow(/Omit "score"/)
+      expect(() => toValue(absent as unknown as string, "score")).toThrow(/Leave "score" out/)
     }
     expect(() => toValue(undefined as unknown as string, "score")).toThrow(
       /attribute "score" is undefined/,
