@@ -32,8 +32,8 @@ export class UntypedValueError extends Error {
   constructor(input: unknown) {
     super(
       `Cannot infer an Arkiv type for ${describe(input)}. ` +
-        "Attribute values must be a tagged value (i32, u64, u256, dec, str, addr, key, bytes32, " +
-        "bytes, bool) or a bare boolean, number, bigint, string or Uint8Array.",
+        "Attribute values must be a tagged value (i32, u64, u256, dec, str, addr, key, bytes, " +
+        "bool) or a bare boolean, number, bigint, string or Uint8Array.",
     )
     this.name = "UntypedValueError"
     this.input = input

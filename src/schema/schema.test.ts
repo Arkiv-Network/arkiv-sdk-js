@@ -123,7 +123,7 @@ describe("named schemas", () => {
 
   it("reject a name that is not a valid str", () => {
     expect(() => defineSchema("", { title: str() })).toThrow(/non-empty string/)
-    expect(() => defineSchema("a\nb", { title: str() })).toThrow(SchemaDefinitionError)
+    expect(() => defineSchema("a\ud800", { title: str() })).toThrow(SchemaDefinitionError)
     expect(() => defineSchema("x".repeat(129), { title: str() })).toThrow(/not a valid str tag/)
   })
 

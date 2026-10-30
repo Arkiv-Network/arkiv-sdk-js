@@ -1,7 +1,6 @@
 import type { Account, Address, Chain, Client, Hex, PublicActions, Transport } from "viem"
 import { type GetBlockTimingReturnType, getBlockTiming } from "../../actions/public/getBlockTiming"
 import { getEntity } from "../../actions/public/getEntity"
-import { getEntityCount } from "../../actions/public/getEntityCount"
 import { getEntityNonce } from "../../actions/public/getEntityNonce"
 import {
   type PredictEntityKeysParameters,
@@ -19,7 +18,9 @@ import {
   watchEntityEvents,
 } from "../../actions/public/watchEntityEvents"
 import type { SaltInput } from "../../entity/key"
+import { CountQueryBuilder } from "../../query/countBuilder"
 import type { Expression } from "../../query/expression"
+import type { OrderTerm } from "../../query/order"
 import { SelectQueryBuilder } from "../../query/queryBuilder"
 import type {
   FullEntity,
@@ -55,7 +56,7 @@ export type PublicArkivActions<
    * Given a schema, it is read through it: the result is a flat row of every entity field and
    * every column, each typed as the schema declares and checked against it.
    *
-   * - JSON-RPC Methods: `arkiv_query`
+   * - JSON-RPC Methods: `arkiv_getEntity`
    *
    * @param key - The entity key (hex string)
    * @param schema - Optionally, the schema to read the entity through.
@@ -70,11 +71,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const entity = await client.getEntity(entityKey)
@@ -114,13 +115,13 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { and, eq, gt } from "@arkiv-network/sdk/query"
    * import { dec } from "@arkiv-network/sdk/schema"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * // through a schema — rows typed { $key: Hex; author: AddrValue; title: StrValue }
@@ -138,7 +139,8 @@ export type PublicArkivActions<
    */
   select: {
     /**
-     * Select every field — and, through a schema, every column. Pass nothing or `"*"`.
+     * Select every field — and every column through a schema, or the `$attributes` map without
+     * one. Pass nothing or `"*"`. The `$attributeSchema` is not included: select it by name.
      */
     (selection?: "*"): SelectQueryBuilder<"*">
     /**
@@ -147,7 +149,9 @@ export type PublicArkivActions<
      *
      * Entity fields start with `$`: `$key`, `$owner`, `$creator`, `$createdAt`, `$updatedAt`,
      * `$expiresAt` and `$creationFlags`. `$attributes` reads every attribute as a map, and
-     * `$attributeSchema` their types and indexing. Any other name is an attribute, read as a field
+     * `$attributeSchema` their names, types and indexing without the values — a cheap way to find
+     * out what entities hold before fetching values that may be too large for one response. Any
+     * other name is an attribute, read as a field
      * of its own: untyped without a schema, and through one typed and checked as the column it
      * must be. An attribute name cannot start with `$`, so the two never collide.
      *
@@ -160,12 +164,27 @@ export type PublicArkivActions<
      * client.select({ $key: true, title: true })               // { $key: Hex; title: ArkivValue | undefined }
      * client.select({ $key: true, title: true }).from(Posts)  // { $key: Hex; title: StrValue }
      * client.select({ $owner: true, $attributes: true })      // { $owner: Hex; $attributes: Attributes }
-     * client.select({ $key: true, $attributeSchema: true })   // what shape is the data?
+     * client.select({ $key: true, $attributeSchema: true })   // what do they hold? no values
      */
     <const S extends SelectArg>(
       selection: S & NonEmptySelection<S> & KnownSystemFields<S>,
     ): SelectQueryBuilder<SelectionOf<S>>
   }
+
+  /**
+   * Returns a CountQueryBuilder: counts the entities a query matches, without fetching any of them.
+   *
+   * It filters exactly as {@link select} does — `.from(schema)`, `.where(...)`, `.ownedBy(...)` and
+   * `.createdBy(...)` — and `.fetch()` resolves to a `bigint`. To show the total next to a page of
+   * rows, use `select(...).withCount()` instead.
+   *
+   * - JSON-RPC Methods: `arkiv_query`, with the `count` projection
+   *
+   * @example
+   * const total = await client.count().from(Posts).ownedBy(account.address).fetch()
+   * const news = await client.count().from(Posts).where(eq("category", "news")).fetch()
+   */
+  count: () => CountQueryBuilder
 
   /**
    * Runs one query and returns one page, with no builder in between.
@@ -178,51 +197,34 @@ export type PublicArkivActions<
    * expression combinators apply.
    *
    * @param query - An {@link Expression}, or the raw query string.
-   * @param queryOptions - Selection, page size, cursor and block. {@link QueryOptions}
+   * @param queryOptions - Selection, sort, page size, offset and count. {@link QueryOptions}
    * @returns One page of entities. {@link QueryReturnType}
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
-   * import { and, eq, gte } from "@arkiv-network/sdk/query"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
+   * import { and, desc, eq, gte } from "@arkiv-network/sdk/query"
    * import { i32 } from "@arkiv-network/sdk/schema"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const page = await client.query(and(eq("category", "docs"), gte("level", i32(10))), {
    *   select: { $key: true, title: true },
+   *   orderBy: desc("level", "i32"),
    *   limit: 100,
    * })
-   * // { entities: [{ $key: Hex; title: ArkivValue | undefined }], cursor: "b64:…", blockNumber: 32223n }
+   * // { entities: [{ $key: Hex; title: ArkivValue | undefined }], blockNumber: 32223n, count: undefined }
    *
    * // The raw form, unchecked:
    * await client.query("category = str('docs') AND level >= i32(10)")
    */
-  query: <const S extends SelectArg = "*">(
+  query: <const S extends SelectArg = "*", const K extends OrderTerm = OrderTerm>(
     query: Expression | string,
-    queryOptions?: QueryOptions<S>,
+    queryOptions?: QueryOptions<S, K>,
   ) => Promise<QueryReturnType<QueryRow<S>>>
-
-  /**
-   * Returns the total number of entities on the chain.
-   * @returns The number of entities currently stored
-   *
-   * @example
-   * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
-   * import { http } from "viem"
-   *
-   * const client = createPublicClient({
-   *   chain: tiramisu,
-   *   transport: http(),
-   * })
-   * const entityCount = await client.getEntityCount()
-   * // entityCount = 0
-   */
-  getEntityCount: () => Promise<number>
 
   /**
    * Returns how many entities an account has created — its entity-minting nonce.
@@ -235,11 +237,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const nonce = await client.getEntityNonce("0xabc…")
@@ -296,11 +298,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const blockTiming = await client.getBlockTiming()
@@ -325,11 +327,11 @@ export type PublicArkivActions<
    *
    * @example
    * import { createPublicClient } from "@arkiv-network/sdk"
-   * import { tiramisu } from "@arkiv-network/sdk/chains"
+   * import { rabdi } from "@arkiv-network/sdk/chains"
    * import { http } from "viem"
    *
    * const client = createPublicClient({
-   *   chain: tiramisu,
+   *   chain: rabdi({ accessKey: "..." }),
    *   transport: http(),
    * })
    * const unwatch = client.watchEntityEvents({
@@ -353,8 +355,8 @@ export function publicArkivActions<
       query(client, rawQuery, queryOptions)) as PublicArkivActions["query"],
     select: ((selection?: SelectArg) =>
       new SelectQueryBuilder(client, selection)) as PublicArkivActions["select"],
+    count: () => new CountQueryBuilder(client),
     getBlockTiming: () => getBlockTiming(client),
-    getEntityCount: () => getEntityCount(client),
     getEntityNonce: (owner: Address) => getEntityNonce(client, owner),
     predictEntityKeys: <
       const TCount extends number = number,

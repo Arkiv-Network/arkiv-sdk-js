@@ -33,8 +33,14 @@ export type Attributes = Readonly<Record<string, ArkivValue>>
  * The names, types and indexing of an entity's attributes, with no values — what the
  * `$attributeSchema` selection returns. `indexed` is `undefined` when the node did not say.
  *
- * Useful for asking what shape the data has without paying to transfer it, and for telling apart
- * two entities that use the same name with different types.
+ * It is for finding out what entities hold before fetching their values. Values can be large — a
+ * `bytes` attribute holds up to 128 KiB — and an RPC endpoint may cap how big a response it sends,
+ * so a page of 100 entities with every attribute can be more than it will return. The schema is a
+ * few bytes per attribute: select it for a page, then fetch the attributes you need by name, or the
+ * large ones a few entities at a time.
+ *
+ * It also tells apart two entities that use the same name with different types, and shows which
+ * attributes are indexed, and so can be filtered on.
  */
 export type AttributeSchema = Readonly<
   Record<string, { type: TypeTag; indexed: boolean | undefined }>

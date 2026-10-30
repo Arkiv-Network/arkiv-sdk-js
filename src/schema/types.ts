@@ -9,18 +9,21 @@ import type { decUnits } from "./values"
  * The typeIds are consensus-critical: they are written into entity records and mixed into index
  * keys, so this table must never drift from the node's `AttributeType`.
  *
- * | tag       | typeId | ABI wire type        | when indexed      |
- * | --------- | ------ | -------------------- | ----------------- |
- * | `bool`    | 1      | `bool`               | equality          |
- * | `i32`     | 2      | `int32`              | equality + range  |
- * | `u64`     | 3      | `uint64`             | equality + range  |
- * | `u256`    | 4      | `uint256`            | equality + range  |
- * | `dec`     | 5      | `int256` (18 dp)     | equality + range  |
- * | `bytes32` | 6      | `bytes32`            | equality          |
- * | `bytes`   | 7      | `bytes` (<= 128 KiB) | never indexed     |
- * | `str`     | 8      | `string` (<= 128 B)  | equality + prefix |
- * | `addr`    | 9      | `address`            | equality          |
- * | `key`     | 10     | `bytes32`            | equality          |
+ * | tag     | typeId | ABI wire type        | when indexed              |
+ * | ------- | ------ | -------------------- | ------------------------- |
+ * | `bool`  | 1      | `bool`               | equality + range          |
+ * | `i32`   | 2      | `int32`              | equality + range          |
+ * | `u64`   | 3      | `uint64`             | equality + range          |
+ * | `u256`  | 4      | `uint256`            | equality + range          |
+ * | `dec`   | 5      | `int256` (18 dp)     | equality + range          |
+ * | —       | 6      | `bytes32`            | reserved                  |
+ * | `bytes` | 7      | `bytes` (<= 128 KiB) | never indexed             |
+ * | `str`   | 8      | `string` (<= 128 B)  | equality + range + prefix |
+ * | `addr`  | 9      | `address`            | equality + range          |
+ * | `key`   | 10     | `bytes32`            | equality + range          |
+ *
+ * typeId 6 is the node's `bytes32` type, which this SDK does not expose: it is reserved here, so
+ * `TYPE_IDS` leaves it out, and a value of that type is read as a `key`.
  *
  * On the wire the typeId shares its byte with the indexed flag — see {@link INDEXED_FLAG}.
  */
@@ -30,7 +33,6 @@ export const TYPE_IDS = {
   u64: 3,
   u256: 4,
   dec: 5,
-  bytes32: 6,
   bytes: 7,
   str: 8,
   addr: 9,
@@ -92,9 +94,7 @@ export type U256Value = Value<"u256", bigint>
  * Use {@link decUnits} for the exact scaled integer when you need to do arithmetic.
  */
 export type DecValue = Value<"dec", string>
-/** 32 opaque bytes, as lowercase `0x` hex. */
-export type Bytes32Value = Value<"bytes32", Hex>
-/** A UTF-8 string of at most 128 bytes, free of C0 control characters and DEL. */
+/** A UTF-8 string of at most 128 bytes. */
 export type StrValue = Value<"str", string>
 /** A 20-byte Ethereum address, as EIP-55 checksummed hex. */
 export type AddrValue = Value<"addr", Address>
@@ -113,7 +113,6 @@ export type ArkivValue =
   | U64Value
   | U256Value
   | DecValue
-  | Bytes32Value
   | BytesValue
   | StrValue
   | AddrValue

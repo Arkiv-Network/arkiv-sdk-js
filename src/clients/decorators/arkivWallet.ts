@@ -75,7 +75,7 @@ export type WalletArkivActions<
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
      * import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
@@ -91,7 +91,7 @@ export type WalletArkivActions<
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
      * const { entityKey, txHash, expiresAt } = await client.createEntity(
@@ -159,13 +159,13 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient } from "@arkiv-network/sdk"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
      * // entityKey is the bytes32 key returned by createEntity.
@@ -181,7 +181,8 @@ export type WalletArkivActions<
      *
      * The new lifetime is resolved the same way a create's is: a duration counts from now rather
      * than adding to what the entity has left, and `atBlock` / `atDate` pin an absolute deadline.
-     * The engine rejects an extension that would not move the expiry later.
+     * The engine rejects an extension that would move the expiry earlier; one that resolves to the
+     * current expiry changes nothing.
      *
      * - JSON-RPC Methods: `eth_sendRawTransaction`
      *
@@ -195,13 +196,13 @@ export type WalletArkivActions<
      *
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
      * const { txHash, expiresAt } = await client.extendEntity({
@@ -257,13 +258,13 @@ export type WalletArkivActions<
      * @example
      * import { createWalletClient, ExpirationTime } from "@arkiv-network/sdk"
      * import { dec } from "@arkiv-network/sdk/schema"
-     * import { tiramisu } from "@arkiv-network/sdk/chains"
+     * import { rabdi } from "@arkiv-network/sdk/chains"
      * import { http } from "viem"
      * import { privateKeyToAccount } from "viem/accounts"
      *
      * const client = createWalletClient({
      *   account: privateKeyToAccount("0x..."),
-     *   chain: tiramisu,
+     *   chain: rabdi({ accessKey: "..." }),
      *   transport: http(),
      * })
      * // Posts is the schema from the createEntity example.
