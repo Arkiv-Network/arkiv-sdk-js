@@ -1,9 +1,9 @@
 const { createPublicClient } = require("@arkiv-network/sdk")
-const { tiramisu } = require("@arkiv-network/sdk/chains")
+const { rabdi } = require("@arkiv-network/sdk/chains")
 const { http } = require("viem")
 
 const client = createPublicClient({
-  chain: tiramisu,
+  chain: rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" }),
   transport: http(),
 })
 

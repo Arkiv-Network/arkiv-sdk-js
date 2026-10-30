@@ -5,7 +5,8 @@ import { type ArkivValue, isArkivValue, type StrValue, type TypeTag, type ValueO
 import { type BareOf, str } from "./values"
 
 /**
- * The most attributes one entity operation may carry, and so the most columns a schema may have.
+ * The most attributes one entity operation may carry, and so the most columns a schema may have —
+ * one fewer for a named schema, whose tag is one more attribute on every create.
  */
 export const MAX_ATTRIBUTES = 32
 
@@ -67,13 +68,17 @@ export class Schema<C extends Columns = Columns> {
  * Give the schema a name to tag its entities: every create then also writes an indexed
  * `arkiv.schema` attribute holding the name, and `.from(schema)` filters on it — the way a
  * collection keeps one model's documents apart from another's. Without a name, a query through the
- * schema sees every entity its `where` matches, whatever wrote it.
+ * schema sees every entity its `where` matches, whatever wrote it — though the columns it selects
+ * are still checked against the schema, so an entity that does not fit is left out of the page, or
+ * fails the query with `{ onMismatch: "throw" }`.
  *
  * @param name - The name entities are tagged with — a `str`, so at most 128 bytes. Optional.
  * @param columns - The columns, keyed by attribute name.
  * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
- * @throws {SchemaDefinitionError} If the name is not a valid `str`, an entry is not a column, a
- * column is named after the schema tag, or there are more columns than an operation can carry.
+ * @throws {SchemaDefinitionError} If the name is not a valid `str`, an entry is not a column, or a
+ * column is named after the schema tag.
+ * @throws {TooManyAttributesError} If there are more columns than one create can carry — at most
+ * {@link MAX_ATTRIBUTES}, or one fewer for a named schema, whose tag counts as an attribute.
  *
  * @example
  * import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
@@ -84,7 +89,7 @@ export class Schema<C extends Columns = Columns> {
  *   score:     dec().indexed(),
  *   title:     str(),                          // stored, not indexed
  *   body:      bytes(),                        // a blob; bytes can never be indexed
- *   thumbnail: bytes().optional(),             // any number of bytes columns
+ *   thumbnail: bytes().optional(),             // bytes columns share one MAX_ENTITY_BYTES budget
  *   mimeType:  str().default("text/markdown"), // written on create when left out
  * })
  */
@@ -118,7 +123,7 @@ function validateColumns(columns: Columns, tagged: boolean): void {
   // The tag is one more attribute on every create, so it counts against the same cap.
   const attributes = entries.length + (tagged ? 1 : 0)
   if (attributes > MAX_ATTRIBUTES) {
-    throw new TooManyAttributesError(attributes, MAX_ATTRIBUTES)
+    throw new TooManyAttributesError(attributes, MAX_ATTRIBUTES, tagged)
   }
   for (const [name, column] of entries) {
     validateAttributeName(name)
@@ -138,7 +143,10 @@ export function isSchema(input: unknown): input is Schema {
   return typeof input === "object" && input !== null && SCHEMA_BRAND in input
 }
 
-/** The column `name` of `schema`, or `undefined` if it has none — inherited keys included. */
+/**
+ * The column `name` of `schema`, or `undefined` if it has none. Only the schema's own columns
+ * count, so an inherited key such as `toString` or `__proto__` is not mistaken for one.
+ */
 export function lookupColumn(schema: Schema, name: string): AnyColumn | undefined {
   return Object.hasOwn(schema.columns, name) ? schema.columns[name] : undefined
 }

@@ -28,19 +28,22 @@ export type WalletArkivClient<
  *
  * A Wallet Client signs and sends transactions, so it carries an `account` and exposes everything
  * that mutates state — `createEntity`, `patchEntity`, `deleteEntity`, `extendEntity`,
- * `changeOwnership` and `executeBatch` — on top of the read actions a Public Client has.
+ * `changeOwnership` and `executeBatch` — alongside the viem actions those need, such as
+ * `getBlockNumber`, `readContract` and `waitForTransactionReceipt`. It does not have the Arkiv
+ * read actions (`getEntity`, `query`, `select`, `watchEntityEvents`, `predictEntityKeys`); read
+ * through a Public Client from `createPublicClient` for those.
  *
  * @param parameters - Configuration object for the wallet client (chain, transport, account, etc.)
  * @returns An Arkiv Wallet Client. {@link WalletArkivClient}
  *
  * @example
  * import { createWalletClient } from "@arkiv-network/sdk"
- * import { tiramisu } from "@arkiv-network/sdk/chains"
+ * import { rabdi } from "@arkiv-network/sdk/chains"
  * import { http } from "viem"
  * import { privateKeyToAccount } from "viem/accounts"
  *
  * const client = createWalletClient({
- *   chain: tiramisu,
+ *   chain: rabdi({ accessKey: "..." }),
  *   transport: http(),
  *   account: privateKeyToAccount("0x..."),
  * })
