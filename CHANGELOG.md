@@ -46,6 +46,7 @@ This release implements user-defined entity columns. An entity is no longer a pa
 - `str()` checks a value as the node does: at most 128 UTF-8 bytes, and valid UTF-8. Control characters are now accepted, and a lone surrogate, which has no UTF-8 encoding, throws `InvalidValueError`
 
 ### Removed
+- **Breaking:** `ExpirationTime.permanent()`. The chain caps how long an entity lives, so an expiry past that cap reverts with `ExpiryBeyondMaxLifetime`, which the SDK decodes into a message naming the cap
 - **Breaking:** the entity payload and content type: `payload`/`contentType` on writes, on `Entity` and in the selection, along with `Entity.toText()`/`toJson()`, `jsonToPayload()`, `stringToPayload()`, `MimeType`, `InvalidContentTypeError` and `MAX_PAYLOAD_BYTES`. Use `bytes` and `str` columns instead
 - **Breaking:** `AttributeInputs`, and writing attributes without a schema. A schema built at runtime with `defineSchema` covers dynamic attribute sets
 - **Breaking:** the `EntitySelection` and `ProjectedEntity` types. Use `Selection` and `Row`

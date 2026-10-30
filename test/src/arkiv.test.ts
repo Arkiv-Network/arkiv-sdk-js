@@ -13,7 +13,6 @@ import {
   createWalletClient,
   EntityMutationError,
   ExpirationTime,
-  MAX_EXPIRES_AT,
   NoEntityFoundError,
   predictEntityKey,
   SchemaMismatchError,
@@ -196,6 +195,17 @@ describe("Arkiv Integration Tests for public client", () => {
     return entityKey
   }
 
+  /**
+   * Waits for a transaction's receipt, then for its block to be readable. The node can report a
+   * block before its arkiv_* reads see it, but a read of account state at `latest` waits for the
+   * block, so one such read holds the test until the write shows up.
+   */
+  async function landed(read: PublicArkivClient, hash: Hex) {
+    const receipt = await read.waitForTransactionReceipt({ hash })
+    await read.getTransactionCount({ address: account.address, blockTag: "latest" })
+    return receipt
+  }
+
   /** Creates one entity through the SDK and waits for it to land. */
   async function create<S extends Schema>(
     transport: TransportName,
@@ -208,7 +218,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expiration: options.expiration ?? LIFETIME,
       ...(options.flags ? { flags: options.flags } : {}),
     })
-    const receipt = await read.waitForTransactionReceipt({ hash: created.txHash })
+    const receipt = await landed(read, created.txHash)
     return { ...created, blockNumber: receipt.blockNumber }
   }
 
@@ -300,7 +310,7 @@ describe("Arkiv Integration Tests for public client", () => {
         { testkey: "testValue", keeper: i32(7), body, mimeType: "application/json" },
         { expiration: LIFETIME },
       )
-      await read.waitForTransactionReceipt({ hash: txHash })
+      await landed(read, txHash)
 
       const entity = await read.getEntity(entityKey, Lifecycle)
       expect(entity.body).toEqual(bytes(body))
@@ -321,7 +331,7 @@ describe("Arkiv Integration Tests for public client", () => {
           unset: ["testkey"],
         },
       )
-      await read.waitForTransactionReceipt({ hash: patchedTx })
+      await landed(read, patchedTx)
       expect(patchedKey).toBe(entityKey)
 
       const patched = await read.getEntity(entityKey, Lifecycle)
@@ -344,13 +354,13 @@ describe("Arkiv Integration Tests for public client", () => {
         entityKey,
         expiration: ExpirationTime.fromBlocks(20_000),
       })
-      await read.waitForTransactionReceipt({ hash: extendedTx })
+      await landed(read, extendedTx)
       expect(extendedExpiresAt).toBeGreaterThan(expiresAt)
       expect((await read.getEntity(entityKey)).$expiresAt).toBe(extendedExpiresAt)
 
       // Delete.
       const { txHash: deletedTx } = await write.deleteEntity({ entityKey })
-      await read.waitForTransactionReceipt({ hash: deletedTx })
+      await landed(read, deletedTx)
       await expect(read.getEntity(entityKey)).rejects.toThrow(NoEntityFoundError)
     },
     { timeout: basicCRUDTestTimeout },
@@ -365,7 +375,7 @@ describe("Arkiv Integration Tests for public client", () => {
         entityKey,
         newOwner: SOMEONE_ELSE,
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
       expect(changedKey).toBe(entityKey)
 
       const entity = await publicClient.getEntity(entityKey)
@@ -403,22 +413,7 @@ describe("Arkiv Integration Tests for public client", () => {
         entityKey,
         expiration: ExpirationTime.fromBlocks(20_000),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
-    },
-    { timeout: 20000 },
-  )
-
-  test(
-    "a permanent entity expires at a block no chain will reach",
-    async () => {
-      const { entityKey } = await create(
-        "http",
-        Notes,
-        { body: stringToBytes("forever") },
-        { expiration: ExpirationTime.permanent() },
-      )
-
-      expect((await publicClient.getEntity(entityKey)).$expiresAt).toBe(MAX_EXPIRES_AT)
+      await landed(publicClient, txHash)
     },
     { timeout: 20000 },
   )
@@ -438,7 +433,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: seed.txHash })
+      await landed(publicClient, seed.txHash)
 
       const [toPatch, toDeleteA, toDeleteB, toExtend, toTransfer] = seed.createdEntities
       if (!toPatch || !toDeleteA || !toDeleteB || !toExtend || !toTransfer) {
@@ -458,7 +453,7 @@ describe("Arkiv Integration Tests for public client", () => {
         extensions: [{ entityKey: toExtend, expiration: ExpirationTime.fromBlocks(20_000) }],
         ownershipChanges: [{ entityKey: toTransfer, newOwner: SOMEONE_ELSE }],
       })
-      await publicClient.waitForTransactionReceipt({ hash: result.txHash })
+      await landed(publicClient, result.txHash)
 
       expect(result.createdEntities).toHaveLength(1)
       expect(result.patchedEntities).toEqual([toPatch])
@@ -499,7 +494,7 @@ describe("Arkiv Integration Tests for public client", () => {
           },
         ],
       })
-      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      await landed(publicClient, batch.txHash)
       const [author, book] = batch.createdEntities as [Hex, Hex]
 
       expect((await publicClient.getEntity(author, Authors)).name).toEqual(str("Ursula"))
@@ -758,7 +753,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       const inGroup = eq("rangegroup", str(group))
       const scores = async (predicate: Expression<SchemaRef<typeof Ranges>>) => {
@@ -799,7 +794,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       const where = eq("tag", str(value))
       const sorted = [...created.createdEntities].sort()
@@ -901,7 +896,7 @@ describe("Arkiv Integration Tests for public client", () => {
         },
         { expiration: LIFETIME },
       )
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       const expected = {
         numattr: i32(42),
@@ -972,7 +967,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       expect(await owned()).toBe(before + 3n)
       const page = await publicClient
@@ -1075,7 +1070,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const { txHash } = await walletClient.patchEntity(Media, entityKey, {
         set: { raw: stringToBytes("raw bytes") },
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
       const patched = await publicClient.getEntity(entityKey, Media)
       expect(patched.cover).toEqual(bytes(cover))
       expect(patched.raw && hexToString(patched.raw.value)).toBe("raw bytes")
@@ -1103,7 +1098,7 @@ describe("Arkiv Integration Tests for public client", () => {
           },
         ],
       })
-      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      await landed(publicClient, batch.txHash)
       const [defaulted, explicit] = batch.createdEntities as [Hex, Hex]
 
       expect(await publicClient.getEntity(defaulted, Docs)).toMatchObject({
@@ -1159,7 +1154,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const close = await walletClient.patchEntity(Tasks, entityKey, {
         set: { closedAt: u64(await publicClient.getBlockNumber()), note: "done" },
       })
-      await publicClient.waitForTransactionReceipt({ hash: close.txHash })
+      await landed(publicClient, close.txHash)
       const closed = await publicClient.getEntity(entityKey, Tasks)
       expect(closed.closedAt?.type).toBe("u64")
       expect(closed.note).toEqual(str("done"))
@@ -1168,7 +1163,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const reopen = await walletClient.patchEntity(Tasks, entityKey, {
         unset: ["closedAt", "note"],
       })
-      await publicClient.waitForTransactionReceipt({ hash: reopen.txHash })
+      await landed(publicClient, reopen.txHash)
       const reopened = await publicClient.getEntity(entityKey, Tasks)
       expect(reopened.closedAt).toBeUndefined()
       expect(reopened.note).toBeUndefined()
@@ -1199,7 +1194,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // Writing the column through the new version writes it with the indexed flag.
       const { txHash } = await walletClient.patchEntity(RankedV2, entityKey, { set: { rank: 1 } })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
       expect(await byRank()).toEqual([entityKey])
       const shape = await publicClient
         .select({ $attributeSchema: true })
@@ -1214,7 +1209,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const { txHash: back } = await walletClient.patchEntity(RankedV1, entityKey, {
         set: { rank: 1 },
       })
-      await publicClient.waitForTransactionReceipt({ hash: back })
+      await landed(publicClient, back)
       expect(await byRank()).not.toContain(entityKey)
     },
     { timeout: 30000 },
@@ -1262,7 +1257,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await read.waitForTransactionReceipt({ hash: seed.txHash })
+      await landed(read, seed.txHash)
       const [toPatch, toDelete, toTransfer] = seed.createdEntities as [Hex, Hex, Hex]
 
       const events: EntityEvent[] = []
@@ -1294,7 +1289,7 @@ describe("Arkiv Integration Tests for public client", () => {
           extensions: [{ entityKey: toPatch, expiration: ExpirationTime.fromBlocks(20_000) }],
           ownershipChanges: [{ entityKey: toTransfer, newOwner: SOMEONE_ELSE }],
         })
-        const receipt = await read.waitForTransactionReceipt({ hash: batch.txHash })
+        const receipt = await landed(read, batch.txHash)
         const created = batch.createdEntities[0] as Hex
 
         expect(await eventually(() => events.length >= 5)).toBe(true)
@@ -1363,7 +1358,7 @@ describe("Arkiv Integration Tests for public client", () => {
         to: newcomer.address,
         value: parseEther("0.1"),
       })
-      await publicClient.waitForTransactionReceipt({ hash: funding })
+      await landed(publicClient, funding)
 
       const newcomerClient = createWalletClient({
         transport: http(httpUrl),
@@ -1376,7 +1371,7 @@ describe("Arkiv Integration Tests for public client", () => {
         { body: stringToBytes("first") },
         { expiration: LIFETIME, salt: 42n },
       )
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
 
       expect(entityKey).toBe(
         predictEntityKey({ owner: newcomer.address, nonce: 0n, salt: 42n, chainId }),
@@ -1426,7 +1421,7 @@ describe("Arkiv Integration Tests for public client", () => {
           },
         ],
       })
-      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      await landed(publicClient, batch.txHash)
 
       expect(batch.createdEntities).toEqual([parent.key, child.key])
       expect((await publicClient.getEntity(parent.key, Tree)).role).toEqual(str("parent"))
