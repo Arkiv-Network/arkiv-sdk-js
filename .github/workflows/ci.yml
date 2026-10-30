@@ -77,6 +77,8 @@ jobs:
         run: cd test && bun install
 
       - name: Run smoke tests
+        env:
+          ARKIV_ACCESS_KEY: ${{ secrets.ARKIV_ACCESS_KEY }}
         run: cd test && bun run test:smoke
 
   component-tests:

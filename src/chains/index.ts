@@ -1,2 +1,2 @@
 export { localhost } from "./localhost"
-export { tiramisu } from "./tiramisu"
+export { type ArkivChainOptions, rabdi } from "./rabdi"

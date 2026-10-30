@@ -44,7 +44,5 @@ export { CountQueryBuilder, SelectQueryBuilder, SYSTEM_FIELDS } from "./query"
 export * from "./schema"
 // re-export arkiv types in main index file
 export * from "./types"
-// re-export chosen utils
-export { chainFromName } from "./utils/chains"
 // every create needs an expiry, and this is the only way to build one
 export { type DeadlineOptions, ExpirationTime } from "./utils/expirationTime"
