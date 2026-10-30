@@ -223,21 +223,6 @@ const result = await publicClient
 for (const row of result.entities) {
   console.log(row.$key, row.title.value, row.score.value, hexToString(row.body.value))
 }
-
-// Pagination
-if (result.hasNextPage()) {
-  const nextPage = await result.next()
-  console.log("Next page:", nextPage.entities)
-}
-
-// Or walk every page at once
-for await (const row of publicClient
-  .select({ $key: true, title: true })
-  .from(Posts)
-  .where(eq("category", "docs"))
-  .ownedBy(account.address)) {
-  console.log(row.$key, row.title.value)
-}
 ```
 
 #### Selecting fields with `select()`
@@ -302,10 +287,28 @@ import { asc, desc } from "@arkiv-network/sdk/query"
 
 Any column but a `bytes` one can be sorted on, indexed or not. An entity where the attribute is unset, or set with
 another type, has no value to sort by, and sorts below every value: first with `asc`, last with
-`desc`. The order holds across the whole walk, not each page on its own.
+`desc`. The order holds across all the matches, not each page on its own.
 
-A named schema needs no `where` at all — `select().from(Posts)` matches every post: `fetch()`
-returns the first page, and `for await` walks them all. An unnamed schema types a query without
+Page with `limit` and `offset`. A page holds up to 100 rows, and `offset` skips the matches before
+it. Sort by a key that does not change, such as `$key`, so the pages line up:
+
+```typescript
+const page3 = await publicClient
+  .select({ $key: true, title: true })
+  .from(Posts)
+  .orderBy(asc("$key"))
+  .limit(20)
+  .offset(40)
+  .fetch()
+```
+
+An entity created or deleted between two requests shifts the offsets after it, so a row can repeat
+or be missed. To read every match exactly once while others write, page by key instead: keep the
+`asc("$key")` sort and filter on `gt("$key", key(lastKey))`, where `lastKey` is the last `$key` of
+the previous page. Through a schema, pass `{ onMismatch: "throw" }`: a page of skipped entities
+has no rows, so no key to continue from.
+
+A named schema needs no `where` at all — `select().from(Posts)` matches every post. An unnamed schema types a query without
 filtering it, so `where` alone decides which entities match.
 
 Only what you select is checked. An entity that matches but does not fit the schema — a selected

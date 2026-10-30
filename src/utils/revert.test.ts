@@ -115,6 +115,14 @@ describe("describeEntityRevert", () => {
       expect(message).toContain("already expires at block 500")
       expect(message).toContain("shorten")
     })
+
+    it("names the chain's maximum lifetime", () => {
+      const message = describeEntityRevert(
+        reverted("ExpiryBeyondMaxLifetime", [9_000_100n, 100n, 7_884_000n]),
+      )
+      expect(message).toContain("block 9000100")
+      expect(message).toContain("maximum lifetime of 7884000 blocks")
+    })
   })
 
   it("falls back to naming the error when it has no tailored explanation", () => {

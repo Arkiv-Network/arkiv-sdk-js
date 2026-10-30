@@ -1,6 +1,6 @@
 import { createPublicClient } from "@arkiv-network/sdk"
 import { rabdi } from "@arkiv-network/sdk/chains"
-import { and, eq, gt } from "@arkiv-network/sdk/query"
+import { and, asc, eq, gt } from "@arkiv-network/sdk/query"
 import { addr, bytes, dec, defineSchema, str } from "@arkiv-network/sdk/schema"
 import { hexToString, http } from "viem"
 
@@ -39,12 +39,6 @@ for (const row of result.entities) {
   console.log(row.$key, row.author.value, row.title.value, hexToString(row.body.value))
 }
 
-// Pagination
-if (result.hasNextPage()) {
-  const nextPage = await result.next()
-  console.log("Next page:", nextPage.entities)
-}
-
 // Read one of them by key, with every column
 const first = result.entities[0]
 if (first) {
@@ -52,10 +46,23 @@ if (first) {
   console.log("First post:", post)
 }
 
-// Or walk every page, one row at a time
-for await (const row of publicClient
-  .select({ $key: true, title: true })
-  .from(Posts)
-  .where(eq("category", "docs"))) {
-  console.log(row.$key, row.title.value)
+// Page through every post in the category, 20 at a time. Count them first to know how many pages
+// there are. The count includes entities that don't fit the schema, and so do the offsets, so the
+// two line up.
+const PAGE_SIZE = 20
+const total = await publicClient.count().from(Posts).where(eq("category", "docs")).fetch()
+const pageCount = Math.ceil(Number(total) / PAGE_SIZE)
+console.log(`${total} posts, ${PAGE_SIZE} per page`)
+
+for (let n = 0; n < pageCount; n++) {
+  const page = await publicClient
+    .select({ $key: true, title: true })
+    .from(Posts)
+    .where(eq("category", "docs"))
+    .orderBy(asc("$key"))
+    .limit(PAGE_SIZE)
+    .offset(n * PAGE_SIZE)
+    .fetch()
+  console.log(`Page ${n + 1}:`)
+  for (const row of page.entities) console.log(" ", row.$key, row.title.value)
 }

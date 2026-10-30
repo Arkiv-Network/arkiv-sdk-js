@@ -40,7 +40,8 @@ export type WatchEntityEventsParameters = {
    * the same event.
    *
    * This is the replay seam: operations apply in batch order and emit one event each, so an
-   * off-chain replica that consumes this in order sees exactly what the engine did.
+   * off-chain replica that consumes this in order sees what the engine did once the watcher is
+   * running — see {@link watchEntityEvents} for when that is.
    */
   onEvent?: ((event: EntityEvent) => void) | undefined
   /**
@@ -50,14 +51,18 @@ export type WatchEntityEventsParameters = {
    * and a quiet watcher is indistinguishable from a quiet chain.
    */
   onError?: ((error: Error) => void) | undefined
-  /** Replay from this block before following the head. Defaults to the head. */
-  fromBlock?: bigint | undefined
   /** How often to poll, in milliseconds. Defaults to half a block. */
   pollingInterval?: number | undefined
 }
 
 /**
  * Watches entity events, calling the handlers you pass as they arrive.
+ *
+ * The watcher follows the head. It starts listening on its first poll, which sets up the filter on
+ * the node, so an event mined between the call and that poll — up to one polling interval — is not
+ * delivered, and nor is anything earlier: the network serves no historical reads. To build state
+ * from scratch, start the watcher first and then query the current state. The two overlap, so
+ * apply events in a way that tolerates seeing a change the query already returned.
  *
  * Every event here is decoded from a log the Arkiv operation address emitted, and carries the
  * block, transaction and log index it came from — so consuming them in order replays exactly what
@@ -95,7 +100,6 @@ export function watchEntityEvents(
     onEntityDeleted,
     onEvent,
     onError,
-    fromBlock,
     pollingInterval = DEFAULT_POLLING_INTERVAL,
   } = parameters
 
@@ -146,7 +150,6 @@ export function watchEntityEvents(
     address: ARKIV_ADDRESS,
     events: ENTITY_EVENTS_ABI,
     pollingInterval,
-    ...(fromBlock !== undefined && { fromBlock }),
     onLogs: (logs) => {
       logger("logs %o", logs)
       for (const log of logs) {

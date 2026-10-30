@@ -22,7 +22,7 @@ import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
  * `<` `<=` `>` `>=` compare in index order — numerically for `i32`, `u64`, `u256` and `dec`,
  * `false < true` for `bool`, and by unsigned bytes for `str`, `addr` and `key`.
  */
-export type ComparisonOperator = "=" | "!=" | "<" | "<=" | ">" | ">="
+export type ComparisonOperator = "=" | "<" | "<=" | ">" | ">="
 
 /**
  * A value a predicate can compare against: a value of any indexable type, or a bare boolean,
@@ -88,12 +88,6 @@ export interface TypeOfNode<R extends AttributeRef = AttributeRef> extends Refs<
   readonly tag: IndexableTypeTag
 }
 
-/** The complement of an expression, evaluated against the active-entity set. */
-export interface NotNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
-  readonly kind: "not"
-  readonly expression: Expression
-}
-
 /** A conjunction. */
 export interface AndNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
   readonly kind: "and"
@@ -114,8 +108,8 @@ export interface OrNode<R extends AttributeRef = AttributeRef> extends Refs<R> {
  * combinators, and checked against the schema by `select(...).from(schema).where(...)`.
  *
  * @example
- * const q = and(gte("level", i32(10)), or(eq("status", str("open")), not(exists("closedAt"))))
- * String(q) // level >= i32(10) AND (status = str('open') OR NOT EXISTS(closedAt))
+ * const q = and(gte("level", i32(10)), or(eq("status", str("open")), exists("reviewedBy")))
+ * String(q) // level >= i32(10) AND (status = str('open') OR EXISTS(reviewedBy))
  */
 export type Expression<R extends AttributeRef = AttributeRef> =
   | ComparisonNode<R>
@@ -123,7 +117,6 @@ export type Expression<R extends AttributeRef = AttributeRef> =
   | StartsWithNode<R>
   | ExistsNode<R>
   | TypeOfNode<R>
-  | NotNode<R>
   | AndNode<R>
   | OrNode<R>
 
@@ -297,27 +290,6 @@ export function eq<N extends string, V extends PredicateValue>(
 }
 
 /**
- * Attribute is set with this type and holds a **different** value.
- *
- * This is typed value-negation, not the complement: an entity that never set the attribute, or set
- * it with another type, does not match. Use `not(eq(...))` for the full complement.
- *
- * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
- * @throws {InvalidPredicateError} If the name starts with `$` but is not a queryable system
- * attribute, a system attribute is compared against the wrong type, or the value is `bytes`.
- *
- * @example
- * ne("status", str("closed"))          // status != str('closed')
- * not(eq("status", str("closed")))     // NOT status = str('closed') — also matches entities with no status
- */
-export function ne<N extends string, V extends PredicateValue>(
-  name: N,
-  value: V,
-): ComparisonNode<ValueRef<N, V>> {
-  return comparison(name, "!=", value)
-}
-
-/**
  * Attribute is greater than value, in index order — see {@link ComparisonOperator}.
  *
  * @throws {InvalidAttributeNameError} If the name is outside the attribute name grammar.
@@ -468,7 +440,6 @@ export function startsWith<N extends string>(
  *
  * @example
  * exists("reviewedBy")        // EXISTS(reviewedBy)
- * not(exists("closedAt"))     // NOT EXISTS(closedAt)
  */
 export function exists<N extends string>(
   name: N,
@@ -520,18 +491,6 @@ export function hasType<N extends string, T extends IndexableTypeTag>(
 }
 
 /**
- * The complement of an expression, evaluated against the set of live entities — unlike `!=`, it
- * matches entities that never set the attribute at all.
- *
- * @example
- * not(exists("closedAt"))            // NOT EXISTS(closedAt)
- * not(and(eq("a", 1), eq("b", 2)))   // NOT (a = i32(1) AND b = i32(2))
- */
-export function not<R extends AttributeRef>(expression: Expression<R>): NotNode<R> {
-  return node({ kind: "not", expression })
-}
-
-/**
  * All of these must hold.
  *
  * A single expression is returned unwrapped, so building a conjunction from a filtered list does
@@ -563,7 +522,7 @@ export function and(...expressions: (Expression | readonly Expression[])[]): Exp
  * @throws {InvalidPredicateError} If given nothing to combine.
  *
  * @example
- * or(eq("status", "open"), not(exists("closedAt")))
+ * or(eq("status", "open"), exists("reviewedBy"))
  */
 export function or<const E extends readonly Expression[]>(
   expressions: E,
@@ -603,9 +562,6 @@ function combine(kind: "and" | "or", expressions: Expression[]): Expression {
  */
 export function checkAgainstSchema(expression: Expression, schema: Schema): void {
   switch (expression.kind) {
-    case "not":
-      checkAgainstSchema(expression.expression, schema)
-      return
     case "and":
     case "or":
       for (const sub of expression.expressions) checkAgainstSchema(sub, schema)
@@ -683,10 +639,10 @@ export function sortableColumn(
 }
 
 /**
- * Binding strength, tightest last — `NOT` binds tighter than `AND`, which binds tighter than `OR`.
- * A leaf never needs parentheses, so it sits above them all.
+ * Binding strength, tightest last — `AND` binds tighter than `OR`. A leaf never needs parentheses,
+ * so it sits above them both.
  */
-const PRECEDENCE = { or: 1, and: 2, not: 3, leaf: 4 } as const
+const PRECEDENCE = { or: 1, and: 2, leaf: 3 } as const
 
 function precedenceOf(expression: Expression): number {
   switch (expression.kind) {
@@ -694,8 +650,6 @@ function precedenceOf(expression: Expression): number {
       return PRECEDENCE.or
     case "and":
       return PRECEDENCE.and
-    case "not":
-      return PRECEDENCE.not
     default:
       return PRECEDENCE.leaf
   }
@@ -728,8 +682,6 @@ export function render(expression: Expression): string {
       return `EXISTS(${expression.name})`
     case "typeOf":
       return `TYPEOF(${expression.name}) = ${expression.tag}`
-    case "not":
-      return `NOT ${nested(expression.expression, PRECEDENCE.not)}`
     case "and":
       return expression.expressions.map((sub) => nested(sub, PRECEDENCE.and)).join(" AND ")
     case "or":

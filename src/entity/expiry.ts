@@ -109,8 +109,7 @@ export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedE
   if (absolute > MAX_EXPIRES_AT) {
     throw new InvalidExpiryError(
       `expiresAt resolves to block ${absolute}, which does not fit the uint64 the wire carries ` +
-        `(max ${MAX_EXPIRES_AT}). Use ExpirationTime.permanent() for an entity that should not ` +
-        "expire.",
+        `(max ${MAX_EXPIRES_AT})`,
     )
   }
   if (minLifetime > MAX_EXPIRES_AT) {

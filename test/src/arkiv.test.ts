@@ -13,13 +13,13 @@ import {
   createWalletClient,
   EntityMutationError,
   ExpirationTime,
-  MAX_EXPIRES_AT,
   NoEntityFoundError,
   predictEntityKey,
   SchemaMismatchError,
 } from "@arkiv-network/sdk"
 import {
   and,
+  asc,
   between,
   type Expression,
   eq,
@@ -29,7 +29,6 @@ import {
   InvalidPredicateError,
   lt,
   lte,
-  not,
   or,
   type SchemaRef,
   startsWith,
@@ -196,6 +195,17 @@ describe("Arkiv Integration Tests for public client", () => {
     return entityKey
   }
 
+  /**
+   * Waits for a transaction's receipt, then for its block to be readable. The node can report a
+   * block before its arkiv_* reads see it, but a read of account state at `latest` waits for the
+   * block, so one such read holds the test until the write shows up.
+   */
+  async function landed(read: PublicArkivClient, hash: Hex) {
+    const receipt = await read.waitForTransactionReceipt({ hash })
+    await read.getTransactionCount({ address: account.address, blockTag: "latest" })
+    return receipt
+  }
+
   /** Creates one entity through the SDK and waits for it to land. */
   async function create<S extends Schema>(
     transport: TransportName,
@@ -208,7 +218,7 @@ describe("Arkiv Integration Tests for public client", () => {
       expiration: options.expiration ?? LIFETIME,
       ...(options.flags ? { flags: options.flags } : {}),
     })
-    const receipt = await read.waitForTransactionReceipt({ hash: created.txHash })
+    const receipt = await landed(read, created.txHash)
     return { ...created, blockNumber: receipt.blockNumber }
   }
 
@@ -300,7 +310,7 @@ describe("Arkiv Integration Tests for public client", () => {
         { testkey: "testValue", keeper: i32(7), body, mimeType: "application/json" },
         { expiration: LIFETIME },
       )
-      await read.waitForTransactionReceipt({ hash: txHash })
+      await landed(read, txHash)
 
       const entity = await read.getEntity(entityKey, Lifecycle)
       expect(entity.body).toEqual(bytes(body))
@@ -321,7 +331,7 @@ describe("Arkiv Integration Tests for public client", () => {
           unset: ["testkey"],
         },
       )
-      await read.waitForTransactionReceipt({ hash: patchedTx })
+      await landed(read, patchedTx)
       expect(patchedKey).toBe(entityKey)
 
       const patched = await read.getEntity(entityKey, Lifecycle)
@@ -344,13 +354,13 @@ describe("Arkiv Integration Tests for public client", () => {
         entityKey,
         expiration: ExpirationTime.fromBlocks(20_000),
       })
-      await read.waitForTransactionReceipt({ hash: extendedTx })
+      await landed(read, extendedTx)
       expect(extendedExpiresAt).toBeGreaterThan(expiresAt)
       expect((await read.getEntity(entityKey)).$expiresAt).toBe(extendedExpiresAt)
 
       // Delete.
       const { txHash: deletedTx } = await write.deleteEntity({ entityKey })
-      await read.waitForTransactionReceipt({ hash: deletedTx })
+      await landed(read, deletedTx)
       await expect(read.getEntity(entityKey)).rejects.toThrow(NoEntityFoundError)
     },
     { timeout: basicCRUDTestTimeout },
@@ -365,7 +375,7 @@ describe("Arkiv Integration Tests for public client", () => {
         entityKey,
         newOwner: SOMEONE_ELSE,
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
       expect(changedKey).toBe(entityKey)
 
       const entity = await publicClient.getEntity(entityKey)
@@ -403,22 +413,7 @@ describe("Arkiv Integration Tests for public client", () => {
         entityKey,
         expiration: ExpirationTime.fromBlocks(20_000),
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
-    },
-    { timeout: 20000 },
-  )
-
-  test(
-    "a permanent entity expires at a block no chain will reach",
-    async () => {
-      const { entityKey } = await create(
-        "http",
-        Notes,
-        { body: stringToBytes("forever") },
-        { expiration: ExpirationTime.permanent() },
-      )
-
-      expect((await publicClient.getEntity(entityKey)).$expiresAt).toBe(MAX_EXPIRES_AT)
+      await landed(publicClient, txHash)
     },
     { timeout: 20000 },
   )
@@ -438,7 +433,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: seed.txHash })
+      await landed(publicClient, seed.txHash)
 
       const [toPatch, toDeleteA, toDeleteB, toExtend, toTransfer] = seed.createdEntities
       if (!toPatch || !toDeleteA || !toDeleteB || !toExtend || !toTransfer) {
@@ -458,7 +453,7 @@ describe("Arkiv Integration Tests for public client", () => {
         extensions: [{ entityKey: toExtend, expiration: ExpirationTime.fromBlocks(20_000) }],
         ownershipChanges: [{ entityKey: toTransfer, newOwner: SOMEONE_ELSE }],
       })
-      await publicClient.waitForTransactionReceipt({ hash: result.txHash })
+      await landed(publicClient, result.txHash)
 
       expect(result.createdEntities).toHaveLength(1)
       expect(result.patchedEntities).toEqual([toPatch])
@@ -499,7 +494,7 @@ describe("Arkiv Integration Tests for public client", () => {
           },
         ],
       })
-      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      await landed(publicClient, batch.txHash)
       const [author, book] = batch.createdEntities as [Hex, Hex]
 
       expect((await publicClient.getEntity(author, Authors)).name).toEqual(str("Ursula"))
@@ -758,7 +753,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       const inGroup = eq("rangegroup", str(group))
       const scores = async (predicate: Expression<SchemaRef<typeof Ranges>>) => {
@@ -781,7 +776,6 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(await scores(or(lt("rangescore", i32(200)), gt("rangescore", i32(400))))).toEqual([
         100, 500,
       ])
-      expect(await scores(not(eq("rangescore", i32(100))))).toEqual([200, 300, 400, 500])
       // Inclusive at both ends, like gte AND lte.
       expect(await scores(between("rangescore", i32(200), i32(400)))).toEqual([200, 300, 400])
       expect(await scores(startsWith("label", "score-1"))).toEqual([100])
@@ -790,7 +784,7 @@ describe("Arkiv Integration Tests for public client", () => {
   )
 
   test(
-    "a large result set pages without losing or repeating anything",
+    "limit and offset take consecutive windows of a sorted result",
     async () => {
       const value = `paging-${crypto.randomUUID()}`
       const created = await walletClient.executeBatch({
@@ -800,53 +794,46 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       const where = eq("tag", str(value))
+      const sorted = [...created.createdEntities].sort()
+      const page = (limit: number, offset: number) =>
+        publicClient
+          .select({ $key: true })
+          .from(Notes)
+          .where(where)
+          .orderBy(asc("$key"))
+          .limit(limit)
+          .offset(offset)
+          .fetch()
 
-      // 6 then 4. `next()` returns a new page rather than mutating this one.
-      const page1 = await publicClient
-        .select({ $key: true })
-        .from(Notes)
-        .where(where)
-        .limit(6)
-        .fetch()
-      expect(page1.entities).toHaveLength(6)
-      expect(page1.hasNextPage()).toBe(true)
+      // 6 then 4, in key order.
+      const page1 = await page(6, 0)
+      const page2 = await page(6, 6)
+      expect(page1.entities.map((e) => e.$key)).toEqual(sorted.slice(0, 6))
+      expect(page2.entities.map((e) => e.$key)).toEqual(sorted.slice(6))
 
-      const page2 = await page1.next()
-      expect(page2.entities).toHaveLength(4)
-      expect(page2.hasNextPage()).toBe(false)
-      await expect(page2.next()).rejects.toThrow()
+      // 5 then 5: a full page can be the last one, which only the page after it shows, by covering
+      // fewer matches than its limit. Rows plus skipped, since a schema's misfits count too.
+      expect((await page(5, 5)).entities).toHaveLength(5)
+      const after = await page(5, 10)
+      expect(after.entities.length + after.skipped).toBeLessThan(5)
 
-      // 5 then 5 — a full final page is still reported as the last one, because the node omits
-      // the cursor rather than leaving it to be guessed from a short page.
-      const evenPage1 = await publicClient.select({ $key: true }).where(where).limit(5).fetch()
-      expect(evenPage1.entities).toHaveLength(5)
-      expect(evenPage1.hasNextPage()).toBe(true)
-
-      const evenPage2 = await evenPage1.next()
-      expect(evenPage2.entities).toHaveLength(5)
-      expect(evenPage2.hasNextPage()).toBe(false)
-
-      const keys = [...evenPage1.entities, ...evenPage2.entities].map((e) => e.$key)
-      expect(new Set(keys).size).toBe(10)
-
-      // The same walk through the raw form, which takes the cursor by hand.
-      const raw1 = await publicClient.query(`tag = str('${value}')`, {
-        select: { $key: true },
-        limit: 6,
-      })
-      expect(raw1.entities).toHaveLength(6)
-      expect(raw1.cursor).toBeDefined()
-      const raw2 = await publicClient.query(`tag = str('${value}')`, {
-        select: { $key: true },
-        limit: 6,
-        cursor: raw1.cursor,
-      })
-      expect(raw2.entities).toHaveLength(4)
-      expect(raw2.cursor).toBeUndefined()
-      expect(new Set([...raw1.entities, ...raw2.entities].map((e) => e.$key)).size).toBe(10)
+      // The same pages through the raw form.
+      const raw = (offset: number) =>
+        publicClient.query(`tag = str('${value}')`, {
+          select: { $key: true },
+          orderBy: asc("$key"),
+          limit: 6,
+          offset,
+          count: true,
+        })
+      const raw1 = await raw(0)
+      const raw2 = await raw(6)
+      expect([...raw1.entities, ...raw2.entities].map((e) => e.$key)).toEqual(sorted)
+      // The count is every match, whatever the offset.
+      expect(raw2.count).toBe(10n)
     },
     { timeout: 60000 },
   )
@@ -863,46 +850,10 @@ describe("Arkiv Integration Tests for public client", () => {
       expect(full.entities.map((e) => e.$key)).toEqual([entityKey])
       expect(full.entities[0]?.$owner).toBe(account.address)
       expect(full.blockNumber).toBeGreaterThan(0n)
-      expect(full.cursor).toBeUndefined()
 
       // A selection narrows what the node sends back, raw query or not.
       const projected = await publicClient.query(queryString, { select: { $key: true, tag: true } })
       expect(projected.entities).toEqual([{ $key: entityKey, tag: str(value) }])
-    },
-    { timeout: 30000 },
-  )
-
-  test(
-    "a query reads the state a past block had",
-    async () => {
-      const value = `history-${crypto.randomUUID()}`
-      const History = defineSchema({ historygroup: str().indexed(), version: i32().indexed() })
-      const { entityKey, blockNumber: createdAt } = await create("http", History, {
-        historygroup: str(value),
-        version: i32(1),
-      })
-
-      const { txHash } = await walletClient.patchEntity(History, entityKey, {
-        set: { version: i32(2) },
-      })
-      const { blockNumber: patchedAt } = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      })
-
-      const at = async (block: bigint) => {
-        const page = await publicClient
-          .select({ version: true })
-          .from(History)
-          .where(eq("historygroup", str(value)))
-          .atBlock(block)
-          .fetch()
-        return { block: page.blockNumber, versions: page.entities.map((row) => row.version) }
-      }
-
-      // Before the entity existed, at the block it was created in, and after the patch.
-      expect(await at(createdAt - 1n)).toEqual({ block: createdAt - 1n, versions: [] })
-      expect(await at(createdAt)).toEqual({ block: createdAt, versions: [i32(1)] })
-      expect(await at(patchedAt)).toEqual({ block: patchedAt, versions: [i32(2)] })
     },
     { timeout: 30000 },
   )
@@ -945,7 +896,7 @@ describe("Arkiv Integration Tests for public client", () => {
         },
         { expiration: LIFETIME },
       )
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       const expected = {
         numattr: i32(42),
@@ -1016,7 +967,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await publicClient.waitForTransactionReceipt({ hash: created.txHash })
+      await landed(publicClient, created.txHash)
 
       expect(await owned()).toBe(before + 3n)
       const page = await publicClient
@@ -1119,7 +1070,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const { txHash } = await walletClient.patchEntity(Media, entityKey, {
         set: { raw: stringToBytes("raw bytes") },
       })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
       const patched = await publicClient.getEntity(entityKey, Media)
       expect(patched.cover).toEqual(bytes(cover))
       expect(patched.raw && hexToString(patched.raw.value)).toBe("raw bytes")
@@ -1140,10 +1091,14 @@ describe("Arkiv Integration Tests for public client", () => {
       const batch = await walletClient.executeBatch({
         creates: [
           { schema: Docs, values: { group }, expiration: LIFETIME },
-          { schema: Docs, values: { group, mimeType: "text/html", version: 3 }, expiration: LIFETIME },
+          {
+            schema: Docs,
+            values: { group, mimeType: "text/html", version: 3 },
+            expiration: LIFETIME,
+          },
         ],
       })
-      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      await landed(publicClient, batch.txHash)
       const [defaulted, explicit] = batch.createdEntities as [Hex, Hex]
 
       expect(await publicClient.getEntity(defaulted, Docs)).toMatchObject({
@@ -1186,34 +1141,34 @@ describe("Arkiv Integration Tests for public client", () => {
         "title",
       ])
 
-      const openOnes = async () =>
+      const closedOnes = async () =>
         (
           await publicClient
             .select({ $key: true })
             .from(Tasks)
-            .where(eq("group", group), not(exists("closedAt")))
+            .where(eq("group", group), exists("closedAt"))
             .fetch()
         ).entities.map((row) => row.$key)
-      expect(await openOnes()).toEqual([entityKey])
+      expect(await closedOnes()).toEqual([])
 
       const close = await walletClient.patchEntity(Tasks, entityKey, {
         set: { closedAt: u64(await publicClient.getBlockNumber()), note: "done" },
       })
-      await publicClient.waitForTransactionReceipt({ hash: close.txHash })
+      await landed(publicClient, close.txHash)
       const closed = await publicClient.getEntity(entityKey, Tasks)
       expect(closed.closedAt?.type).toBe("u64")
       expect(closed.note).toEqual(str("done"))
-      expect(await openOnes()).toEqual([])
+      expect(await closedOnes()).toEqual([entityKey])
 
       const reopen = await walletClient.patchEntity(Tasks, entityKey, {
         unset: ["closedAt", "note"],
       })
-      await publicClient.waitForTransactionReceipt({ hash: reopen.txHash })
+      await landed(publicClient, reopen.txHash)
       const reopened = await publicClient.getEntity(entityKey, Tasks)
       expect(reopened.closedAt).toBeUndefined()
       expect(reopened.note).toBeUndefined()
       expect(reopened.title).toEqual(str("write the SDK side"))
-      expect(await openOnes()).toEqual([entityKey])
+      expect(await closedOnes()).toEqual([])
     },
     { timeout: 30000 },
   )
@@ -1239,7 +1194,7 @@ describe("Arkiv Integration Tests for public client", () => {
 
       // Writing the column through the new version writes it with the indexed flag.
       const { txHash } = await walletClient.patchEntity(RankedV2, entityKey, { set: { rank: 1 } })
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
       expect(await byRank()).toEqual([entityKey])
       const shape = await publicClient
         .select({ $attributeSchema: true })
@@ -1254,7 +1209,7 @@ describe("Arkiv Integration Tests for public client", () => {
       const { txHash: back } = await walletClient.patchEntity(RankedV1, entityKey, {
         set: { rank: 1 },
       })
-      await publicClient.waitForTransactionReceipt({ hash: back })
+      await landed(publicClient, back)
       expect(await byRank()).not.toContain(entityKey)
     },
     { timeout: 30000 },
@@ -1302,7 +1257,7 @@ describe("Arkiv Integration Tests for public client", () => {
           expiration: LIFETIME,
         })),
       })
-      await read.waitForTransactionReceipt({ hash: seed.txHash })
+      await landed(read, seed.txHash)
       const [toPatch, toDelete, toTransfer] = seed.createdEntities as [Hex, Hex, Hex]
 
       const events: EntityEvent[] = []
@@ -1319,6 +1274,8 @@ describe("Arkiv Integration Tests for public client", () => {
       })
 
       try {
+        // Let the watcher's first poll set up its filter, or these writes may land before it.
+        await new Promise((r) => setTimeout(r, 3_000))
         const batch = await write.executeBatch({
           creates: [
             {
@@ -1332,7 +1289,7 @@ describe("Arkiv Integration Tests for public client", () => {
           extensions: [{ entityKey: toPatch, expiration: ExpirationTime.fromBlocks(20_000) }],
           ownershipChanges: [{ entityKey: toTransfer, newOwner: SOMEONE_ELSE }],
         })
-        const receipt = await read.waitForTransactionReceipt({ hash: batch.txHash })
+        const receipt = await landed(read, batch.txHash)
         const created = batch.createdEntities[0] as Hex
 
         expect(await eventually(() => events.length >= 5)).toBe(true)
@@ -1401,7 +1358,7 @@ describe("Arkiv Integration Tests for public client", () => {
         to: newcomer.address,
         value: parseEther("0.1"),
       })
-      await publicClient.waitForTransactionReceipt({ hash: funding })
+      await landed(publicClient, funding)
 
       const newcomerClient = createWalletClient({
         transport: http(httpUrl),
@@ -1414,7 +1371,7 @@ describe("Arkiv Integration Tests for public client", () => {
         { body: stringToBytes("first") },
         { expiration: LIFETIME, salt: 42n },
       )
-      await publicClient.waitForTransactionReceipt({ hash: txHash })
+      await landed(publicClient, txHash)
 
       expect(entityKey).toBe(
         predictEntityKey({ owner: newcomer.address, nonce: 0n, salt: 42n, chainId }),
@@ -1464,7 +1421,7 @@ describe("Arkiv Integration Tests for public client", () => {
           },
         ],
       })
-      await publicClient.waitForTransactionReceipt({ hash: batch.txHash })
+      await landed(publicClient, batch.txHash)
 
       expect(batch.createdEntities).toEqual([parent.key, child.key])
       expect((await publicClient.getEntity(parent.key, Tree)).role).toEqual(str("parent"))
@@ -1514,18 +1471,6 @@ describe("Arkiv Integration Tests for public client", () => {
         .where(eq("tag", str(value)))
         .fetch()
       expect(live.entities).toHaveLength(0)
-
-      const at = async (block: bigint) =>
-        (
-          await publicClient
-            .select({ $key: true })
-            .from(Notes)
-            .where(eq("tag", str(value)))
-            .atBlock(block)
-            .fetch()
-        ).entities.length
-      expect(await at(expiresAt - 1n)).toBe(1)
-      expect(await at(expiresAt)).toBe(0)
     },
     { timeout: 90000 },
   )

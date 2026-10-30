@@ -64,7 +64,6 @@ export abstract class QueryBuilderBase<TSchema extends Schema | undefined = unde
   protected readonly _filters: Expression[] = []
   protected _ownedBy: Expression | undefined
   protected _createdBy: Expression | undefined
-  protected _atBlock: bigint | undefined
 
   constructor(client: ArkivClient) {
     this._client = client
@@ -94,7 +93,7 @@ export abstract class QueryBuilderBase<TSchema extends Schema | undefined = unde
    * @example
    * builder.where(eq("category", "docs"))
    * builder.where(gte("level", i32(10)), lt("level", i32(20)))
-   * builder.where(or(eq("status", "open"), not(exists("closedAt"))))
+   * builder.where(or(eq("status", "open"), exists("reviewedBy")))
    */
   where<const E extends readonly (Expression | readonly Expression[])[]>(
     ...expressions: E & FilterCheck<E, TSchema>
@@ -123,18 +122,6 @@ export abstract class QueryBuilderBase<TSchema extends Schema | undefined = unde
    */
   createdBy(creator: Hex): this {
     this._createdBy = eq("$creator", addr(creator))
-    return this
-  }
-
-  /**
-   * Reads the state as of a given block rather than the head. The block must be within the range
-   * the node retains.
-   *
-   * @example
-   * builder.atBlock(1_297_000n)
-   */
-  atBlock(block: bigint): this {
-    this._atBlock = block
     return this
   }
 
