@@ -12,7 +12,6 @@ export type ValueArgument<T extends TypeTag> = {
   u64: bigint | number | string
   u256: bigint | number | string
   dec: string | number | bigint
-  bytes32: Hex | Uint8Array
   bytes: Hex | Uint8Array
   str: string
   addr: string
@@ -136,7 +135,7 @@ class ColumnDefinition {
     if (this.type === "bytes") {
       throw new SchemaDefinitionError(
         "a bytes column cannot be indexed. Bytes are stored, never indexed, so they can be " +
-          "selected but not filtered on — index a str, bytes32 or key derived from them instead",
+          "selected but not filtered on — index a hash of them, as a hex str, instead",
       )
     }
     return this.#with({ isIndexed: true })

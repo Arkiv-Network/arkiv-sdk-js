@@ -1,12 +1,12 @@
-import { checksumAddress, type Hex, hexToBytes } from "viem"
-import type { AttributeSchema, Attributes } from "../attr"
-// Internal seam: the JSON-RPC decoder is not part of the package's public surface.
-import { asTypeTag, decodeRpcValue } from "../attr/codec"
+import { checksumAddress, type Hex } from "viem"
 import {
   decodeCreationFlags,
   encodeCreationFlags,
   type ResolvedCreationFlags,
 } from "../entity/flags"
+import type { AttributeSchema, Attributes } from "../schema"
+// Internal seam: the JSON-RPC decoder is not part of the package's public surface.
+import { asTypeTag, decodeRpcValue } from "../schema/codec"
 import { Entity, type EntityFields } from "../types/entity"
 import type { RpcEntity } from "../types/rpcSchema"
 import { getLogger } from "./logger"
@@ -29,9 +29,12 @@ function decodeAttributes(rpcAttributes: NonNullable<RpcEntity["attributes"]>): 
 
 /** The same, for the values-free `attributeSchema` projection. */
 function decodeSchema(entries: NonNullable<RpcEntity["attributeSchema"]>): AttributeSchema {
-  const schema: Record<string, ReturnType<typeof asTypeTag>> = {}
-  for (const { name, type } of entries) {
-    schema[name] = asTypeTag(type)
+  const schema: Record<string, AttributeSchema[string]> = {}
+  for (const { name, type, indexed } of entries) {
+    schema[name] = {
+      type: asTypeTag(type),
+      indexed: typeof indexed === "boolean" ? indexed : undefined,
+    }
   }
   return schema
 }
@@ -53,8 +56,6 @@ export function entityFromRpcResult(rpcEntity: RpcEntity): Entity {
     updatedAt: toBlock(rpcEntity.updatedAt),
     expiresAt: toBlock(rpcEntity.expiresAt),
     creationFlags: decodeFlags(rpcEntity.creationFlags),
-    contentType: rpcEntity.contentType,
-    payload: rpcEntity.payload !== undefined ? hexToBytes(rpcEntity.payload) : undefined,
     attributeSchema:
       rpcEntity.attributeSchema !== undefined ? decodeSchema(rpcEntity.attributeSchema) : undefined,
     attributes:

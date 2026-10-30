@@ -1,9 +1,9 @@
 import type { Hash, Hex } from "viem"
-import type { AttributeInputs } from "../../attr"
 import type { ArkivClient } from "../../clients/baseClient"
 import type { CreationFlags, Expiry, NO_SALT, SaltInput } from "../../entity"
 import { EntityMutationError } from "../../errors"
-import type { MimeType, TxParams } from "../../types"
+import type { CreateEntityValues, Schema } from "../../schema"
+import type { TxParams } from "../../types"
 import { sendArkivTransaction } from "../../utils/arkivTransactions"
 import type { ExpirationTime } from "../../utils/expirationTime"
 import { getLogger } from "../../utils/logger"
@@ -11,69 +11,27 @@ import { getLogger } from "../../utils/logger"
 const logger = getLogger("actions:wallet:create-entity")
 
 /**
- * Parameters for creating an entity.
- *
- * An entity always carries contents and a type for them, plus a lifetime. Attributes, flags and a
- * salt are optional on top of that.
+ * How an created entity lives: its lifetime, plus the flags and salt it is created with.
  *
  * @example
- * const { entityKey } = await client.createEntity({
- *   attributes: {
- *     level:   i32(10),
- *     balance: u256(1_000_000n),
- *     score:   dec("3.5"),
- *     name:    "Bob",   // bare string -> str
- *     flagged: true,    // bare boolean -> bool
- *   },
- *   payload: jsonToPayload({ hello: "world" }),
- *   contentType: "application/json",
- *   expires: ExpirationTime.fromDays(30),
- *   flags: { readonly: true },
- * })
+ * { expiration: ExpirationTime.fromDays(30) }
  *
- * @example Pin an absolute deadline, but refuse to create something nearly dead:
- * await client.createEntity({
- *   payload, contentType: "application/json",
- *   expires: ExpirationTime.atDate(someDeadline, {
+ * @example Pin an absolute deadline, but never let it leave the entity with less than a day:
+ * {
+ *   expiration: ExpirationTime.atDate(someDeadline, {
  *     atLeast: ExpirationTime.fromDays(1),    // ...but live at least a day regardless
  *   }),
- * })
- *
- * @example An entity that is nothing but queryable attributes still declares its (empty) contents:
- * await client.createEntity({
- *   attributes: { parent: key(parentKey), rank: i32(3) },
- *   payload: new Uint8Array(),
- *   contentType: "application/octet-stream",
- *   expires: ExpirationTime.fromDays(30),
- * })
+ *   flags: { readonly: true },
+ * }
  */
-export type CreateEntityParameters = {
+export type CreateEntityOptions = {
   /**
    * How long the entity should live, built with {@link ExpirationTime}.
    *
    * `ExpirationTime.fromDays(30)` is the everyday form. `atBlock` / `atDate` pin an absolute
    * deadline instead, and either can carry `{ atLeast }` to guarantee a minimum life on top of it.
    */
-  expires: Expiry
-  /**
-   * The entity's opaque payload. Travels to the engine as the `$payload` system attribute; on this
-   * surface it is just the entity's contents.
-   *
-   * Pass an empty `Uint8Array` for an entity that is nothing but queryable attributes — it is
-   * written as an empty payload rather than left unset, so what you pass is what is stored.
-   */
-  payload: Uint8Array
-  /** The payload's MIME type, e.g. `"application/json"`. Sent as the `$contentType` cell. */
-  contentType: MimeType | (string & {})
-  /**
-   * The entity's queryable attributes, keyed by name. Values are the tagged constructors from
-   * `@arkiv-network/sdk/attr` — `i32`, `u64`, `u256`, `dec`, `str`, `addr`, `key`, `bytes32`,
-   * `bool` — or a bare `boolean`, `number`, `bigint` or `string` where the type is unambiguous.
-   *
-   * @throws {InvalidAttributeNameError} If a name violates the attribute-name grammar.
-   * @throws {InvalidValueError} If a value does not fit the type it names or defaults to.
-   */
-  attributes?: AttributeInputs | undefined
+  expiration: Expiry
   /**
    * Properties fixed at creation: `readonly` and `permissionlessExtension`. No operation changes
    * them afterwards, so an entity is whatever it was created as for life. Both default to `false`.
@@ -90,6 +48,21 @@ export type CreateEntityParameters = {
 }
 
 /**
+ * One entity to create, as a batch carries it: the schema, the values, and the {@link CreateEntityOptions}.
+ *
+ * @typeParam S - The schema the values are typed by.
+ */
+export type CreateEntityParameters<S extends Schema = Schema> = CreateEntityOptions & {
+  /** The schema the entity is written through. */
+  schema: S
+  /**
+   * The entity's values, keyed by column. Every required column must be given; an optional one may
+   * be left out, and a defaulted one left out is written with its default.
+   */
+  values: CreateEntityValues<S>
+}
+
+/**
  * The result of creating an entity.
  */
 export type CreateEntityReturnType = {
@@ -97,25 +70,23 @@ export type CreateEntityReturnType = {
   entityKey: Hex
   txHash: Hash
   /**
-   * The block the entity is expected to expire at, resolved against the block the transaction was
-   * built on.
-   *
-   * The engine resolves a duration against the block the transaction actually lands in, so for
-   * `ExpirationTime.fromDays(30)` and friends this is a lower bound: the real expiry is later by
-   * however many blocks passed between building and inclusion. An `atBlock` deadline is exact.
+   * The block the entity expires at, as the engine recorded it — read from the `EntityCreated`
+   * event, so a duration is already resolved against the block the transaction landed in.
    */
   expiresAt: bigint
 }
 
-export async function createEntity(
+export async function createEntity<S extends Schema>(
   client: ArkivClient,
-  data: CreateEntityParameters,
+  schema: S,
+  values: CreateEntityValues<S>,
+  options: CreateEntityOptions,
   txParams?: TxParams,
 ): Promise<CreateEntityReturnType> {
-  logger("createEntity %o", data)
+  logger("createEntity %o", values)
   const { receipt, createdEntityKeys, createdExpiries } = await sendArkivTransaction(
     client,
-    { creates: [data] },
+    { creates: [{ ...options, schema, values }] },
     txParams,
   )
 

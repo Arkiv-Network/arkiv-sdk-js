@@ -1,7 +1,8 @@
 import { describe, expect, it } from "bun:test"
 import { decodeAbiParameters, parseAbiParameters, toHex } from "viem"
-import { encodeAttributes } from "../attr/attributes"
-import { dec, i32, str, u256 } from "../attr/values"
+import { encodeCreate } from "../schema/attributes"
+import { defineSchema } from "../schema/schema"
+import { bytes, dec, i32, str, u256 } from "../schema/values"
 import { InvalidCreationFlagsError } from "./errors"
 import { decodeCreationFlags, encodeCreationFlags } from "./flags"
 import { MAX_SALT, NO_SALT, predictEntityKey, randomSalt, resolveSalt, validateSalt } from "./key"
@@ -148,9 +149,10 @@ describe("the Create operation", () => {
   })
 
   it("carries attributes as (name, typeId, bytes), sorted ascending by name", () => {
+    const schema = defineSchema({ zebra: i32(), apple: str(), mango: u256() })
     const create = decodeCreate(
       build({
-        attributes: encodeAttributes({ zebra: i32(1), apple: str("x"), mango: u256(2n) }),
+        attributes: encodeCreate(schema, { zebra: i32(1), apple: str("x"), mango: u256(2n) }),
       }).operationData,
     )
     const names = create.attributes.map((a) => a.name)
@@ -158,38 +160,40 @@ describe("the Create operation", () => {
     expect(create.attributes.map((a) => a.typeId)).toEqual([8, 4, 2]) // apple str, mango u256, zebra i32
   })
 
-  it("sends the payload and content type as system cells, ahead of user attributes", () => {
+  it("sets bit 7 of the typeId on indexed columns, and only on them", () => {
+    const schema = defineSchema({ level: i32().indexed(), note: str(), body: bytes() })
     const create = decodeCreate(
       build({
-        attributes: encodeAttributes(
-          { level: i32(10) },
-          { payload: new Uint8Array([0xde, 0xad]), contentType: "application/json" },
-        ),
+        attributes: encodeCreate(schema, {
+          level: 10,
+          note: "hi",
+          body: new Uint8Array([0xde, 0xad]),
+        }),
       }).operationData,
     )
     const byName = Object.fromEntries(create.attributes.map((a) => [a.name, a]))
-
-    // "$" sorts below every letter, so the system cells lead.
-    expect(create.attributes[0].name).toBe(toHex("$contentType", { size: 32 }))
-    expect(create.attributes[1].name).toBe(toHex("$payload", { size: 32 }))
-
-    expect(byName[toHex("$payload", { size: 32 })]).toMatchObject({ typeId: 7, value: "0xdead" })
-    expect(byName[toHex("$contentType", { size: 32 })].typeId).toBe(8)
-    expect(byName[toHex("level", { size: 32 })].typeId).toBe(2)
+    expect(byName[toHex("level", { size: 32 })].typeId).toBe(0x80 | 2)
+    expect(byName[toHex("note", { size: 32 })].typeId).toBe(8)
+    expect(byName[toHex("body", { size: 32 })]).toMatchObject({ typeId: 7, value: "0xdead" })
   })
 
-  it("omits the system cells entirely when there is no payload or content type", () => {
+  it("carries no cells at all for an entity with no columns", () => {
     const create = decodeCreate(
-      build({ attributes: encodeAttributes({ level: i32(10) }) }).operationData,
+      build({ attributes: encodeCreate(defineSchema({}), {}) }).operationData,
     )
-    expect(create.attributes).toHaveLength(1)
-    expect(create.attributes[0].name).toBe(toHex("level", { size: 32 }))
+    expect(create.attributes).toHaveLength(0)
   })
 
   it("encodes each value type at its documented width", () => {
+    const schema = defineSchema({ n: i32(), big: u256(), d: dec(), s: str() })
     const create = decodeCreate(
       build({
-        attributes: encodeAttributes({ n: i32(-42), big: u256(1n), d: dec("1.5"), s: str("hi") }),
+        attributes: encodeCreate(schema, {
+          n: i32(-42),
+          big: u256(1n),
+          d: dec("1.5"),
+          s: str("hi"),
+        }),
       }).operationData,
     )
     const byName = Object.fromEntries(create.attributes.map((a) => [a.name, a.value]))

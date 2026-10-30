@@ -12,7 +12,7 @@ const PERMISSIONLESS_EXTENSION_BIT = 0b0000_0010
  */
 export type CreationFlags = {
   /**
-   * The entity's attributes and payload can never be changed — only its expiry extended, its
+   * The entity's attributes can never be changed — only its expiry extended, its
    * ownership transferred, and the entity deleted.
    */
   readonly?: boolean

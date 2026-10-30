@@ -1,6 +1,6 @@
 # Build Configuration
 
-This project uses [tsdown](https://github.com/unjs/tsdown) to generate CommonJS, ESM, and TypeScript declaration files from a single TypeScript codebase.
+This project uses [tsdown](https://github.com/rolldown/tsdown) to generate CommonJS, ESM, and TypeScript declaration files from a single TypeScript codebase.
 
 ## Build Output Structure
 
@@ -10,7 +10,7 @@ dist/
 ├── *.cjs          # CommonJS modules (for Node.js require())
 ├── *.d.ts         # TypeScript declarations for ESM
 ├── *.d.cts        # TypeScript declarations for CommonJS
-└── [subdirs]/     # Subpath exports (accounts, chains, query, etc.)
+└── [subdirs]/     # Subpath exports (schema, entity, chains, query, etc.)
 ```
 
 All build outputs are organized directly in `dist/` with different file extensions to distinguish formats.
@@ -23,7 +23,6 @@ The build uses **tsdown** configured in `tsdown.config.ts`:
 - **Type declarations** - Automatically generates `.d.ts` (ESM) and `.d.cts` (CommonJS) files
 - **Source maps** - Includes `.js.map` and `.d.ts.map` files for debugging
 - **Platform neutral** - Supports both browser and Node.js environments
-- **External dependencies** - Properly handles external packages like `brotli-wasm`
 
 ## Scripts
 
@@ -62,11 +61,12 @@ The library supports multiple module formats via package.json exports with condi
 
 All major subpaths are exported:
 - `.` - Main entry
+- `./schema` - Schemas, columns and the attribute type system
+- `./entity` - Entity expiries, creation flags and key derivation
 - `./chains` - Chain configurations
-- `./accounts` - Account utilities
-- `./utils` - Utility functions
 - `./query` - Query builder
 - `./types` - Type definitions
+- `./utils` - Utility functions
 
 Each export provides **3 resolution paths**:
 - `bun` - TypeScript source files from `src/*.ts` (for Bun runtime or experimental feature of Node)

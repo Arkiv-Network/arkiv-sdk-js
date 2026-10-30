@@ -22,8 +22,6 @@ test("creates", () => {
   expect(typeof client.select).toBe("function")
   expect(client.query).toBeDefined()
   expect(typeof client.query).toBe("function")
-  expect(client.getEntityCount).toBeDefined()
-  expect(typeof client.getEntityCount).toBe("function")
   expect(client.getBlockTiming).toBeDefined()
   expect(typeof client.getBlockTiming).toBe("function")
   expect(client.watchEntityEvents).toBeDefined()
@@ -36,4 +34,14 @@ test("creates", () => {
   expect(client.extendEntity).not.toBeDefined()
   expect(client.changeOwnership).not.toBeDefined()
   expect(client.executeBatch).not.toBeDefined()
+})
+
+test("select() rejects a $ name that is not an entity field, at compile time and at runtime", () => {
+  const client = createPublicClient({ transport: mockTransport })
+  // @ts-expect-error - $title is not an entity field; an attribute name cannot start with $
+  expect(() => client.select({ $title: true })).toThrow(/not an entity field/)
+  // @ts-expect-error - $attributes reads every attribute; select the ones you want by name
+  expect(() => client.select({ $attributes: { title: true } })).toThrow(/select each by name/)
+  // Without the $, `owner` is an attribute like any other, read alongside the entity field.
+  expect(() => client.select({ $owner: true, owner: true })).not.toThrow()
 })

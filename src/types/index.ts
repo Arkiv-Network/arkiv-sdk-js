@@ -4,20 +4,28 @@ export type {
   PredictEntityKeysReturnType,
   PredictedEntityKey,
 } from "../actions/public/predictEntityKeys"
-export type { QueryOptions, QueryReturnType } from "../actions/public/query"
+export type { QueryOptions, QueryReturnType, QueryRow } from "../actions/public/query"
 export type { WatchEntityEventsParameters } from "../actions/public/watchEntityEvents"
 export type {
   ChangeOwnershipParameters,
   ChangeOwnershipReturnType,
 } from "../actions/wallet/changeOwnership"
-export type { CreateEntityParameters, CreateEntityReturnType } from "../actions/wallet/createEntity"
+export type {
+  CreateEntityOptions,
+  CreateEntityParameters,
+  CreateEntityReturnType,
+} from "../actions/wallet/createEntity"
 export type { DeleteEntityParameters, DeleteEntityReturnType } from "../actions/wallet/deleteEntity"
 export type {
   ExecuteBatchParameters,
   ExecuteBatchReturnType,
 } from "../actions/wallet/executeBatch"
 export type { ExtendEntityParameters, ExtendEntityReturnType } from "../actions/wallet/extendEntity"
-export type { PatchEntityParameters, PatchEntityReturnType } from "../actions/wallet/patchEntity"
+export type {
+  PatchEntityChanges,
+  PatchEntityParameters,
+  PatchEntityReturnType,
+} from "../actions/wallet/patchEntity"
 export type { EntityFields } from "./entity"
 export { Entity } from "./entity"
 export type {
@@ -29,7 +37,6 @@ export type {
   ExpiryExtendedEvent,
   OwnershipTransferredEvent,
 } from "./events"
-export type { MimeType } from "./mimeTypes"
 export type {
   ArkivRpcSchema,
   RpcAttribute,

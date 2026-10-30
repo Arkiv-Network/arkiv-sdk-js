@@ -1,4 +1,5 @@
 import type { Hex } from "viem"
+import { ACCESS_KEYS_URL } from "./consts"
 
 export class EntityMutationError extends Error {
   readonly txHash: Hex | undefined
@@ -9,13 +10,6 @@ export class EntityMutationError extends Error {
     this.txHash = options?.txHash
   }
 }
-export class NoMoreResultsError extends Error {
-  constructor() {
-    super("No more results — the last page carried no cursor. Check hasNextPage() before next().")
-    this.name = "NoMoreResultsError"
-  }
-}
-
 export class NoEntityFoundError extends Error {
   /** The key that matched nothing, when the lookup was by key. */
   readonly entityKey: string | undefined
@@ -37,19 +31,25 @@ export class EmptyPatchError extends Error {
 
   constructor(entityKey: string) {
     super(
-      `The patch for entity ${entityKey} has nothing to apply. Pass "set" to write attributes, ` +
-        '"unset" to remove them, or "payload"/"contentType" to replace the contents.',
+      `The patch for entity ${entityKey} has nothing to apply. Pass "set" to write columns, or ` +
+        '"unset" to remove optional ones.',
     )
     this.name = "EmptyPatchError"
     this.entityKey = entityKey
   }
 }
 
-export class InvalidContentTypeError extends Error {
-  constructor(contentType: string) {
+export class MissingAccessKeyError extends Error {
+  /** The chain that was asked for without a key. */
+  readonly chain: string
+
+  constructor(chain: string) {
     super(
-      `Invalid content type "${contentType}". Must follow RFC 2045 MIME grammar and be lowercase only (e.g. "text/plain").`,
+      `${chain} needs an Arkiv access key: pass it as ${chain.toLowerCase()}({ accessKey }). Get a ` +
+        `free one at ${ACCESS_KEYS_URL}, or pass accessKey: "" to use the heavily rate-limited ` +
+        "public endpoint.",
     )
-    this.name = "InvalidContentTypeError"
+    this.name = "MissingAccessKeyError"
+    this.chain = chain
   }
 }

@@ -9,7 +9,7 @@ import {
   TYPE_IDS,
   type TypeTag,
 } from "./types"
-import { addr, bool, bytes32, dec, decUnits, i32, key, u64, u256 } from "./values"
+import { addr, bool, dec, decUnits, i32, key, u64, u256 } from "./values"
 
 function strFromChain(value: string): StrValue {
   return makeValue("str", value)
@@ -19,7 +19,14 @@ function strFromChain(value: string): StrValue {
  * The `typeId` marking a tombstone — an attribute being unset. It carries a zero-length value and
  * is legal only in a patch's mutation list, never in a create.
  */
-export const TOMBSTONE_TYPE_ID = 0
+const TOMBSTONE_TYPE_ID = 0
+
+/**
+ * The node's `bytes32` type, which this SDK does not expose. Its values are 32 bytes, as a `key`'s
+ * are, so they are read as `key`s.
+ */
+const BYTES32_TYPE_ID = 6
+const BYTES32_TAG = "bytes32"
 
 /**
  * An attribute in its ABI form: `(Ident32 name, uint8 typeId, bytes value)`.
@@ -39,7 +46,7 @@ export type AbiAttribute = {
  *
  * This and {@link decodeValueBytes} are the only place the value/wire mapping is written down.
  *
- * - Word types (`bool`, `i32`, `u64`, `u256`, `dec`, `bytes32`, `addr`, `key`) become exactly 32
+ * - Word types (`bool`, `i32`, `u64`, `u256`, `dec`, `addr`, `key`) become exactly 32
  *   bytes, in the encoding Solidity would use — right-aligned, and sign-extended for `i32`.
  * - `str` becomes its raw UTF-8 bytes, and `bytes` its raw bytes: variable length, no padding.
  */
@@ -55,7 +62,6 @@ export function encodeValueBytes(value: ArkivValue): Hex {
       return toHex(value.value, { size: 32 })
     case "dec":
       return toHex(BigInt.asUintN(256, decUnits(value)), { size: 32 })
-    case "bytes32":
     case "key":
       return value.value
     case "addr":
@@ -106,8 +112,6 @@ export function decodeValueBytes(tag: TypeTag, value: Hex): ArkivValue {
       return u256(raw)
     case "dec":
       return dec(unitsToDecimal(BigInt.asIntN(256, raw)))
-    case "bytes32":
-      return bytes32(value)
     case "key":
       return key(value)
     case "addr": {
@@ -150,11 +154,16 @@ export function encodeAbiAttribute(
 /**
  * Splits a wire `typeId` into its type and indexed flag.
  *
+ * The node's `bytes32` (typeId 6) decodes as `key`.
+ *
  * @throws {UnknownAttributeTypeError} If the low seven bits name no known type.
  */
 export function decodeTypeId(typeId: number): { tag: TypeTag; indexed: boolean } {
   const base = typeId & ~INDEXED_FLAG
-  const tag = (Object.keys(TYPE_IDS) as TypeTag[]).find((candidate) => TYPE_IDS[candidate] === base)
+  const tag =
+    base === BYTES32_TYPE_ID
+      ? "key"
+      : (Object.keys(TYPE_IDS) as TypeTag[]).find((candidate) => TYPE_IDS[candidate] === base)
   if (tag === undefined) throw new UnknownAttributeTypeError(typeId)
   return { tag, indexed: (typeId & INDEXED_FLAG) !== 0 }
 }
@@ -191,8 +200,6 @@ export function decodeRpcValue(type: string, value: unknown): ArkivValue {
       return u256(asIntegerish("u256", value))
     case "dec":
       return dec(asString("dec", value))
-    case "bytes32":
-      return bytes32(asString("bytes32", value) as Hex)
     case "key":
       return key(asString("key", value) as Hex)
     case "addr":
@@ -205,7 +212,7 @@ export function decodeRpcValue(type: string, value: unknown): ArkivValue {
 }
 
 /**
- * Narrows a type tag as the node spelled it.
+ * Narrows a type tag as the node spelled it. The node's `bytes32` narrows to `key`.
  *
  * @throws {UnknownAttributeTypeError} If it names no type this SDK knows.
  */
@@ -213,6 +220,7 @@ export function asTypeTag(type: string): TypeTag {
   // `Object.hasOwn`, not `in`: `in` walks the prototype chain, so "constructor" and "toString"
   // would pass as type tags and then fall off the end of the exhaustive switch below as `undefined`.
   if (typeof type !== "string" || !Object.hasOwn(TYPE_IDS, type)) {
+    if (type === BYTES32_TAG) return "key"
     throw new UnknownAttributeTypeError(type)
   }
   return type as TypeTag
