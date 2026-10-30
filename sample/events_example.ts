@@ -1,17 +1,16 @@
 import { createPublicClient } from "@arkiv-network/sdk"
-import { tiramisu } from "@arkiv-network/sdk/chains"
+import { rabdi } from "@arkiv-network/sdk/chains"
 import { http } from "viem"
 
+// Rabdi is the Arkiv testnet. Set ARKIV_ACCESS_KEY to a free key from
+// https://hub.arkiv.network/access-keys; without one, it uses the rate-limited public endpoint.
 const publicClient = createPublicClient({
-  chain: tiramisu, // tiramisu is the Arkiv testnet
+  chain: rabdi({ accessKey: process.env.ARKIV_ACCESS_KEY ?? "" }),
   transport: http(),
 })
 
-// Replay the recent past before following the head. Keep the window small: `fromBlock` becomes an
-// eth_getLogs range, and asking a public RPC for the whole chain from block 0 is rejected outright.
-const fromBlock = (await publicClient.getBlockNumber()) - 100n
-
-// Watch entity events. Every handler is optional — the watcher only does the work for the ones
+// Watch entity events from the head on: a watcher sees what happens after it starts, and nothing
+// from before. Every handler is optional — the watcher only does the work for the ones
 // you pass. Each event carries the block, transaction and log index it came from, which is the
 // order the operations were applied in.
 const unwatch = publicClient.watchEntityEvents({
@@ -36,7 +35,6 @@ const unwatch = publicClient.watchEntityEvents({
   // Defaults to console.error if you leave it out — a watcher that goes quiet because the node
   // dropped its filter looks exactly like a quiet chain, so the failure is never silent.
   onError: (error) => console.error("watchEntityEvents error", error),
-  fromBlock,
 })
 
 // There is deliberately no expiry handler: an entity reaching its expiry block is not an operation,

@@ -22,8 +22,6 @@ test("creates", () => {
   expect(typeof client.select).toBe("function")
   expect(client.query).toBeDefined()
   expect(typeof client.query).toBe("function")
-  expect(client.getEntityCount).toBeDefined()
-  expect(typeof client.getEntityCount).toBe("function")
   expect(client.getBlockTiming).toBeDefined()
   expect(typeof client.getBlockTiming).toBe("function")
   expect(client.watchEntityEvents).toBeDefined()

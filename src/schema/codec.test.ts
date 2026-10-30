@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 import type { Hex } from "viem"
 import {
+  asTypeTag,
   decodeRpcValue,
   decodeTypeId,
   decodeValueBytes,
@@ -10,7 +11,7 @@ import {
 } from "./codec"
 import { InvalidValueError, UnknownAttributeTypeError } from "./errors"
 import type { ArkivValue } from "./types"
-import { addr, bool, bytes, bytes32, dec, i32, key, str, u64, u256 } from "./values"
+import { addr, bool, bytes, dec, i32, key, str, u64, u256 } from "./values"
 
 const ZERO = `0x${"00".repeat(32)}` as Hex
 const KEY = `0x${"ab".repeat(32)}` as Hex
@@ -32,7 +33,6 @@ const SAMPLES: ArkivValue[] = [
   dec("3.5"),
   dec("-3.5"),
   dec("-0.000000000000000001"),
-  bytes32(KEY),
   key(KEY),
   addr(VITALIK),
   str(""),
@@ -142,6 +142,13 @@ describe("decodeTypeId", () => {
     expect(() => decodeTypeId(0x7f)).toThrow(UnknownAttributeTypeError)
     expect(() => decodeTypeId(0x80)).toThrow(UnknownAttributeTypeError)
   })
+
+  it("reads typeId 6, the node's bytes32 type, as a key", () => {
+    expect(decodeTypeId(0x06)).toEqual({ tag: "key", indexed: false })
+    expect(decodeTypeId(0x86)).toEqual({ tag: "key", indexed: true })
+    expect(decodeRpcValue("bytes32", KEY)).toEqual(key(KEY))
+    expect(asTypeTag("bytes32")).toBe("key")
+  })
 })
 
 describe("decodeRpcValue", () => {
@@ -151,7 +158,6 @@ describe("decodeRpcValue", () => {
     expect(decodeRpcValue("u256", "0xf4240").value).toBe(1_000_000n)
     expect(decodeRpcValue("dec", "3.5").value).toBe("3.5")
     expect(decodeRpcValue("dec", "-0.25").value).toBe("-0.25")
-    expect(decodeRpcValue("bytes32", KEY).value).toBe(KEY)
     expect(decodeRpcValue("str", "hello").value).toBe("hello")
     expect(decodeRpcValue("addr", VITALIK.toLowerCase()).value).toBe(VITALIK)
     expect(decodeRpcValue("key", KEY).value).toBe(KEY)

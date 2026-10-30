@@ -25,7 +25,9 @@ export type {
   FullRow,
   KnownSystemFields,
   NonEmptySelection,
+  OrderTerm,
   PartialRow,
+  QueryBuilderBase,
   QueryResult,
   ResultOf,
   Row,
@@ -34,14 +36,13 @@ export type {
   Selected,
   Selection,
   SelectionOf,
+  SortDirection,
   SystemField,
 } from "./query"
-export { SelectQueryBuilder, SYSTEM_FIELDS } from "./query"
+export { CountQueryBuilder, SelectQueryBuilder, SYSTEM_FIELDS } from "./query"
 // schemas and the attribute type system
 export * from "./schema"
 // re-export arkiv types in main index file
 export * from "./types"
-// re-export chosen utils
-export { chainFromName } from "./utils/chains"
 // every create needs an expiry, and this is the only way to build one
 export { type DeadlineOptions, ExpirationTime } from "./utils/expirationTime"

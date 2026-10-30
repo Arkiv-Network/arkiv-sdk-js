@@ -245,18 +245,11 @@ describe("the watcher itself", () => {
     expect(h.watchEventCalls[0]).toMatchObject({ pollingInterval: 1000 })
   })
 
-  it("forwards fromBlock and pollingInterval, and omits fromBlock when unset", () => {
-    const withOptions = harness()
-    watchEntityEvents(withOptions.client, {
-      onEntityCreated: () => {},
-      fromBlock: 90n,
-      pollingInterval: 250,
-    })
-    expect(withOptions.watchEventCalls[0]).toMatchObject({ fromBlock: 90n, pollingInterval: 250 })
-
-    const bare = harness()
-    watchEntityEvents(bare.client, { onEntityCreated: () => {} })
-    expect(bare.watchEventCalls[0]).not.toHaveProperty("fromBlock")
+  it("forwards pollingInterval, and starts at the head", () => {
+    const h = harness()
+    watchEntityEvents(h.client, { onEntityCreated: () => {}, pollingInterval: 250 })
+    expect(h.watchEventCalls[0]).toMatchObject({ pollingInterval: 250 })
+    expect(h.watchEventCalls[0]).not.toHaveProperty("fromBlock")
   })
 
   it("stops the watcher when unwatched", () => {

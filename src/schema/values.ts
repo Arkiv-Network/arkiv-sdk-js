@@ -14,7 +14,6 @@ import {
   type AddrValue,
   type ArkivValue,
   type BoolValue,
-  type Bytes32Value,
   type BytesValue,
   type DecValue,
   type I32Value,
@@ -39,16 +38,26 @@ export const U256_MAX = 2n ** 256n - 1n
  * The longest `str`, in UTF-8 bytes
  */
 export const MAX_STRING_BYTES = 128
-/** The longest `bytes` value, in bytes. The cap applies to each `bytes` attribute separately. */
+/**
+ * The longest `bytes` value, in bytes. The cap applies to each `bytes` attribute separately, but
+ * all the `bytes` values of one create or patch also share the `MAX_ENTITY_BYTES` budget.
+ */
 export const MAX_BYTES_LENGTH = 128 * 1024
 
 /**
- * Finds the first C0 control or DEL — the characters a `str` may not contain.
+ * Finds the first lone UTF-16 surrogate — a string the node would reject, since it has no UTF-8
+ * encoding. `TextEncoder` would quietly replace it with U+FFFD instead.
  */
-function findControlChar(value: string): { index: number; code: number } | undefined {
+function findLoneSurrogate(value: string): number | undefined {
   for (let index = 0; index < value.length; index++) {
     const code = value.charCodeAt(index)
-    if (code <= 0x1f || code === 0x7f) return { index, code }
+    if (code < 0xd800 || code > 0xdfff) continue
+    const next = value.charCodeAt(index + 1)
+    if (code <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+      index++
+      continue
+    }
+    return index
   }
   return undefined
 }
@@ -58,8 +67,8 @@ export function bool(): Column<"bool", false, false, false>
 /**
  * A boolean.
  *
- * `bool` is the one type that may also be written bare — `{ flagged: true }` and
- * `{ flagged: bool(true) }` are the same attribute.
+ * This is the default type for a bare boolean, so `{ flagged: true }` and
+ * `{ flagged: bool(true) }` are the same value.
  *
  * @example
  * bool(true) // { type: "bool", value: true }
@@ -248,7 +257,7 @@ export function dec(): Column<"dec", false, false, false>
  * @example
  * dec("3.5")
  * dec("-0.000000000000000001")  // the smallest step
- * dec(5)                        // integers may be passed bare
+ * dec(5)                        // integers may be passed as a number
  */
 export function dec(value: string | number | bigint): DecValue
 export function dec(
@@ -303,13 +312,12 @@ export function str(): Column<"str", false, false, false>
 /**
  * A UTF-8 string of at most 128 bytes.
  *
- * The limit is on **bytes**, not characters: a string of 128 emoji does not fit.
+ * The limit is on **bytes**, not characters: a string of 128 emoji does not fit. Any character
+ * is allowed, control characters included. To store raw bytes, use {@link bytes}, or hex in a
+ * `str` when they must be indexed.
  *
- * C0 control characters and DEL are rejected: the query language writes a `str` as `str('...')`,
- * whose only escape is a doubled quote, so a control character could be stored but never queried.
- *
- * @throws {InvalidValueError} If the value is not a string, holds a control character, or exceeds
- * 128 UTF-8 bytes.
+ * @throws {InvalidValueError} If the value is not a string, holds a lone surrogate (so it has no
+ * UTF-8 encoding), or exceeds 128 UTF-8 bytes.
  *
  * @example
  * str("Bob")
@@ -321,16 +329,12 @@ export function str(...args: [] | [string]): StrValue | Column<"str", false, fal
   if (typeof value !== "string") {
     throw new InvalidValueError("str", value, "not a string")
   }
-  const control = findControlChar(value)
-  if (control !== undefined) {
-    const code = control.code.toString(16).padStart(4, "0").toUpperCase()
+  const surrogate = findLoneSurrogate(value)
+  if (surrogate !== undefined) {
     throw new InvalidValueError(
       "str",
       value,
-      `contains the control character U+${code} at index ${control.index}`,
-      "A str is written into a query as str('...'), whose only escape is a doubled quote — there " +
-        "is no spelling for a control character, so this value could be stored but never queried. " +
-        "Free-form text belongs in a bytes column; keep a short, printable key here.",
+      `contains a lone surrogate at index ${surrogate}, so it is not valid UTF-8`,
     )
   }
   const bytes = stringToBytes(value).length
@@ -402,31 +406,11 @@ export function key(
   return makeValue("key", asFixedHex("key", args[0], 32))
 }
 
-/** A `bytes32` column, indexed for equality once `.indexed()`. */
-export function bytes32(): Column<"bytes32", false, false, false>
-/**
- * 32 opaque bytes — a hash, a digest, an identifier from another system.
- *
- * Use {@link key} instead when the bytes are an Arkiv entity key: same wire width, but the
- * distinct type makes the reference visible to readers and to the query language.
- *
- * @param value - 32 bytes, as `0x` hex or raw bytes.
- * @throws {InvalidValueError} If the value is not exactly 32 bytes.
- *
- * @example
- * bytes32(keccak256(toBytes("hello")))
- */
-export function bytes32(value: Hex | Uint8Array): Bytes32Value
-export function bytes32(
-  ...args: [] | [Hex | Uint8Array]
-): Bytes32Value | Column<"bytes32", false, false, false> {
-  if (args.length === 0) return createColumn("bytes32", toTypedValue)
-  return makeValue("bytes32", asFixedHex("bytes32", args[0], 32))
-}
-
 /**
  * A `bytes` column — a blob. Bytes are stored but never indexed, so a bytes column has no
- * `.indexed()`: it can be selected, not filtered on. A schema may have any number of them.
+ * `.indexed()`: it can be selected, not filtered on. A schema may have several, within the
+ * `MAX_ATTRIBUTES` cap on columns — but the `bytes` values of one create or patch share a single
+ * `MAX_ENTITY_BYTES` budget.
  */
 export function bytes(): Column<"bytes", false, false, false>
 /**
@@ -454,14 +438,14 @@ export function bytes(
       "bytes",
       `<${length} bytes>`,
       `${length} bytes exceeds the ${MAX_BYTES_LENGTH}-byte limit on a bytes value`,
-      "Split it across several bytes columns, or store the bulk elsewhere and keep a reference.",
+      "Split it across several entities, or store the bulk elsewhere and keep a reference.",
     )
   }
   return makeValue("bytes", hex)
 }
 
 /** Normalizes hex-or-bytes input of a known width into lowercase `0x` hex. */
-function asFixedHex(tag: "key" | "bytes32", value: Hex | Uint8Array, size: number): Hex {
+function asFixedHex(tag: "key", value: Hex | Uint8Array, size: number): Hex {
   if (value instanceof Uint8Array) {
     if (value.length !== size) {
       throw new InvalidValueError(tag, `<${value.length} bytes>`, `not exactly ${size} bytes`)
@@ -480,7 +464,7 @@ function asFixedHex(tag: "key" | "bytes32", value: Hex | Uint8Array, size: numbe
 }
 
 /** Normalizes hex-or-bytes input into lowercase `0x` hex of a whole number of bytes. */
-function asHex(tag: "key" | "bytes32" | "bytes", value: Hex | Uint8Array): Hex {
+function asHex(tag: "key" | "bytes", value: Hex | Uint8Array): Hex {
   if (value instanceof Uint8Array) return toHex(value)
   if (typeof value !== "string" || !isHex(value, { strict: true })) {
     throw new InvalidValueError(tag, value, "not 0x-prefixed hex")
@@ -507,9 +491,11 @@ function asHex(tag: "key" | "bytes32" | "bytes", value: Hex | Uint8Array): Hex {
  * is what keeps `"0x1234..."` a string rather than silently becoming a key.
  *
  * These defaults apply identically when writing and when querying, so a value written bare and
- * queried bare always agrees with itself. The mismatch to watch for is mixing the two: an attribute
- * written as {@link u64} does not match a bare `bigint` predicate, because that predicate asserts
- * `u256`. A type mismatch is not an error to the engine — it simply matches nothing.
+ * queried bare always agrees with itself. The mismatch to watch for is a bare value where its
+ * column has another type: a bare `bigint` is a `u256`, not a {@link u64}. Through a schema that is
+ * caught — a write throws `SchemaMismatchError` and a query throws `InvalidPredicateError` — but a
+ * query without a schema sends the predicate as written, and the engine, for which a type mismatch
+ * is not an error, simply matches nothing.
  */
 export type ValueInput = ArkivValue | boolean | number | bigint | string | Uint8Array
 
@@ -532,8 +518,9 @@ export type TagOf<input> = input extends { readonly type: infer tag extends Type
             : never
 
 /**
- * The bare JavaScript form that defaults to `tag`, where there is one — `string` for `str`,
- * `Uint8Array` for `bytes`. Every other type must be written tagged.
+ * The bare JavaScript form that defaults to `tag`, where there is one — `boolean` for `bool`,
+ * `number` for `i32`, `bigint` for `u256`, `string` for `str`, `Uint8Array` for `bytes`. The other
+ * types — `u64`, `dec`, `addr` and `key` — must be written tagged.
  */
 export type BareOf<tag extends TypeTag> = {
   bool: boolean
@@ -541,7 +528,6 @@ export type BareOf<tag extends TypeTag> = {
   u64: never
   u256: bigint
   dec: never
-  bytes32: never
   bytes: Uint8Array
   str: string
   addr: never
@@ -633,7 +619,6 @@ const CONSTRUCTORS: { readonly [tag in TypeTag]: (value: never) => ArkivValue } 
   u64,
   u256,
   dec,
-  bytes32,
   bytes,
   str,
   addr,
@@ -665,8 +650,6 @@ function revalidate(value: ArkivValue): ArkivValue {
       return u256(value.value)
     case "dec":
       return dec(value.value)
-    case "bytes32":
-      return bytes32(value.value)
     case "bytes":
       return bytes(value.value)
     case "str":

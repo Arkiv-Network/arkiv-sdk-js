@@ -1,9 +1,10 @@
 import { describe, expect, it } from "bun:test"
-import { addr, bytes, bytes32, dec, defineSchema, i32, key, str, u64, u256 } from "../schema"
+import { addr, bytes, dec, defineSchema, i32, key, str, u64, u256 } from "../schema"
 import { InvalidAttributeNameError } from "../schema/errors"
 import { InvalidPredicateError, UnsupportedOperatorError } from "./errors"
 import {
   and,
+  between,
   checkAgainstSchema,
   eq,
   exists,
@@ -12,8 +13,6 @@ import {
   hasType,
   lt,
   lte,
-  ne,
-  not,
   or,
   render,
   startsWith,
@@ -30,7 +29,6 @@ describe("literals", () => {
     expect(String(eq("score", dec("3.5")))).toBe("score = dec(3.5)")
     expect(String(eq("name", str("Bob")))).toBe("name = str('Bob')")
     expect(String(eq("parent", key(ENTITY_KEY)))).toBe(`parent = key(${ENTITY_KEY})`)
-    expect(String(eq("hash", bytes32(ENTITY_KEY)))).toBe(`hash = bytes32(${ENTITY_KEY})`)
     expect(String(eq("who", addr(ACCOUNT)))).toBe(`who = addr(${ACCOUNT})`)
   })
 
@@ -66,38 +64,34 @@ describe("literals", () => {
 describe("comparisons", () => {
   it("renders each operator", () => {
     expect(String(eq("a", 1))).toBe("a = i32(1)")
-    expect(String(ne("a", 1))).toBe("a != i32(1)")
     expect(String(gt("a", 1))).toBe("a > i32(1)")
     expect(String(gte("a", 1))).toBe("a >= i32(1)")
     expect(String(lt("a", 1))).toBe("a < i32(1)")
     expect(String(lte("a", 1))).toBe("a <= i32(1)")
   })
 
-  it("allows range operators only on the ordered types", () => {
+  it("allows range operators on every indexable type", () => {
     expect(String(gt("level", i32(1)))).toBe("level > i32(1)")
     expect(String(gt("balance", u256(1n)))).toBe("balance > u256(1)")
     expect(String(gt("score", dec("1.5")))).toBe("score > dec(1.5)")
-
-    // The node treats a range operator on an equality-only type as a parse error rather than an
-    // empty result, so catching it here saves a round trip for an error code. The signatures
-    // already refuse these at compile time; the casts check the runtime guard behind them.
-    for (const value of [str("a"), addr(ACCOUNT), key(ENTITY_KEY), bytes32(ENTITY_KEY), true]) {
-      expect(() => gt("a", value as never)).toThrow(UnsupportedOperatorError)
-    }
-    expect(() => lte("name", "Bob" as never)).toThrow(/does not define <= for a str/)
+    // Ordered as the index orders them: false < true, and unsigned bytes for the rest.
+    expect(String(gte("flagged", true))).toBe("flagged >= true")
+    expect(String(lte("name", "Bob"))).toBe("name <= str('Bob')")
+    expect(String(lt("who", addr(ACCOUNT)))).toBe(`who < addr(${ACCOUNT})`)
+    expect(String(gt("parent", key(ENTITY_KEY)))).toBe(`parent > key(${ENTITY_KEY})`)
   })
 
   it("carries the offending operator and type on the error", () => {
     try {
-      gte("name", "Bob" as never)
+      startsWith("level", i32(1) as never)
       expect.unreachable()
     } catch (error) {
       expect(error).toBeInstanceOf(UnsupportedOperatorError)
       const { attributeName, operator, tag } = error as UnsupportedOperatorError
       expect({ attributeName, operator, tag }).toEqual({
-        attributeName: "name",
-        operator: ">=",
-        tag: "str",
+        attributeName: "level",
+        operator: "STARTSWITH",
+        tag: "i32",
       })
     }
   })
@@ -116,7 +110,7 @@ describe("system attributes", () => {
   it("filters on the four that carry an index", () => {
     expect(String(eq("$key", key(ENTITY_KEY)))).toBe(`$key = key(${ENTITY_KEY})`)
     expect(String(eq("$owner", addr(ACCOUNT)))).toBe(`$owner = addr(${ACCOUNT})`)
-    expect(String(ne("$creator", addr(ACCOUNT)))).toBe(`$creator != addr(${ACCOUNT})`)
+    expect(String(eq("$creator", addr(ACCOUNT)))).toBe(`$creator = addr(${ACCOUNT})`)
     expect(String(lt("$expiresAt", u64(1_200_000n)))).toBe("$expiresAt < u64(1200000)")
   })
 
@@ -130,14 +124,16 @@ describe("system attributes", () => {
     expect(() => eq("$expiresAt", 1_200_000n)).toThrow(/write u64\(\.\.\.\) around the value/)
   })
 
-  it("allows range comparisons only on $expiresAt", () => {
-    expect(() => gt("$owner", addr(ACCOUNT) as never)).toThrow(UnsupportedOperatorError)
-    expect(() => gt("$key", key(ENTITY_KEY) as never)).toThrow(UnsupportedOperatorError)
+  it("allows range comparisons on every one", () => {
+    expect(String(gt("$owner", addr(ACCOUNT)))).toBe(`$owner > addr(${ACCOUNT})`)
+    expect(String(lte("$key", key(ENTITY_KEY)))).toBe(`$key <= key(${ENTITY_KEY})`)
   })
 
   it("rejects the ones that are returned but not indexed", () => {
     for (const name of ["$createdAt", "$updatedAt", "$creationFlags"]) {
       expect(() => eq(name, 1)).toThrow(/carries no index, so it cannot be filtered on/)
+      // A selection names the entity field, which has no `$`.
+      expect(() => eq(name, 1)).toThrow(`Select it as \`${name.slice(1)}\``)
     }
   })
 
@@ -156,14 +152,55 @@ describe("system attributes", () => {
   })
 })
 
+describe("between", () => {
+  it("renders an inclusive range with both bounds tagged", () => {
+    expect(String(between("score", dec("3.5"), dec("5")))).toBe("score BETWEEN dec(3.5) AND dec(5)")
+    expect(String(between("level", 1, 5))).toBe("level BETWEEN i32(1) AND i32(5)")
+    expect(String(between("name", "a", "m"))).toBe("name BETWEEN str('a') AND str('m')")
+    expect(String(between("$expiresAt", u64(100n), u64(200n)))).toBe(
+      "$expiresAt BETWEEN u64(100) AND u64(200)",
+    )
+  })
+
+  it("is a leaf: its own AND needs no parentheses", () => {
+    expect(String(and(between("a", 1, 5), eq("b", 2)))).toBe(
+      "a BETWEEN i32(1) AND i32(5) AND b = i32(2)",
+    )
+    expect(String(or(between("a", 1, 5), eq("b", 2)))).toBe(
+      "a BETWEEN i32(1) AND i32(5) OR b = i32(2)",
+    )
+  })
+
+  it("rejects bounds of different types", () => {
+    // @ts-expect-error - both bounds must have one type
+    expect(() => between("score", 1, dec("5"))).toThrow(InvalidPredicateError)
+    expect(() => between("score", 1, dec("5") as never)).toThrow(/a i32 and a dec bound/)
+  })
+
+  it("applies the checks every comparison does", () => {
+    expect(() => between("$owner", ACCOUNT, ACCOUNT)).toThrow(/is a addr, but the value is a str/)
+    expect(() => between("blob", bytes("0x01") as never, bytes("0x02") as never)).toThrow(
+      /bytes are stored but never indexed/,
+    )
+    expect(() => between("not", 1, 2)).toThrow(InvalidAttributeNameError)
+  })
+
+  it("is checked against a schema like a comparison", () => {
+    const Posts = defineSchema({ score: dec().indexed(), title: str() })
+    expect(() => checkAgainstSchema(between("score", dec("1"), dec("2")), Posts)).not.toThrow()
+    expect(() => checkAgainstSchema(between("score", 1, 2), Posts)).toThrow(/asserts a i32/)
+    expect(() => checkAgainstSchema(between("title", "a", "b"), Posts)).toThrow(/not indexed/)
+  })
+})
+
 describe("startsWith", () => {
   it("takes a bare string or a str value", () => {
-    expect(String(startsWith("desc", "ab"))).toBe("desc STARTSWITH str('ab')")
-    expect(String(startsWith("desc", str("ab")))).toBe("desc STARTSWITH str('ab')")
+    expect(String(startsWith("description", "ab"))).toBe("description STARTSWITH str('ab')")
+    expect(String(startsWith("description", str("ab")))).toBe("description STARTSWITH str('ab')")
   })
 
   it("escapes the prefix like any other string literal", () => {
-    expect(String(startsWith("desc", "O'"))).toBe("desc STARTSWITH str('O''')")
+    expect(String(startsWith("description", "O'"))).toBe("description STARTSWITH str('O''')")
   })
 
   it("rejects a non-str value", () => {
@@ -204,7 +241,6 @@ describe("combinators", () => {
   it("joins with the keyword operators", () => {
     expect(String(and(eq("a", 1), eq("b", 2)))).toBe("a = i32(1) AND b = i32(2)")
     expect(String(or(eq("a", 1), eq("b", 2)))).toBe("a = i32(1) OR b = i32(2)")
-    expect(String(not(exists("closedAt")))).toBe("NOT EXISTS(closedAt)")
   })
 
   it("takes an array as well as separate arguments", () => {
@@ -241,14 +277,6 @@ describe("precedence", () => {
     )
   })
 
-  it("parenthesises anything under NOT that is not a leaf", () => {
-    expect(String(not(and(eq("a", 1), eq("b", 2))))).toBe("NOT (a = i32(1) AND b = i32(2))")
-    expect(String(not(or(eq("a", 1), eq("b", 2))))).toBe("NOT (a = i32(1) OR b = i32(2))")
-    // A comparison is a primary, so it needs none.
-    expect(String(not(eq("a", 1)))).toBe("NOT a = i32(1)")
-    expect(String(not(not(eq("a", 1))))).toBe("NOT NOT a = i32(1)")
-  })
-
   it("renders the spec's worked example", () => {
     const q = and(
       gte("level", i32(10)),
@@ -256,14 +284,14 @@ describe("precedence", () => {
       lte("score", dec("5")),
       eq("parent", key(ENTITY_KEY)),
       eq("flagged", true),
-      startsWith("desc", str("ab")),
-      or(eq("status", str("open")), not(exists("closedAt"))),
+      startsWith("description", str("ab")),
+      or(eq("status", str("open")), exists("reviewedBy")),
       lt("$expiresAt", u64(1_200_000n)),
     )
     expect(q.toString()).toBe(
       "level >= i32(10) AND score >= dec(3.5) AND score <= dec(5) AND " +
-        `parent = key(${ENTITY_KEY}) AND flagged = true AND desc STARTSWITH str('ab') AND ` +
-        "(status = str('open') OR NOT EXISTS(closedAt)) AND $expiresAt < u64(1200000)",
+        `parent = key(${ENTITY_KEY}) AND flagged = true AND description STARTSWITH str('ab') AND ` +
+        "(status = str('open') OR EXISTS(reviewedBy)) AND $expiresAt < u64(1200000)",
     )
   })
 })
@@ -281,7 +309,7 @@ describe("the expression tree", () => {
   })
 
   it("renders the same string through toString, String() and render()", () => {
-    const expression = and(eq("a", 1), not(exists("b")))
+    const expression = and(eq("a", 1), exists("b"))
     expect(expression.toString()).toBe(render(expression))
     expect(`${expression}`).toBe(render(expression))
   })
@@ -292,7 +320,7 @@ describe("bytes", () => {
     expect(() => eq("body", new Uint8Array([1]) as never)).toThrow(
       /bytes are stored but never indexed/,
     )
-    expect(() => ne("body", bytes("0x01") as never)).toThrow(InvalidPredicateError)
+    expect(() => gt("body", bytes("0x01") as never)).toThrow(InvalidPredicateError)
   })
 })
 
@@ -302,6 +330,7 @@ describe("checkAgainstSchema", () => {
     category: str().indexed(),
     score: dec().indexed(),
     title: str(),
+    body: bytes(),
   })
 
   it("accepts indexed columns compared against their own type, and system attributes", () => {
@@ -309,7 +338,7 @@ describe("checkAgainstSchema", () => {
       checkAgainstSchema(
         and(
           eq("category", "docs"),
-          not(gt("score", dec("4"))),
+          gt("score", dec("4")),
           or(exists("author"), startsWith("category", "d")),
           hasType("score", "dec"),
           eq("$owner", addr(ACCOUNT)),
@@ -325,8 +354,19 @@ describe("checkAgainstSchema", () => {
     )
     // Wherever it hides in the tree.
     expect(() =>
-      checkAgainstSchema(and(eq("category", "docs"), not(exists("title"))), Posts),
+      checkAgainstSchema(
+        and(eq("category", "docs"), or(eq("$owner", addr(ACCOUNT)), exists("title"))),
+        Posts,
+      ),
     ).toThrow(InvalidPredicateError)
+  })
+
+  it("rejects a bytes column without suggesting it be indexed, which bytes never can be", () => {
+    const check = () => checkAgainstSchema(exists("body"), Posts)
+    expect(check).toThrow(InvalidPredicateError)
+    expect(check).toThrow(/"body" is a bytes column, and bytes are stored but never indexed/)
+    expect(check).toThrow(/Index a hash of it, as a hex str, instead/)
+    expect(check).not.toThrow(/\.indexed\(\)/)
   })
 
   it("rejects a name that is not a column", () => {
