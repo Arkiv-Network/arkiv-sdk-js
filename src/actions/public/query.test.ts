@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "bun:test"
 import type { ArkivClient } from "../../clients/baseClient"
+import { asc, desc } from "../../query/order"
 import { i32, str } from "../../schema"
 import type { RpcEntity } from "../../types/rpcSchema"
 import { query } from "./query"
@@ -10,6 +11,12 @@ const KEY = `0x${"ab".repeat(32)}` as const
 function makeClient(data: RpcEntity[]) {
   const request = vi.fn(async () => ({ data, blockNumber: "0x1" }))
   return { client: { request } as unknown as ArkivClient, request }
+}
+
+/** The query string the first `arkiv_query` call sent. */
+function sentQuery(request: ReturnType<typeof makeClient>["request"]) {
+  const [[call]] = request.mock.calls as unknown as [[{ params: [string] }]]
+  return call.params[0]
 }
 
 /** The RPC `select` object the first `arkiv_query` call sent. */
@@ -52,6 +59,36 @@ describe("query", () => {
     const { client, request } = makeClient([])
     await expect(query(client, "a = i32(1)", { select: { $key: false } })).rejects.toThrow(
       /at least one field/,
+    )
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it("sends orderBy as the query's ORDER BY clause", async () => {
+    const { client, request } = makeClient([])
+    await query(client, "a = i32(1)", { orderBy: desc("score", "dec") })
+    expect(sentQuery(request)).toBe("a = i32(1) ORDER BY score:dec DESC")
+  })
+
+  it("sorts a system attribute by its fixed type", async () => {
+    const { client, request } = makeClient([])
+    await query(client, "a = i32(1)", { orderBy: asc("$expiresAt") })
+    expect(sentQuery(request)).toBe("a = i32(1) ORDER BY $expiresAt:u64 ASC")
+  })
+
+  it("needs a type for a user attribute, at compile time and before sending", async () => {
+    const { client, request } = makeClient([])
+    // @ts-expect-error - there is no schema to take score's type from
+    await expect(query(client, "a = i32(1)", { orderBy: desc("score") })).rejects.toThrow(
+      /needs its type/,
+    )
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it("checks a key built by hand before sending", async () => {
+    const { client, request } = makeClient([])
+    const key = { kind: "order", name: "score", type: "dec", direction: "up" }
+    await expect(query(client, "a = i32(1)", { orderBy: key as never })).rejects.toThrow(
+      /"asc" or "desc"/,
     )
     expect(request).not.toHaveBeenCalled()
   })

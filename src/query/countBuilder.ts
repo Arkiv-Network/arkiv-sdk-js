@@ -5,8 +5,8 @@ import { runQuery } from "./engine"
 /**
  * Builds and runs a count: how many entities a query matches, without fetching any of them.
  *
- * It filters exactly as `client.select()` does — {@link from}, `where`, `ownedBy`, `createdBy` and
- * `atBlock` are the same methods, from the same base — but has nothing to select and no pages, so
+ * It filters exactly as `client.select()` does — {@link from}, `where`, `ownedBy` and `createdBy`
+ * are the same methods, from the same base — but has nothing to select and no pages, so
  * {@link fetch} resolves to a `bigint`. Create one with `client.count()`.
  *
  * To show the total next to a page of rows, use `select(...).withCount()` instead, which counts in
@@ -52,11 +52,10 @@ export class CountQueryBuilder<
    * @throws If the node returns no count — it predates the count projection.
    */
   async fetch(): Promise<bigint> {
-    // Nothing but the count is selected, so the node returns no rows and no cursor.
+    // Nothing but the count is selected, so the node returns no rows.
     const response = await runQuery(this._client, {
       query: this.toString(),
       select: {},
-      atBlock: this._atBlock,
       count: true,
     })
     if (response.count === undefined) {

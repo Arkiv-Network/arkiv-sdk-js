@@ -9,10 +9,10 @@ on:
       chain:
         description: "Chain to test"
         required: false
-        default: "tiramisu"
+        default: "rabdi"
         type: choice
         options:
-          - tiramisu
+          - rabdi
       branch:
         description: "Branch to checkout"
         required: false
@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["tiramisu"]') }}
+        chain: ${{ github.event_name == 'workflow_dispatch' && fromJson(format('["{0}"]', inputs.chain)) || fromJson('["rabdi"]') }}
 
     steps:
       - name: Checkout code
@@ -50,6 +50,7 @@ jobs:
       - name: Run network health CRUD test
         env:
           PRIVATE_KEY: ${{ secrets.NETWORK_HEALTH_PRIVATE_KEY }}
+          ARKIV_ACCESS_KEY: ${{ secrets.ARKIV_ACCESS_KEY }}
           CHAIN: ${{ matrix.chain }}
         run: cd test && bun run test:network-health
 

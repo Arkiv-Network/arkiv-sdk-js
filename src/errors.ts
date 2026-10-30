@@ -1,4 +1,5 @@
 import type { Hex } from "viem"
+import { ACCESS_KEYS_URL } from "./consts"
 
 export class EntityMutationError extends Error {
   readonly txHash: Hex | undefined
@@ -9,13 +10,6 @@ export class EntityMutationError extends Error {
     this.txHash = options?.txHash
   }
 }
-export class NoMoreResultsError extends Error {
-  constructor() {
-    super("No more results — the last page carried no cursor. Check hasNextPage() before next().")
-    this.name = "NoMoreResultsError"
-  }
-}
-
 export class NoEntityFoundError extends Error {
   /** The key that matched nothing, when the lookup was by key. */
   readonly entityKey: string | undefined
@@ -42,5 +36,20 @@ export class EmptyPatchError extends Error {
     )
     this.name = "EmptyPatchError"
     this.entityKey = entityKey
+  }
+}
+
+export class MissingAccessKeyError extends Error {
+  /** The chain that was asked for without a key. */
+  readonly chain: string
+
+  constructor(chain: string) {
+    super(
+      `${chain} needs an Arkiv access key: pass it as ${chain.toLowerCase()}({ accessKey }). Get a ` +
+        `free one at ${ACCESS_KEYS_URL}, or pass accessKey: "" to use the heavily rate-limited ` +
+        "public endpoint.",
+    )
+    this.name = "MissingAccessKeyError"
+    this.chain = chain
   }
 }

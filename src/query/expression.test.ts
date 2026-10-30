@@ -13,8 +13,6 @@ import {
   hasType,
   lt,
   lte,
-  ne,
-  not,
   or,
   render,
   startsWith,
@@ -66,7 +64,6 @@ describe("literals", () => {
 describe("comparisons", () => {
   it("renders each operator", () => {
     expect(String(eq("a", 1))).toBe("a = i32(1)")
-    expect(String(ne("a", 1))).toBe("a != i32(1)")
     expect(String(gt("a", 1))).toBe("a > i32(1)")
     expect(String(gte("a", 1))).toBe("a >= i32(1)")
     expect(String(lt("a", 1))).toBe("a < i32(1)")
@@ -113,7 +110,7 @@ describe("system attributes", () => {
   it("filters on the four that carry an index", () => {
     expect(String(eq("$key", key(ENTITY_KEY)))).toBe(`$key = key(${ENTITY_KEY})`)
     expect(String(eq("$owner", addr(ACCOUNT)))).toBe(`$owner = addr(${ACCOUNT})`)
-    expect(String(ne("$creator", addr(ACCOUNT)))).toBe(`$creator != addr(${ACCOUNT})`)
+    expect(String(eq("$creator", addr(ACCOUNT)))).toBe(`$creator = addr(${ACCOUNT})`)
     expect(String(lt("$expiresAt", u64(1_200_000n)))).toBe("$expiresAt < u64(1200000)")
   })
 
@@ -172,7 +169,6 @@ describe("between", () => {
     expect(String(or(between("a", 1, 5), eq("b", 2)))).toBe(
       "a BETWEEN i32(1) AND i32(5) OR b = i32(2)",
     )
-    expect(String(not(between("a", 1, 5)))).toBe("NOT a BETWEEN i32(1) AND i32(5)")
   })
 
   it("rejects bounds of different types", () => {
@@ -199,12 +195,12 @@ describe("between", () => {
 
 describe("startsWith", () => {
   it("takes a bare string or a str value", () => {
-    expect(String(startsWith("desc", "ab"))).toBe("desc STARTSWITH str('ab')")
-    expect(String(startsWith("desc", str("ab")))).toBe("desc STARTSWITH str('ab')")
+    expect(String(startsWith("description", "ab"))).toBe("description STARTSWITH str('ab')")
+    expect(String(startsWith("description", str("ab")))).toBe("description STARTSWITH str('ab')")
   })
 
   it("escapes the prefix like any other string literal", () => {
-    expect(String(startsWith("desc", "O'"))).toBe("desc STARTSWITH str('O''')")
+    expect(String(startsWith("description", "O'"))).toBe("description STARTSWITH str('O''')")
   })
 
   it("rejects a non-str value", () => {
@@ -245,7 +241,6 @@ describe("combinators", () => {
   it("joins with the keyword operators", () => {
     expect(String(and(eq("a", 1), eq("b", 2)))).toBe("a = i32(1) AND b = i32(2)")
     expect(String(or(eq("a", 1), eq("b", 2)))).toBe("a = i32(1) OR b = i32(2)")
-    expect(String(not(exists("closedAt")))).toBe("NOT EXISTS(closedAt)")
   })
 
   it("takes an array as well as separate arguments", () => {
@@ -282,14 +277,6 @@ describe("precedence", () => {
     )
   })
 
-  it("parenthesises anything under NOT that is not a leaf", () => {
-    expect(String(not(and(eq("a", 1), eq("b", 2))))).toBe("NOT (a = i32(1) AND b = i32(2))")
-    expect(String(not(or(eq("a", 1), eq("b", 2))))).toBe("NOT (a = i32(1) OR b = i32(2))")
-    // A comparison is a primary, so it needs none.
-    expect(String(not(eq("a", 1)))).toBe("NOT a = i32(1)")
-    expect(String(not(not(eq("a", 1))))).toBe("NOT NOT a = i32(1)")
-  })
-
   it("renders the spec's worked example", () => {
     const q = and(
       gte("level", i32(10)),
@@ -297,14 +284,14 @@ describe("precedence", () => {
       lte("score", dec("5")),
       eq("parent", key(ENTITY_KEY)),
       eq("flagged", true),
-      startsWith("desc", str("ab")),
-      or(eq("status", str("open")), not(exists("closedAt"))),
+      startsWith("description", str("ab")),
+      or(eq("status", str("open")), exists("reviewedBy")),
       lt("$expiresAt", u64(1_200_000n)),
     )
     expect(q.toString()).toBe(
       "level >= i32(10) AND score >= dec(3.5) AND score <= dec(5) AND " +
-        `parent = key(${ENTITY_KEY}) AND flagged = true AND desc STARTSWITH str('ab') AND ` +
-        "(status = str('open') OR NOT EXISTS(closedAt)) AND $expiresAt < u64(1200000)",
+        `parent = key(${ENTITY_KEY}) AND flagged = true AND description STARTSWITH str('ab') AND ` +
+        "(status = str('open') OR EXISTS(reviewedBy)) AND $expiresAt < u64(1200000)",
     )
   })
 })
@@ -322,7 +309,7 @@ describe("the expression tree", () => {
   })
 
   it("renders the same string through toString, String() and render()", () => {
-    const expression = and(eq("a", 1), not(exists("b")))
+    const expression = and(eq("a", 1), exists("b"))
     expect(expression.toString()).toBe(render(expression))
     expect(`${expression}`).toBe(render(expression))
   })
@@ -333,7 +320,7 @@ describe("bytes", () => {
     expect(() => eq("body", new Uint8Array([1]) as never)).toThrow(
       /bytes are stored but never indexed/,
     )
-    expect(() => ne("body", bytes("0x01") as never)).toThrow(InvalidPredicateError)
+    expect(() => gt("body", bytes("0x01") as never)).toThrow(InvalidPredicateError)
   })
 })
 
@@ -351,7 +338,7 @@ describe("checkAgainstSchema", () => {
       checkAgainstSchema(
         and(
           eq("category", "docs"),
-          not(gt("score", dec("4"))),
+          gt("score", dec("4")),
           or(exists("author"), startsWith("category", "d")),
           hasType("score", "dec"),
           eq("$owner", addr(ACCOUNT)),
@@ -367,7 +354,10 @@ describe("checkAgainstSchema", () => {
     )
     // Wherever it hides in the tree.
     expect(() =>
-      checkAgainstSchema(and(eq("category", "docs"), not(exists("title"))), Posts),
+      checkAgainstSchema(
+        and(eq("category", "docs"), or(eq("$owner", addr(ACCOUNT)), exists("title"))),
+        Posts,
+      ),
     ).toThrow(InvalidPredicateError)
   })
 

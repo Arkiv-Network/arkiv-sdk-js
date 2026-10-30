@@ -61,9 +61,10 @@ const ENTITY_ERRORS_ABI = parseAbi([
   "error NotOwner(bytes32 entityKey, address caller, address owner)",
   "error ReadOnlyEntity(bytes32 entityKey)",
   "error ReservedCreationFlags(uint8 creationFlags)",
-  // Expiry. The engine bounds an expiry only by the uint64 width of the field — the SDK's
-  // MAX_EXPIRES_AT — and by liveness. There is no separate cap on lifetime, so no error for one.
+  // Expiry. The uint64 width of the field bounds it on the wire (the SDK's MAX_EXPIRES_AT), and the
+  // chain caps how far ahead of the current block it may land, so nothing lives forever.
   "error ExpiryDeadOnArrival(uint64 target, uint64 currentBlock)",
+  "error ExpiryBeyondMaxLifetime(uint64 target, uint64 currentBlock, uint64 maxLifetime)",
   "error ExpiryNotExtended(bytes32 entityKey, uint64 newExpiresAt, uint64 currentExpiresAt)",
   // Ownership transfer.
   "error TransferToZeroAddress(bytes32 entityKey)",

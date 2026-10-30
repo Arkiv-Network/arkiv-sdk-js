@@ -30,25 +30,24 @@ describe("CountQueryBuilder", () => {
     expect(total).toBe(42n)
     expect(sent(request).method).toBe("arkiv_query")
     expect(sent(request).query).toBe("category = str('news')")
-    // Nothing but the count is selected, so the node sends no rows and no cursor.
+    // Nothing but the count is selected, so the node sends no rows.
     expect(sent(request).options).toEqual({ select: { count: true } })
   })
 
-  it("filters as select() does: schema tag, where, owner, creator and block", async () => {
+  it("filters as select() does: schema tag, where, owner and creator", async () => {
     const { client, request } = makeClient()
     await new CountQueryBuilder(client)
       .from(Posts)
       .where(gt("score", dec("4")))
       .ownedBy(ACCOUNT)
       .createdBy(ACCOUNT)
-      .atBlock(5n)
       .fetch()
 
     expect(sent(request).query).toBe(
       "arkiv.schema = str('my-app.posts') AND score > dec(4) AND " +
         `$owner = addr(${ACCOUNT}) AND $creator = addr(${ACCOUNT})`,
     )
-    expect(sent(request).options).toEqual({ select: { count: true }, atBlock: "0x5" })
+    expect(sent(request).options).toEqual({ select: { count: true } })
   })
 
   it("needs no other filter through a named schema", async () => {

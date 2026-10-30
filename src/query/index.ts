@@ -14,7 +14,6 @@ export type {
   ComparisonOperator,
   ExistsNode,
   Expression,
-  NotNode,
   OrNode,
   PredicateValue,
   RefsOf,
@@ -34,12 +33,12 @@ export {
   hasType,
   lt,
   lte,
-  ne,
-  not,
   or,
   render,
   startsWith,
 } from "./expression"
+export type { OrderTerm, SortDirection } from "./order"
+export { asc, desc } from "./order"
 export type { FromOptions } from "./queryBuilder"
 export { SelectQueryBuilder } from "./queryBuilder"
 export { QueryResult } from "./queryResult"

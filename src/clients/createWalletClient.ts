@@ -38,12 +38,12 @@ export type WalletArkivClient<
  *
  * @example
  * import { createWalletClient } from "@arkiv-network/sdk"
- * import { tiramisu } from "@arkiv-network/sdk/chains"
+ * import { rabdi } from "@arkiv-network/sdk/chains"
  * import { http } from "viem"
  * import { privateKeyToAccount } from "viem/accounts"
  *
  * const client = createWalletClient({
- *   chain: tiramisu,
+ *   chain: rabdi({ accessKey: "..." }),
  *   transport: http(),
  *   account: privateKeyToAccount("0x..."),
  * })
