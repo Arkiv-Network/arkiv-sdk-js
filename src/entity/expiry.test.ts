@@ -1,4 +1,5 @@
 import { describe, expect, it } from "bun:test"
+import { MAX_LIFETIME } from "../consts"
 import { ExpirationTime } from "../utils/expirationTime"
 import { InvalidExpiryError } from "./errors"
 import { type Expiry, type ExpiryContext, resolveExpiry, toBlocks } from "./expiry"
@@ -169,11 +170,40 @@ describe("bounds and misuse", () => {
       /must be built with ExpirationTime/,
     )
   })
+})
 
-  it("bounds an expiry only by the width of the wire field", () => {
-    expect(() => resolveExpiry(ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n), ctx)).toThrow(
-      /does not fit the uint64/,
+describe("the maximum lifetime", () => {
+  it("is what ExpirationTime.max() asks for, as a duration", () => {
+    expect(ExpirationTime.max()).toEqual({ minLifetime: MAX_LIFETIME, expiresAt: 0n } as never)
+    expect(resolveExpiry(ExpirationTime.max(), ctx).target).toBe(CURRENT_BLOCK + MAX_LIFETIME)
+  })
+
+  it("refuses a duration even one block longer", () => {
+    expect(resolveExpiry(ExpirationTime.fromBlocks(Number(MAX_LIFETIME)), ctx).minLifetime).toBe(
+      MAX_LIFETIME,
     )
+    for (const tooLong of [
+      ExpirationTime.fromBlocks(Number(MAX_LIFETIME) + 1),
+      ExpirationTime.fromYears(1),
+      ExpirationTime.atBlock(5_000n, { atLeast: ExpirationTime.fromYears(1) }),
+    ]) {
+      expect(() => resolveExpiry(tooLong, ctx)).toThrow(/longer than the chain's maximum lifetime/)
+    }
+  })
+
+  it("refuses a deadline past the maximum from the earliest block the transaction can land in", () => {
+    // The transaction lands in the block after the current one at the earliest, and the chain
+    // counts from there.
+    const latest = CURRENT_BLOCK + 1n + MAX_LIFETIME
+    expect(resolveExpiry(ExpirationTime.atBlock(latest), ctx).target).toBe(latest)
+    for (const tooFar of [
+      ExpirationTime.atBlock(latest + 1n),
+      ExpirationTime.atBlock(MAX_EXPIRES_AT),
+      ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n),
+      ExpirationTime.atDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)),
+    ]) {
+      expect(() => resolveExpiry(tooFar, ctx)).toThrow(/past block/)
+    }
   })
 })
 

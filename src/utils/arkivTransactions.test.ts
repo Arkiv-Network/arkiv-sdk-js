@@ -12,7 +12,7 @@ import {
   toHex,
 } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
-import { ARKIV_ADDRESS, MAX_TRANSACTION_GAS } from "../consts"
+import { ARKIV_ADDRESS, MAX_LIFETIME, MAX_TRANSACTION_GAS } from "../consts"
 import { InvalidExpiryError, NO_SALT } from "../entity"
 import { ENTITY_EVENTS_ABI, type EntityEventName } from "../entity/events"
 import { MAX_EXPIRES_AT, OperationType } from "../entity/params"
@@ -271,12 +271,18 @@ describe("extend expiry", () => {
     expect(absolute.extendedExpiries[0]).toBe(5_000n)
   })
 
-  it("checks the wire bounds before spending gas, as a create does", async () => {
+  it("checks the maximum lifetime before spending gas, as a create does", async () => {
     const { client, writeContract } = makeClient()
-    const tooFar = ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n)
-    await expect(
-      sendArkivTransaction(client, { extensions: [{ entityKey: ENTITY_KEY, expiration: tooFar }] }),
-    ).rejects.toThrow(/does not fit the uint64/)
+    for (const tooFar of [
+      ExpirationTime.fromBlocks(Number(MAX_LIFETIME) + 1),
+      ExpirationTime.atBlock(MAX_EXPIRES_AT + 1n),
+    ]) {
+      await expect(
+        sendArkivTransaction(client, {
+          extensions: [{ entityKey: ENTITY_KEY, expiration: tooFar }],
+        }),
+      ).rejects.toThrow(/maximum lifetime/)
+    }
     expect(writeContract).not.toHaveBeenCalled()
   })
 

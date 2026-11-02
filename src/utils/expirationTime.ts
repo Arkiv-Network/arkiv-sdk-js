@@ -1,3 +1,4 @@
+import { MAX_LIFETIME } from "../consts"
 import { InvalidExpiryError } from "../entity/errors"
 import { type Expiry, type Lifetime, makeExpiry, toBlocks } from "../entity/expiry"
 
@@ -41,6 +42,13 @@ function deadlineOf(expiresAt: bigint | Date, options?: DeadlineOptions): Expiry
  *
  * @example A deadline that still guarantees a minimum life.
  * expiration: ExpirationTime.atBlock(1_200_000n, { atLeast: ExpirationTime.fromDays(1) })
+ *
+ * @example The longest life the chain allows.
+ * expiration: ExpirationTime.max()
+ *
+ * No entity may live more than {@link MAX_LIFETIME} blocks (about 182 days) past the block its
+ * create or extension lands in. A longer expiry, such as `fromYears(1)`, is refused before the
+ * transaction is sent.
  */
 export const ExpirationTime = {
   /**
@@ -110,6 +118,13 @@ export const ExpirationTime = {
     }
     return makeExpiry(BigInt(blocks), 0n) as Lifetime
   },
+
+  /**
+   * The longest lifetime the chain allows: {@link MAX_LIFETIME} blocks (about 182 days), counted
+   * from the block the transaction lands in. Extending an entity with it pushes its expiry out to
+   * that maximum again.
+   */
+  max: (): Lifetime => makeExpiry(MAX_LIFETIME, 0n) as Lifetime,
 
   /**
    * An absolute block height.
