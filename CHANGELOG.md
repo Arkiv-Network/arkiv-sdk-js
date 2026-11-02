@@ -1,3 +1,16 @@
+## [1.0.1] - 2026-11-02
+
+### Added
+- `ExpirationTime.max()`, the longest lifetime the chain allows. Extending an entity with it pushes its expiry out to that maximum again
+- `MAX_LIFETIME`, exported from `@arkiv-network/sdk/entity` and the package root: the longest an entity may live, 7,884,000 blocks (about 182 days), counted from the block its create or extension lands in
+
+### Changed
+- An expiry past `MAX_LIFETIME`, such as `ExpirationTime.fromYears(1)`, throws `InvalidExpiryError` before the transaction is sent, instead of reverting on chain with `ExpiryBeyondMaxLifetime`
+- Transactions get 25% more gas than estimated, up to the network's per-transaction cap of 2^24, so a batch whose cost grows between the estimate and the block it lands in no longer runs out of gas. A `gas` passed by the caller is used as is
+
+### Fixed
+- A transaction that runs out of gas throws `EntityMutationError` saying so, instead of an empty revert reason
+
 ## [1.0.0-dev.0] - 2026-10-30
 
 This release implements user-defined entity columns. An entity is no longer a payload plus indexed attributes: it is any number of named, typed attributes, each of which the writer marks indexed or not. The SDK describes them with schemas. It needs a node running arkiv-reth 1.0.0 or later, which speaks the new protocol (the indexed flag in bit 7 of `typeId`, no `$payload`/`$contentType`) and answers `offset` and `ORDER BY`.
