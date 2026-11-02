@@ -294,9 +294,14 @@ async function getGasLimitOfTx(client: WalletArkivClient, hash: Hex): Promise<bi
  * headroom alone never makes a batch too big to send, but never below the estimate itself.
  */
 function withHeadroom(estimate: bigint): bigint {
+  // Already too big to send: padding cannot help, so leave the estimate as it is.
+  if (estimate > MAX_TRANSACTION_GAS) return estimate
+
   const padded = (estimate * (100n + GAS_HEADROOM_PERCENT)) / 100n
-  if (padded <= MAX_TRANSACTION_GAS) return padded
-  return estimate > MAX_TRANSACTION_GAS ? estimate : MAX_TRANSACTION_GAS
+
+  if (padded > MAX_TRANSACTION_GAS) return MAX_TRANSACTION_GAS
+
+  return padded
 }
 
 /**
