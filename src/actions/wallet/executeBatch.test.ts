@@ -20,6 +20,7 @@ function makeClient() {
       account: { address: "0x1111111111111111111111111111111111111111" },
       chain: { id: 1 },
       getBlockNumber: vi.fn().mockResolvedValue(100n),
+      estimateGas: vi.fn().mockResolvedValue(100_000n),
       readContract: vi.fn().mockResolvedValue(7n),
       writeContract,
       waitForTransactionReceipt: vi.fn().mockResolvedValue({

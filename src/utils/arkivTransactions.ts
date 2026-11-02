@@ -8,6 +8,8 @@ import {
   TransactionExecutionError,
   type TransactionReceipt,
 } from "viem"
+import { estimateContractGas, getTransaction } from "viem/actions"
+import { getAction } from "viem/utils"
 import type { ChangeOwnershipParameters } from "../actions/wallet/changeOwnership"
 import type { CreateEntityParameters } from "../actions/wallet/createEntity"
 import type { DeleteEntityParameters } from "../actions/wallet/deleteEntity"
@@ -15,7 +17,7 @@ import type { ExtendEntityParameters } from "../actions/wallet/extendEntity"
 import type { PatchEntityParameters } from "../actions/wallet/patchEntity"
 import type { ArkivClient } from "../clients/baseClient"
 import type { WalletArkivClient } from "../clients/createWalletClient"
-import { ARKIV_ADDRESS } from "../consts"
+import { ARKIV_ADDRESS, GAS_HEADROOM_PERCENT, MAX_TRANSACTION_GAS } from "../consts"
 import { ENTITY_EVENTS_ABI } from "../entity/events"
 import { resolveExpiry } from "../entity/expiry"
 import { encodeCreationFlags } from "../entity/flags"
@@ -164,6 +166,22 @@ export async function sendArkivTransaction(
   let txHash: Hex | undefined
 
   try {
+    const gas =
+      txParams?.gas ??
+      withHeadroom(
+        await estimateContractGas(walletClient, {
+          address: ARKIV_ADDRESS,
+          abi: EXECUTE_ABI,
+          functionName: "execute",
+          args: [operations],
+          // A local account makes viem estimate twice, the second time capped at the first result,
+          // which fails if a block lands in between. This is also how viem's `writeContract` does
+          // it by default if you don't pass a custom gas limit
+          account: { address: client.account.address, type: "json-rpc" },
+          ...txParams,
+        }),
+      )
+
     txHash = await walletClient.writeContract({
       address: ARKIV_ADDRESS,
       abi: EXECUTE_ABI,
@@ -172,12 +190,35 @@ export async function sendArkivTransaction(
       account: client.account,
       chain: client.chain,
       ...txParams,
+      gas,
     })
 
     const receipt = await walletClient.waitForTransactionReceipt({ hash: txHash })
     logger("Tx receipt %o", receipt)
 
     if (receipt.status === "reverted") {
+      // There is no guarantee that the limit we estimated here
+      // was the actual limit used (for example a user may
+      // have overwritten it in the wallet UI)
+      const actualLimitUsed = (await getGasLimitOfTx(walletClient, txHash)) ?? gas
+
+      // No need to run a simulation if we ran out of gas
+      // (simulations dont have a gas limit so it would come back as an empty error response)
+      if (receipt.gasUsed >= actualLimitUsed) {
+        const estimated = txParams?.gas === undefined && actualLimitUsed === gas
+        throw new EntityMutationError(
+          `Transaction ${receipt.transactionHash} ran out of gas: it used all ${actualLimitUsed} gas it ` +
+            "was given, so nothing was applied and the fee was spent. " +
+            (estimated
+              ? "The batch cost more when it ran than when it was estimated, because the state " +
+                "changed in between. Send it again."
+              : "The limit was set rather than estimated (passed as `gas`, or changed in the " +
+                "wallet) and was too low for the batch. Send it again with a higher `gas`, or " +
+                "without one to let the SDK estimate it."),
+          { txHash: receipt.transactionHash },
+        )
+      }
+
       try {
         await walletClient.simulateContract({
           address: ARKIV_ADDRESS,
@@ -236,6 +277,31 @@ export async function sendArkivTransaction(
 
     throw new EntityMutationError(message, { cause: error, txHash })
   }
+}
+
+/** The gas limit a sent transaction carried, or `undefined` if the node cannot say. */
+async function getGasLimitOfTx(client: WalletArkivClient, hash: Hex): Promise<bigint | undefined> {
+  try {
+    return (await getAction(client, getTransaction, "getTransaction")({ hash })).gas
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * An estimate with {@link GAS_HEADROOM_PERCENT} added: room for the state to change between the
+ * estimate and the block the transaction lands in. Capped at {@link MAX_TRANSACTION_GAS}, so the
+ * headroom alone never makes a batch too big to send, but never below the estimate itself.
+ */
+function withHeadroom(estimate: bigint): bigint {
+  // Already too big to send: padding cannot help, so leave the estimate as it is.
+  if (estimate > MAX_TRANSACTION_GAS) return estimate
+
+  const padded = (estimate * (100n + GAS_HEADROOM_PERCENT)) / 100n
+
+  if (padded > MAX_TRANSACTION_GAS) return MAX_TRANSACTION_GAS
+
+  return padded
 }
 
 /**

@@ -12,7 +12,7 @@ import {
   toHex,
 } from "viem"
 import type { ArkivClient } from "../clients/baseClient"
-import { ARKIV_ADDRESS } from "../consts"
+import { ARKIV_ADDRESS, MAX_TRANSACTION_GAS } from "../consts"
 import { InvalidExpiryError, NO_SALT } from "../entity"
 import { ENTITY_EVENTS_ABI, type EntityEventName } from "../entity/events"
 import { MAX_EXPIRES_AT, OperationType } from "../entity/params"
@@ -121,15 +121,18 @@ function makeClient() {
     logs: emittedLogs(writeContract),
   }))
   const readContract = vi.fn().mockResolvedValue(OWNER_NONCE)
+  const estimateGas = vi.fn().mockResolvedValue(100_000n)
   return {
     client: {
       account: { address: OWNER },
       chain: { id: 1 },
       getBlockNumber: vi.fn().mockResolvedValue(CURRENT_BLOCK),
+      estimateGas,
       readContract,
       writeContract,
       waitForTransactionReceipt,
     } as unknown as ArkivClient,
+    estimateGas,
     writeContract,
     waitForTransactionReceipt,
     readContract,
@@ -947,5 +950,27 @@ describe("a revert the node catches before there is a receipt", () => {
 
     expect(failure.message).toContain("nonce too low")
     expect(failure.cause).toBe(opaque)
+  })
+})
+
+describe("gas headroom", () => {
+  /** The gas limit a batch whose estimate is `estimate` is sent with. */
+  async function sentGasFor(estimate: bigint) {
+    const { client, estimateGas, writeContract } = makeClient()
+    estimateGas.mockResolvedValue(estimate)
+    await sendArkivTransaction(client, { deletes: [{ entityKey: ENTITY_KEY }] })
+    return writeContract.mock.calls[0][0].gas as bigint
+  }
+
+  it("adds 25% to the estimate", async () => {
+    expect(await sentGasFor(100_000n)).toBe(125_000n)
+  })
+
+  it("stops at the per-transaction cap when the headroom would cross it", async () => {
+    expect(await sentGasFor(MAX_TRANSACTION_GAS - 1_000n)).toBe(MAX_TRANSACTION_GAS)
+  })
+
+  it("sends an estimate already above the cap as it is", async () => {
+    expect(await sentGasFor(MAX_TRANSACTION_GAS + 1_000n)).toBe(MAX_TRANSACTION_GAS + 1_000n)
   })
 })
