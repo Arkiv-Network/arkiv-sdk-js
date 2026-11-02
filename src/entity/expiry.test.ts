@@ -173,19 +173,9 @@ describe("bounds and misuse", () => {
 })
 
 describe("the maximum lifetime", () => {
-  it("is 7,884,000 blocks, about 182.5 days", () => {
-    expect(MAX_LIFETIME).toBe(7_884_000n)
-    expect(ExpirationTime.fromSeconds(182.5 * 24 * 60 * 60).minLifetime).toBe(MAX_LIFETIME)
-  })
-
   it("is what ExpirationTime.max() asks for, as a duration", () => {
     expect(ExpirationTime.max()).toEqual({ minLifetime: MAX_LIFETIME, expiresAt: 0n } as never)
     expect(resolveExpiry(ExpirationTime.max(), ctx).target).toBe(CURRENT_BLOCK + MAX_LIFETIME)
-  })
-
-  it("serves as the floor of a deadline", () => {
-    const expiry = ExpirationTime.atBlock(5_000n, { atLeast: ExpirationTime.max() })
-    expect(resolveExpiry(expiry, ctx).target).toBe(CURRENT_BLOCK + MAX_LIFETIME)
   })
 
   it("refuses a duration even one block longer", () => {

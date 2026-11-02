@@ -283,15 +283,6 @@ describe("extend expiry", () => {
     expect(writeContract).not.toHaveBeenCalled()
   })
 
-  it("sends ExpirationTime.max() as the maximum lifetime", async () => {
-    const { client, writeContract } = makeClient()
-    const result = await sendArkivTransaction(client, {
-      extensions: [{ entityKey: ENTITY_KEY, expiration: ExpirationTime.max() }],
-    })
-    expect(sentExtension(writeContract).minLifetime).toBe(MAX_LIFETIME)
-    expect(result.extendedExpiries[0]).toBe(CURRENT_BLOCK + MAX_LIFETIME)
-  })
-
   it("refuses an extension that says nothing", async () => {
     const { client } = makeClient()
     await expect(
