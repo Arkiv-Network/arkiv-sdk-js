@@ -121,15 +121,18 @@ function makeClient() {
     logs: emittedLogs(writeContract),
   }))
   const readContract = vi.fn().mockResolvedValue(OWNER_NONCE)
+  const estimateGas = vi.fn().mockResolvedValue(100_000n)
   return {
     client: {
       account: { address: OWNER },
       chain: { id: 1 },
       getBlockNumber: vi.fn().mockResolvedValue(CURRENT_BLOCK),
+      estimateGas,
       readContract,
       writeContract,
       waitForTransactionReceipt,
     } as unknown as ArkivClient,
+    estimateGas,
     writeContract,
     waitForTransactionReceipt,
     readContract,
