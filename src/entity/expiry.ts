@@ -1,7 +1,6 @@
-import { BLOCK_TIME } from "../consts"
+import { BLOCK_TIME, MAX_LIFETIME } from "../consts"
 import type { ExpirationTime } from "../utils/expirationTime"
 import { InvalidExpiryError } from "./errors"
-import { MAX_EXPIRES_AT } from "./params"
 
 /**
  * The brand. Module-private and never exported, so the only way to obtain an {@link Expiry} is to
@@ -79,8 +78,8 @@ export type ExpiryContext = {
  * expiry resolves to against `currentBlock` comes back as {@link ResolvedExpiry.target}, so the
  * approximation is always observable rather than assumed.
  *
- * @throws {InvalidExpiryError} If the expiry is malformed, does not fit the `uint64` the wire
- * carries, or would leave the entity dead on arrival.
+ * @throws {InvalidExpiryError} If the expiry is malformed, would outlive the chain's
+ * {@link MAX_LIFETIME}, or would leave the entity dead on arrival.
  */
 export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedExpiry {
   const { currentBlock } = context
@@ -106,16 +105,24 @@ export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedE
     )
   }
 
-  if (absolute > MAX_EXPIRES_AT) {
+  // The chain counts the maximum lifetime from the block the transaction lands in, which is at the
+  // earliest the one after `currentBlock`. A duration is measured from that same block, so it is
+  // bounded exactly; a deadline is refused only when it is too far even for the earliest landing.
+  // Both bounds sit far below the uint64 the wire carries, so they keep the values within it too.
+  if (minLifetime > MAX_LIFETIME) {
     throw new InvalidExpiryError(
-      `expiresAt resolves to block ${absolute}, which does not fit the uint64 the wire carries ` +
-        `(max ${MAX_EXPIRES_AT})`,
+      `a lifetime of ${minLifetime} blocks is longer than the chain's maximum lifetime of ` +
+        `${MAX_LIFETIME} blocks (about 182 days). Use ExpirationTime.max() for the longest ` +
+        "lifetime allowed.",
     )
   }
-  if (minLifetime > MAX_EXPIRES_AT) {
+  const latestDeadline = currentBlock + 1n + MAX_LIFETIME
+  if (absolute > latestDeadline) {
     throw new InvalidExpiryError(
-      `the lifetime is ${minLifetime} blocks, which does not fit the uint64 the wire carries ` +
-        `(max ${MAX_EXPIRES_AT})`,
+      `expiresAt resolves to block ${absolute}, past block ${latestDeadline}: the chain's ` +
+        `maximum lifetime is ${MAX_LIFETIME} blocks (about 182 days) after the block the ` +
+        `transaction lands in, and the current block is ${currentBlock}. Use ` +
+        "ExpirationTime.max() for the longest lifetime allowed.",
     )
   }
 
@@ -126,12 +133,6 @@ export function resolveExpiry(expiry: Expiry, context: ExpiryContext): ResolvedE
     throw new InvalidExpiryError(
       `the entity would expire at block ${target}, which is not after the current block ` +
         `${currentBlock}, so it would be dead on arrival`,
-    )
-  }
-  if (target > MAX_EXPIRES_AT) {
-    throw new InvalidExpiryError(
-      `a lifetime of ${minLifetime} blocks from block ${currentBlock} lands at ${target}, past ` +
-        `the largest expiry the wire carries (${MAX_EXPIRES_AT})`,
     )
   }
 

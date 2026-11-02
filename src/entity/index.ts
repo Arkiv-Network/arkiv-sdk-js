@@ -1,3 +1,4 @@
+export { MAX_LIFETIME } from "../consts"
 export {
   InvalidCreationFlagsError,
   InvalidExpiryError,
